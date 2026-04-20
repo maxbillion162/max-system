@@ -15,7 +15,7 @@ export async function POST() {
     const [weather, crypto, news] = await Promise.all([
       fetchWeather("orlando"),
       fetchCryptoPrices(),
-      fetchNews(6),
+      fetchNews(8),
     ]);
 
     const date = new Date().toLocaleDateString("en-US", {
@@ -26,7 +26,7 @@ export async function POST() {
 
     const resend = new Resend(resendKey);
     const { data, error } = await resend.emails.send({
-      from:    "M.A.X. <briefing@resend.dev>",
+      from:    "M.A.X. <onboarding@resend.dev>",
       to:      ["maxbillion2003@gmail.com"],
       subject: `M.A.X. Daily Briefing — ${date}`,
       html,
@@ -39,7 +39,8 @@ export async function POST() {
 
     return NextResponse.json({ success: true, emailId: data?.id });
   } catch (err) {
-    console.error("Briefing error:", err);
-    return NextResponse.json({ error: "Briefing generation failed" }, { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("Briefing error:", msg);
+    return NextResponse.json({ error: "Briefing generation failed", detail: msg }, { status: 500 });
   }
 }
