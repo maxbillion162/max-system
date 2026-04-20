@@ -50,7 +50,10 @@ export async function chatWithMax(messages: ChatMessage[]): Promise<string> {
     systemInstruction: MAX_SYSTEM_PROMPT,
   });
 
-  const history = messages.slice(0, -1).map(m => ({
+  // Gemini requires history to start with a user message — strip any leading model messages
+  const trimmed = messages.slice(0, -1);
+  const firstUserIdx = trimmed.findIndex(m => m.role === "user");
+  const history = (firstUserIdx >= 0 ? trimmed.slice(firstUserIdx) : []).map(m => ({
     role: m.role,
     parts: [{ text: m.content }],
   }));
