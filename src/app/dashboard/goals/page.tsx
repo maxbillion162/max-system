@@ -1,9 +1,12 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { HudCard } from "@/components/ui/HudCard";
+import { supabase } from "@/lib/supabase";
 
-const GOALS = [
+const GOALS_INIT = [
   {
+    id: "income-100k",
     category: "Income", label: "$100K First Year",
     desc: "Hit $100K total compensation in your first full year as an Account Manager at the staffing firm.",
     current: 0, target: 100000, unit: "$", deadline: "Jul 2027", color: "var(--green)",
@@ -12,30 +15,34 @@ const GOALS = [
     insight: "Job starts July 2026. Base + commission. Track every paycheck here.",
   },
   {
+    id: "emergency-fund",
     category: "Finance", label: "Emergency Fund — $10K",
     desc: "Build a 3-month cash cushion before allocating aggressively to investments.",
     current: 2800, target: 10000, unit: "$", deadline: "Dec 2026", color: "var(--purple)",
     colorHex: "#8b5cf6", started: true,
-    milestones: [{ l: "$2.5K", v: 2500, done: true }, { l: "$5K", v: 5000 }, { l: "$7.5K", v: 7500 }, { l: "$10K", v: 10000 }],
+    milestones: [{ l: "$2.5K", v: 2500 }, { l: "$5K", v: 5000 }, { l: "$7.5K", v: 7500 }, { l: "$10K", v: 10000 }],
     insight: "At current pace: December 2026. Save $200/mo more to hit it in October.",
   },
   {
+    id: "gym-52weeks",
     category: "Fitness", label: "Gym 4×/Week — Full Year",
     desc: "Maintain 4+ gym sessions per week for 52 straight weeks. Push/Pull/Legs every cycle.",
     current: 12, target: 52, unit: "weeks", deadline: "Apr 2027", color: "var(--teal)",
     colorHex: "#06b6d4", started: true,
-    milestones: [{ l: "1 month", v: 4, done: true }, { l: "3 months", v: 13 }, { l: "6 months", v: 26 }, { l: "1 year", v: 52 }],
+    milestones: [{ l: "1 month", v: 4 }, { l: "3 months", v: 13 }, { l: "6 months", v: 26 }, { l: "1 year", v: 52 }],
     insight: "12 weeks in. Best streak: 18 days. You've built real momentum.",
   },
   {
+    id: "ai-learning",
     category: "Learning", label: "Master AI + Vibe Coding",
     desc: "Build real competency in Claude Code, Python basics, and AI-assisted workflows — not just familiarity.",
     current: 8, target: 30, unit: "sessions", deadline: "Sep 2026", color: "var(--orange)",
     colorHex: "#f97316", started: true,
-    milestones: [{ l: "5 sessions", v: 5, done: true }, { l: "10", v: 10 }, { l: "20", v: 20 }, { l: "30", v: 30 }],
+    milestones: [{ l: "5 sessions", v: 5 }, { l: "10", v: 10 }, { l: "20", v: 20 }, { l: "30", v: 30 }],
     insight: "8 sessions in. Next: finish M.A.X. build, then start a Python fundamentals track.",
   },
   {
+    id: "morning-routine",
     category: "Morning", label: "Morning Routine — 30 Days",
     desc: "Wake up by 7:30 AM and complete a consistent morning routine for 30 consecutive days before job starts.",
     current: 0, target: 30, unit: "days", deadline: "Jun 2026", color: "#ec4899",
@@ -46,8 +53,36 @@ const GOALS = [
 ];
 
 export default function GoalsPage() {
-  const avgPct = Math.round(GOALS.reduce((a, g) => a + (g.current / g.target) * 100, 0) / GOALS.length);
-  const milestonesDone = GOALS.flatMap(g => g.milestones).filter(m => (m as { done?: boolean }).done).length;
+  const [goals, setGoals] = useState(GOALS_INIT);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editVal, setEditVal] = useState("");
+
+  useEffect(() => {
+    supabase.from("goals").select("id,current").then(({ data }) => {
+      if (!data || data.length === 0) return;
+      const map = Object.fromEntries(data.map(r => [r.id, r.current]));
+      setGoals(p => p.map(g => map[g.id] !== undefined ? { ...g, current: Number(map[g.id]) } : g));
+    });
+  }, []);
+
+  function startEdit(id: string, current: number) {
+    setEditing(id);
+    setEditVal(String(current));
+  }
+
+  async function saveEdit(id: string) {
+    const val = parseFloat(editVal);
+    if (isNaN(val)) { setEditing(null); return; }
+    setGoals(p => p.map(g => g.id === id ? { ...g, current: val, started: val > 0 } : g));
+    await supabase.from("goals").upsert({ id, current: val, updated_at: new Date().toISOString() });
+    setEditing(null);
+  }
+
+  const avgPct = Math.round(goals.reduce((a, g) => a + (g.current / g.target) * 100, 0) / goals.length);
+  const milestonesDone = goals.flatMap(g => g.milestones).filter(m => m.v <= g.current).length;
+
+  // Fix: need to reference goals for milestonesDone
+  const milestonesDoneCount = goals.reduce((acc, g) => acc + g.milestones.filter(m => m.v <= g.current).length, 0);
 
   return (
     <div style={{ padding: "40px 52px", background: "var(--bg)", minHeight: "100vh" }}>
@@ -62,9 +97,9 @@ export default function GoalsPage() {
         {/* Summary */}
         <div className="grid grid-cols-3 gap-5" style={{ marginBottom: 28 }}>
           {[
-            { label: "Active Goals",   val: GOALS.length.toString(),   color: "var(--blue)"  },
-            { label: "Milestones Hit", val: milestonesDone.toString(), color: "var(--green)" },
-            { label: "Avg Progress",   val: `${avgPct}%`,              color: "var(--amber)" },
+            { label: "Active Goals",   val: goals.length.toString(),        color: "var(--blue)"  },
+            { label: "Milestones Hit", val: milestonesDoneCount.toString(), color: "var(--green)" },
+            { label: "Avg Progress",   val: `${avgPct}%`,                   color: "var(--amber)" },
           ].map((s, i) => (
             <HudCard key={s.label} style={{ padding: "24px 28px" }} delay={i * .07}>
               <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 14 }}>{s.label}</p>
@@ -75,7 +110,7 @@ export default function GoalsPage() {
 
         {/* Goal cards */}
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          {GOALS.map((g, gi) => {
+          {goals.map((g, gi) => {
             const pct = Math.min(100, Math.round((g.current / g.target) * 100));
             const C = 2 * Math.PI * 22;
             const dash = C - (pct / 100) * C;
@@ -84,7 +119,7 @@ export default function GoalsPage() {
               : `${g.current} of ${g.target} ${g.unit}`;
 
             return (
-              <HudCard key={g.label} style={{ padding: "32px 32px" }} delay={.15 + gi * .07}>
+              <HudCard key={g.id} style={{ padding: "32px 32px" }} delay={.15 + gi * .07}>
                 <div className="flex items-start gap-6">
                   {/* Radial */}
                   <div className="flex-shrink-0 flex flex-col items-center gap-1">
@@ -119,15 +154,44 @@ export default function GoalsPage() {
                     <div style={{ height: 4, borderRadius: 2, background: "var(--border2)", marginBottom: 8 }}>
                       <div style={{ height: 4, borderRadius: 2, width: `${pct || 1}%`, background: g.colorHex, transition: "width 1s ease" }} />
                     </div>
+
+                    {/* Editable value */}
                     <div className="flex items-center justify-between mb-4">
-                      <span className="text-sm font-mono" style={{ color: "var(--t3)" }}>{dispVal}</span>
+                      {editing === g.id ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            autoFocus
+                            type="number"
+                            value={editVal}
+                            onChange={e => setEditVal(e.target.value)}
+                            onKeyDown={e => { if (e.key === "Enter") saveEdit(g.id); if (e.key === "Escape") setEditing(null); }}
+                            className="bg-transparent outline-none font-mono text-sm"
+                            style={{ color: "var(--t1)", border: `1px solid ${g.colorHex}50`, borderRadius: 4, padding: "2px 8px", width: 120 }}
+                          />
+                          <button onClick={() => saveEdit(g.id)}
+                            className="text-xs px-2 py-1 rounded"
+                            style={{ background: `${g.colorHex}20`, color: g.colorHex }}>Save</button>
+                          <button onClick={() => setEditing(null)}
+                            className="text-xs px-2 py-1 rounded"
+                            style={{ background: "rgba(255,255,255,0.04)", color: "var(--t3)" }}>Cancel</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => startEdit(g.id, g.current)}
+                          className="text-sm font-mono flex items-center gap-1.5 hover:opacity-70 transition-opacity"
+                          style={{ color: "var(--t3)" }}>
+                          {dispVal}
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                          </svg>
+                        </button>
+                      )}
                       <span className="text-sm font-bold" style={{ color: g.colorHex }}>{pct}% complete</span>
                     </div>
 
                     {/* Milestones */}
                     <div className="flex gap-2 flex-wrap mb-4">
                       {g.milestones.map((m, mi) => {
-                        const reached = (m as { done?: boolean }).done || m.v <= g.current;
+                        const reached = m.v <= g.current;
                         return (
                           <div key={mi} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium"
                             style={{
@@ -153,18 +217,6 @@ export default function GoalsPage() {
               </HudCard>
             );
           })}
-        </div>
-
-        {/* Add */}
-        <div className="mt-5 p-5 rounded-xl flex items-center gap-4 cursor-pointer transition-all hover:opacity-70 afu d5"
-          style={{ border: "1px dashed rgba(6,182,212,0.12)", background: "rgba(6,182,212,0.02)" }}>
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center"
-            style={{ background: "rgba(6,182,212,0.07)", border: "1px solid rgba(6,182,212,0.12)" }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="2.5">
-              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-          </div>
-          <span className="text-base" style={{ color: "var(--t3)" }}>Tell M.A.X. what you want to achieve — new goal added instantly</span>
         </div>
       </div>
     </div>
