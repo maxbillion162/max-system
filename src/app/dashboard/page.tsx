@@ -302,14 +302,30 @@ export default function Dashboard() {
       </div>
 
       {/* ── NET WORTH HERO ── */}
-      <HudCard className="afu" delay={.04} style={{ padding: "24px 28px", marginBottom: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <HudCard className="afu" delay={.04} style={{ padding: "24px 28px", marginBottom: 16, position: "relative" }}>
+        {/* Edit pencil */}
+        <a href="/dashboard/finance" title="Edit portfolio" style={{
+          position: "absolute", top: 16, right: 16,
+          display: "flex", alignItems: "center", gap: 5,
+          fontSize: 11, fontWeight: 600, color: "var(--t3)",
+          textDecoration: "none", padding: "5px 10px", borderRadius: 4,
+          border: "1px solid var(--border)", background: "var(--surface2)",
+          transition: "all .15s",
+        }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--t1)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--blue)"; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--t3)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; }}
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+          Edit Portfolio
+        </a>
 
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           {/* Left: total */}
           <div>
-            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 10 }}>
-              Tracked Net Worth {savingWealth && <span style={{ color: "var(--blue)", marginLeft: 8 }}>Saving…</span>}
-            </p>
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 10 }}>Tracked Net Worth</p>
             <div style={{ fontSize: 48, fontWeight: 800, fontFamily: "monospace", color: "var(--t1)", letterSpacing: "-0.02em", lineHeight: 1 }}>
               ${netWorth.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
@@ -321,48 +337,24 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Right: breakdown — all editable */}
+          {/* Right: breakdown — read only */}
           <div style={{ display: "flex", gap: 32 }}>
-            {/* Crypto (auto) */}
-            <div style={{ textAlign: "center" }}>
-              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 10 }}>Crypto</p>
-              <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "monospace", color: "var(--amber)" }}>
-                ${cryptoTotal.toFixed(0)}
+            {[
+              { label: "Crypto",   val: `$${cryptoTotal.toFixed(0)}`,                                              sub: "Live prices",  color: "var(--amber)" },
+              { label: "BTC Held", val: `${parseFloat(wealth.btc_amount.toFixed(8))} BTC`,                         sub: `$${btcVal.toFixed(0)}`, color: "var(--amber)" },
+              { label: "XRP Held", val: `${wealth.xrp_amount} XRP`,                                                sub: `$${xrpVal.toFixed(0)}`, color: "var(--amber)" },
+              { label: "Roth IRA", val: `$${wealth.ira.toLocaleString()}`,                                         sub: "Schwab",       color: "var(--blue)"  },
+              { label: "Savings",  val: `$${wealth.savings.toLocaleString()}`,                                     sub: "Cash",         color: "var(--green)" },
+            ].map((r, i, arr) => (
+              <div key={r.label} style={{ display: "flex", gap: 32 }}>
+                <div style={{ textAlign: "center" }}>
+                  <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 10 }}>{r.label}</p>
+                  <div style={{ fontSize: 16, fontWeight: 800, fontFamily: "monospace", color: r.color }}>{r.val}</div>
+                  <p style={{ fontSize: 10, color: "var(--t3)", marginTop: 4 }}>{r.sub}</p>
+                </div>
+                {i < arr.length - 1 && i !== 2 && <div style={{ width: 1, background: "var(--border)", alignSelf: "stretch" }} />}
               </div>
-              <p style={{ fontSize: 10, color: "var(--t3)", marginTop: 4 }}>Auto · live prices</p>
-            </div>
-
-            <div style={{ width: 1, background: "var(--border)", alignSelf: "stretch" }} />
-
-            {/* BTC amount */}
-            <div style={{ textAlign: "center" }}>
-              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 10 }}>BTC Held</p>
-              <InlineEdit value={wealth.btc_amount} label="BTC amount" onSave={v => updateWealth("btc_amount", v)} color="var(--amber)" />
-              <p style={{ fontSize: 10, color: "var(--t3)", marginTop: 4 }}>= ${btcVal.toFixed(0)}</p>
-            </div>
-
-            {/* XRP amount */}
-            <div style={{ textAlign: "center" }}>
-              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 10 }}>XRP Held</p>
-              <InlineEdit value={wealth.xrp_amount} label="XRP amount" onSave={v => updateWealth("xrp_amount", v)} color="var(--amber)" />
-              <p style={{ fontSize: 10, color: "var(--t3)", marginTop: 4 }}>= ${xrpVal.toFixed(0)}</p>
-            </div>
-
-            <div style={{ width: 1, background: "var(--border)", alignSelf: "stretch" }} />
-
-            {/* Roth IRA */}
-            <div style={{ textAlign: "center" }}>
-              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 10 }}>Roth IRA</p>
-              <InlineEdit value={wealth.ira} label="Roth IRA" prefix="$" onSave={v => updateWealth("ira", v)} color="var(--blue)" />
-              <p style={{ fontSize: 10, color: "var(--t3)", marginTop: 4 }}>Schwab</p>
-            </div>
-
-            {/* Savings */}
-            <div style={{ textAlign: "center" }}>
-              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 10 }}>Savings</p>
-              <InlineEdit value={wealth.savings} label="Savings" prefix="$" onSave={v => updateWealth("savings", v)} color="var(--green)" />
-              <p style={{ fontSize: 10, color: "var(--t3)", marginTop: 4 }}>Cash</p>
-            </div>
+            ))}
           </div>
         </div>
       </HudCard>

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { fetchCryptoPrices } from "@/lib/crypto";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const data = await fetchCryptoPrices();
