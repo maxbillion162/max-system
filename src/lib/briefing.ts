@@ -125,13 +125,13 @@ export function buildBriefingEmail(data: BriefingData): string {
       <tr>
         <td>
           <div style="color:${S.t3};font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:8px;">Tracked Net Worth</div>
-          <div style="color:${S.t1};font-size:36px;font-weight:900;font-family:monospace;">$${netWorth.toLocaleString("en-US", { minimumFractionDigits: 2 })}</div>
+          <div style="color:${S.t1};font-size:36px;font-weight:900;font-family:monospace;">$${netWorth.toFixed(2)}</div>
         </td>
         <td style="text-align:right;vertical-align:top;">
           <table cellpadding="0" cellspacing="0">
             <tr><td style="padding:3px 0;color:${S.t3};font-size:12px;text-align:right;">Crypto</td><td style="padding:3px 0 3px 16px;color:${S.orange};font-size:13px;font-weight:700;font-family:monospace;text-align:right;">$${cryptoTotal.toFixed(2)}</td></tr>
             <tr><td style="padding:3px 0;color:${S.t3};font-size:12px;text-align:right;">Roth IRA</td><td style="padding:3px 0 3px 16px;color:${S.teal};font-size:13px;font-weight:700;font-family:monospace;text-align:right;">$${iraTotal.toFixed(2)}</td></tr>
-            <tr><td style="padding:3px 0;color:${S.t3};font-size:12px;text-align:right;">Savings</td><td style="padding:3px 0 3px 16px;color:${S.green};font-size:13px;font-weight:700;font-family:monospace;text-align:right;">$${savings.toLocaleString()}</td></tr>
+            <tr><td style="padding:3px 0;color:${S.t3};font-size:12px;text-align:right;">Savings</td><td style="padding:3px 0 3px 16px;color:${S.green};font-size:13px;font-weight:700;font-family:monospace;text-align:right;">$${savings.toFixed(2)}</td></tr>
           </table>
         </td>
       </tr>
@@ -149,7 +149,7 @@ export function buildBriefingEmail(data: BriefingData): string {
           <div style="color:${S.t3};font-size:12px;margin-top:2px;">${c!.symbol === "BTC" ? "0.02 BTC" : "200 XRP"} · Value: <span style="color:${S.t1};font-weight:600;">$${(c!.symbol === "BTC" ? c!.price * 0.02 : c!.price * 200).toFixed(2)}</span></div>
         </td>
         <td style="padding:12px 0;text-align:right;">
-          <div style="color:${S.t1};font-size:15px;font-weight:700;font-family:monospace;">$${c!.symbol === "BTC" ? c!.price.toLocaleString("en-US", { maximumFractionDigits: 0 }) : c!.price.toFixed(4)}</div>
+          <div style="color:${S.t1};font-size:15px;font-weight:700;font-family:monospace;">$${c!.symbol === "BTC" ? Math.round(c!.price).toLocaleString() : c!.price.toFixed(4)}</div>
           <div style="font-size:12px;font-weight:600;margin-top:2px;">
             <span style="color:${c!.change24h >= 0 ? S.green : S.red};">${pct(c!.change24h)} 24h</span>
             <span style="color:${S.t3};"> · </span>
