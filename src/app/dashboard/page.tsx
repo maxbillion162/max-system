@@ -464,8 +464,43 @@ export default function Dashboard() {
           </HudCard>
         </div>
 
-        {/* ── CENTER: INTEL FEED ── */}
-        <HudCard delay={.1} style={{ padding: "20px 24px", display: "flex", flexDirection: "column", minHeight: 600 }}>
+        {/* ── CENTER: SCHEDULE + INTEL FEED ── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
+        {/* Schedule */}
+        <HudCard delay={.09} style={{ padding: "20px 24px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)" }}>Today&apos;s Schedule</p>
+            <a href="/dashboard/calendar" style={{ fontSize: 11, color: "var(--blue)", textDecoration: "none" }}>Full calendar →</a>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {[
+              { time: "9:00a",  title: "Team standup",                    duration: "30 min", type: "Work"   },
+              { time: "11:00a", title: "Client call — Northside Staffing", duration: "1 hr",   type: "Work"   },
+              { time: "2:00p",  title: "Review Q2 pipeline",              duration: "45 min", type: "Work"   },
+              { time: "6:00p",  title: "Gym — Pull Day",                  duration: "1 hr",   type: "Health" },
+            ].map((ev, i) => (
+              <div key={i} style={{
+                display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 4,
+                background: "var(--surface2)", borderLeft: `2px solid ${ev.type === "Health" ? "var(--green)" : "var(--blue)"}`,
+              }}>
+                <span style={{ fontFamily: "monospace", fontSize: 11, color: "var(--t3)", width: 40, flexShrink: 0 }}>{ev.time}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--t1)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ev.title}</div>
+                  <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 1 }}>{ev.duration}</div>
+                </div>
+                <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 3, flexShrink: 0,
+                  background: ev.type === "Health" ? "rgba(34,197,94,0.08)" : "rgba(69,137,255,0.08)",
+                  color: ev.type === "Health" ? "var(--green)" : "var(--blue)",
+                  border: `1px solid ${ev.type === "Health" ? "rgba(34,197,94,0.2)" : "rgba(69,137,255,0.2)"}`,
+                }}>{ev.type}</span>
+              </div>
+            ))}
+          </div>
+        </HudCard>
+
+        {/* Intel Feed */}
+        <HudCard delay={.1} style={{ padding: "20px 24px", display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
             <div>
               <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 2 }}>Intel Feed</p>
@@ -495,7 +530,7 @@ export default function Dashboard() {
           <div style={{ height: 1, background: "var(--border)", marginBottom: 12 }} />
 
           {/* Articles */}
-          <div style={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column" }}>
+          <div style={{ maxHeight: 520, overflowY: "auto", display: "flex", flexDirection: "column" }}>
             {displayNews.slice(0, 20).map((n, i) => (
               <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{
                 display: "block", padding: "13px 10px", textDecoration: "none",
@@ -530,6 +565,8 @@ export default function Dashboard() {
             )}
           </div>
         </HudCard>
+
+        </div>{/* end center column */}
 
         {/* ── RIGHT: CRYPTO + M.A.X. BRIEF ── */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
