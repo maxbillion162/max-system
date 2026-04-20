@@ -4,19 +4,19 @@ import { useState, useEffect } from "react";
 import { HudCard } from "@/components/ui/HudCard";
 import { Sparkline } from "@/components/ui/Sparkline";
 
-const PORT_DATA = [5620, 5750, 6100, 5890, 6030, 6220, 6320];
+const PORT_DATA    = [5620, 5750, 6100, 5890, 6030, 6220, 6320];
 const BTC_FALLBACK = [88200, 89100, 91400, 90800, 92300, 93100, 94210];
 const XRP_FALLBACK = [2.31, 2.18, 2.25, 2.09, 2.14, 2.29, 2.18];
 
 interface LiveCrypto { symbol: string; price: number; change24h: number; change7d: number; sparkline?: number[] }
 interface LiveWeather { tempF: number; condition: string; precipChance: number; windMph: number; feelsLikeF: number; forecast?: { day: string; high: number; low: number }[] }
-interface NewsItem { title: string; source: string; bias: string; tag: string; link: string }
+interface NewsItem    { title: string; source: string; bias: string; tag: string; link: string }
 
 const EVENTS = [
-  { time: "9:00 AM",  title: "Team standup",                    duration: "30 min",  type: "Work"   },
-  { time: "11:00 AM", title: "Client call — Northside Staffing", duration: "1 hr",    type: "Work"   },
-  { time: "2:00 PM",  title: "Review Q2 pipeline",              duration: "45 min",  type: "Work"   },
-  { time: "6:00 PM",  title: "Gym — Pull Day",                  duration: "1 hr",    type: "Health" },
+  { time: "9:00 AM",  title: "Team standup",                    duration: "30 min", type: "Work"   },
+  { time: "11:00 AM", title: "Client call — Northside Staffing", duration: "1 hr",   type: "Work"   },
+  { time: "2:00 PM",  title: "Review Q2 pipeline",              duration: "45 min", type: "Work"   },
+  { time: "6:00 PM",  title: "Gym — Pull Day",                  duration: "1 hr",   type: "Health" },
 ];
 
 const HABITS = [
@@ -32,19 +32,39 @@ const NEWS_FALLBACK: NewsItem[] = [
   { title: "XRP ETF approval odds climb to 72% on Polymarket amid SEC signals",   source: "CoinDesk",  bias: "C",   tag: "Crypto",  link: "#" },
   { title: "Florida unemployment hits 3.1% — staffing sector hiring up 8%",       source: "Sun Sentinel", bias: "C", tag: "Local",  link: "#" },
   { title: "Apple unveils Vision Pro 2 with spatial computing breakthrough",       source: "TechCrunch", bias: "C-L", tag: "Tech",   link: "#" },
+  { title: "Senate passes budget bill with crypto provision attached",             source: "Reuters",   bias: "C",   tag: "Finance", link: "#" },
 ];
 
-const ALL_TAGS = ["All", "Breaking", "Finance", "Crypto", "AI", "Tech", "Local", "Politics"];
-const BIAS_C: Record<string, string> = { L: "#f43f5e", "C-L": "#f97316", C: "#10b981", "C-R": "#06b6d4", R: "#8b5cf6" };
+const ALL_TAGS  = ["All", "Breaking", "Finance", "Crypto", "AI", "Tech", "Local", "Politics"];
+const BIAS_COLOR: Record<string, string> = {
+  L: "#ef4444", "C-L": "#f59e0b", C: "#22c55e", "C-R": "#4589ff", R: "#a78bfa",
+};
+
+/* Label */
+function Label({ children }: { children: React.ReactNode }) {
+  return (
+    <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 16 }}>
+      {children}
+    </p>
+  );
+}
+
+/* Section divider */
+function Divider() {
+  return <div style={{ height: 1, background: "var(--border)", margin: "0 0 16px" }} />;
+}
 
 export default function Dashboard() {
-  const [time, setTime]         = useState(new Date());
-  const [crypto, setCrypto]     = useState<LiveCrypto[]>([]);
-  const [weather, setWeather]   = useState<LiveWeather | null>(null);
-  const [news, setNews]         = useState<NewsItem[]>([]);
+  const [time, setTime]           = useState(new Date());
+  const [crypto, setCrypto]       = useState<LiveCrypto[]>([]);
+  const [weather, setWeather]     = useState<LiveWeather | null>(null);
+  const [news, setNews]           = useState<NewsItem[]>([]);
   const [activeTag, setActiveTag] = useState("All");
 
-  useEffect(() => { const t = setInterval(() => setTime(new Date()), 1000); return () => clearInterval(t); }, []);
+  useEffect(() => {
+    const t = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     fetch("/api/crypto").then(r => r.json()).then(j => { if (j.data) setCrypto(j.data); }).catch(() => {});
@@ -55,21 +75,22 @@ export default function Dashboard() {
   const btc = crypto.find(c => c.symbol === "BTC");
   const xrp = crypto.find(c => c.symbol === "XRP");
 
-  const h = time.getHours();
-  const greeting   = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
-  const dayLabel   = time.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
-  const timeStr    = time.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const h        = time.getHours();
+  const greeting = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+  const dayLabel = time.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  const timeStr  = time.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
   const habitsDone = HABITS.filter(h => h.done).length;
-  const C          = 2 * Math.PI * 26;
-  const dash       = C - (habitsDone / HABITS.length) * C;
+  const C    = 2 * Math.PI * 22;
+  const dash = C - (habitsDone / HABITS.length) * C;
 
   const displayNews = (news.length ? news : NEWS_FALLBACK).filter(n =>
     activeTag === "All" || activeTag === "Breaking" ? true : n.tag === activeTag
   );
 
-  const CRYPTO_CARDS = [
+  const CRYPTO_ROWS = [
     {
-      symbol: "BTC", name: "Bitcoin", color: "#10b981", hold: "0.02 BTC",
+      symbol: "BTC", name: "Bitcoin", hold: "0.02 BTC",
       price:  btc ? `$${btc.price.toLocaleString("en-US", { maximumFractionDigits: 0 })}` : "—",
       change: btc ? `${btc.change24h >= 0 ? "+" : ""}${btc.change24h.toFixed(2)}%` : "—",
       val:    btc ? `$${(btc.price * 0.02).toFixed(2)}` : "—",
@@ -77,7 +98,7 @@ export default function Dashboard() {
       isUp:   (btc?.change24h ?? 0) >= 0,
     },
     {
-      symbol: "XRP", name: "Ripple", color: "#10b981", hold: "200 XRP",
+      symbol: "XRP", name: "Ripple", hold: "200 XRP",
       price:  xrp ? `$${xrp.price.toFixed(4)}` : "—",
       change: xrp ? `${xrp.change24h >= 0 ? "+" : ""}${xrp.change24h.toFixed(2)}%` : "—",
       val:    xrp ? `$${(xrp.price * 200).toFixed(2)}` : "—",
@@ -87,174 +108,121 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="min-h-screen" style={{ padding: "36px 48px", background: "var(--bg)" }}>
+    <div style={{ padding: "32px 40px", background: "var(--bg)", minHeight: "100vh" }}>
 
       {/* ── HEADER ── */}
-      <div className="flex items-start justify-between mb-8 afu">
+      <div className="afu" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28 }}>
         <div>
-          <p className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: "rgba(6,182,212,0.4)", letterSpacing: "0.18em" }}>
+          <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 8 }}>
             {dayLabel}
           </p>
-          <h1 className="text-4xl font-black tracking-tight mb-3" style={{ color: "var(--t1)", letterSpacing: "-0.02em" }}>
+          <h1 style={{ fontSize: 32, fontWeight: 800, color: "var(--t1)", letterSpacing: "-0.02em", marginBottom: 10 }}>
             {greeting}, Max.
           </h1>
-          <div className="flex items-center gap-5 text-sm">
-            <span style={{ color: "var(--t3)" }}>{habitsDone}/{HABITS.length} habits</span>
-            <span style={{ color: "rgba(6,182,212,0.15)" }}>|</span>
-            <span style={{ color: "var(--t3)" }}>{EVENTS.length} events today</span>
-            <span style={{ color: "rgba(6,182,212,0.15)" }}>|</span>
-            <span style={{ color: btc && btc.change24h >= 0 ? "#10b981" : "#f43f5e" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 16, fontSize: 13, color: "var(--t3)" }}>
+            <span>{habitsDone}/{HABITS.length} habits done</span>
+            <span style={{ color: "var(--border2)" }}>·</span>
+            <span>{EVENTS.length} events today</span>
+            <span style={{ color: "var(--border2)" }}>·</span>
+            <span style={{ color: btc && btc.change24h >= 0 ? "var(--green)" : "var(--red)", fontWeight: 600 }}>
               BTC {btc ? `${btc.change24h >= 0 ? "+" : ""}${btc.change24h.toFixed(2)}%` : "—"}
             </span>
           </div>
         </div>
-        <div className="text-right">
-          <div className="font-mono text-4xl font-black tabular-nums" style={{ color: "var(--t1)", letterSpacing: "-0.02em" }}>{timeStr}</div>
-          <div className="flex items-center gap-2 justify-end mt-2">
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#10b981", boxShadow: "0 0 6px #10b981", animation: "pulse-dot 2s ease-in-out infinite" }} />
-            <span className="text-xs font-semibold tracking-widest" style={{ color: "#10b981", letterSpacing: "0.12em" }}>M.A.X. ONLINE</span>
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontFamily: "monospace", fontSize: 36, fontWeight: 800, color: "var(--t1)", letterSpacing: "-0.02em" }}>
+            {timeStr}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-end", marginTop: 6 }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--green)", animation: "pulse-dot 2s ease-in-out infinite", display: "inline-block" }} />
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: "var(--green)", textTransform: "uppercase" }}>M.A.X. Online</span>
           </div>
         </div>
       </div>
 
-      {/* ── STAT ROW ── */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      {/* ── STAT CARDS ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
 
         {/* Weather */}
-        <HudCard className="p-5" delay={.05}>
-          <p className="text-xs font-semibold tracking-widest uppercase mb-4" style={{ color: "var(--t3)", letterSpacing: "0.14em" }}>Orlando</p>
+        <HudCard className="afu" delay={.05} style={{ padding: 20 }}>
+          <Label>Orlando</Label>
           {weather ? (
             <>
-              <div className="flex items-end gap-2 mb-2">
-                <span className="text-5xl font-black leading-none" style={{ color: "var(--t1)" }}>{weather.tempF}°</span>
-                <span className="text-sm font-medium mb-1.5" style={{ color: "var(--t2)" }}>{weather.condition}</span>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 10, marginBottom: 8 }}>
+                <span style={{ fontSize: 44, fontWeight: 800, color: "var(--t1)", lineHeight: 1, fontFamily: "monospace" }}>{weather.tempF}°</span>
+                <span style={{ fontSize: 13, color: "var(--t2)", marginBottom: 4 }}>{weather.condition}</span>
               </div>
-              <div className="flex gap-3 text-xs" style={{ color: "var(--t3)" }}>
+              <div style={{ display: "flex", gap: 12, fontSize: 12, color: "var(--t3)" }}>
                 <span>Rain {weather.precipChance}%</span>
-                <span>·</span>
                 <span>Wind {weather.windMph}mph</span>
-                <span>·</span>
                 <span>Feels {weather.feelsLikeF}°</span>
               </div>
             </>
           ) : (
-            <div className="text-2xl font-black animate-pulse" style={{ color: "var(--t3)" }}>—</div>
+            <div style={{ fontSize: 32, fontWeight: 800, color: "var(--t3)" }}>—</div>
           )}
         </HudCard>
 
         {/* Portfolio */}
-        <HudCard className="p-5" delay={.1}>
-          <p className="text-xs font-semibold tracking-widest uppercase mb-4" style={{ color: "var(--t3)", letterSpacing: "0.14em" }}>Portfolio</p>
-          <div className="flex items-end justify-between mb-2">
-            <span className="text-4xl font-black leading-none" style={{ color: "var(--t1)" }}>$6,320</span>
-            <span className="text-base font-bold" style={{ color: "#10b981" }}>+1.18%</span>
+        <HudCard className="afu" delay={.1} style={{ padding: 20 }}>
+          <Label>Portfolio</Label>
+          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 10 }}>
+            <span style={{ fontSize: 36, fontWeight: 800, color: "var(--t1)", lineHeight: 1, fontFamily: "monospace" }}>$6,320</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "var(--green)" }}>+1.18%</span>
           </div>
-          <Sparkline data={PORT_DATA} color="#10b981" height={32} id="port-stat" />
+          <Sparkline data={PORT_DATA} color="var(--green)" height={30} id="port-stat" />
         </HudCard>
 
-        {/* Habits */}
-        <HudCard className="p-5" delay={.15}>
-          <p className="text-xs font-semibold tracking-widest uppercase mb-4" style={{ color: "var(--t3)", letterSpacing: "0.14em" }}>Habits Today</p>
-          <div className="flex items-center gap-4">
-            <svg width="58" height="58" viewBox="0 0 64 64">
-              <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(6,182,212,0.06)" strokeWidth="5" />
-              <circle cx="32" cy="32" r="26" fill="none" stroke="var(--teal)" strokeWidth="5"
-                strokeDasharray={C} strokeDashoffset={dash} strokeLinecap="round" transform="rotate(-90 32 32)"
-                style={{ filter: "drop-shadow(0 0 6px rgba(6,182,212,.4))", transition: "stroke-dashoffset .6s ease" }} />
-              <text x="32" y="36" textAnchor="middle" fontSize="14" fontWeight="900" fill="var(--t1)">{habitsDone}/{HABITS.length}</text>
+        {/* Habits ring */}
+        <HudCard className="afu" delay={.15} style={{ padding: 20 }}>
+          <Label>Habits Today</Label>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <svg width="52" height="52" viewBox="0 0 52 52" style={{ flexShrink: 0 }}>
+              <circle cx="26" cy="26" r="22" fill="none" stroke="var(--border2)" strokeWidth="4" />
+              <circle cx="26" cy="26" r="22" fill="none" stroke="var(--blue)" strokeWidth="4"
+                strokeDasharray={C} strokeDashoffset={dash} strokeLinecap="round" transform="rotate(-90 26 26)"
+                style={{ transition: "stroke-dashoffset .6s ease" }} />
+              <text x="26" y="30" textAnchor="middle" fontSize="12" fontWeight="800" fill="var(--t1)">{habitsDone}/{HABITS.length}</text>
             </svg>
             <div>
-              <div className="text-3xl font-black" style={{ color: "var(--t1)" }}>{Math.round((habitsDone / HABITS.length) * 100)}%</div>
-              <div className="text-xs mt-1 font-semibold" style={{ color: "var(--orange)" }}>🔥 12-day streak</div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: "var(--t1)" }}>{Math.round((habitsDone / HABITS.length) * 100)}%</div>
+              <div style={{ fontSize: 12, color: "var(--amber)", marginTop: 2, fontWeight: 600 }}>🔥 12-day streak</div>
             </div>
           </div>
         </HudCard>
 
         {/* Inbox */}
-        <HudCard className="p-5" delay={.2}>
-          <p className="text-xs font-semibold tracking-widest uppercase mb-4" style={{ color: "var(--t3)", letterSpacing: "0.14em" }}>Inbox</p>
-          <div className="text-5xl font-black leading-none mb-2" style={{ color: "#f43f5e" }}>3</div>
-          <div className="text-sm font-semibold" style={{ color: "#f43f5e" }}>Urgent · reply today</div>
-          <div className="text-xs mt-1" style={{ color: "var(--t3)" }}>12 total · 4 need response</div>
+        <HudCard className="afu" delay={.2} style={{ padding: 20 }}>
+          <Label>Inbox</Label>
+          <div style={{ fontSize: 44, fontWeight: 800, color: "var(--red)", lineHeight: 1, fontFamily: "monospace", marginBottom: 8 }}>3</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--red)" }}>Urgent — reply today</div>
+          <div style={{ fontSize: 12, color: "var(--t3)", marginTop: 3 }}>12 total · 4 need response</div>
         </HudCard>
       </div>
 
-      {/* ── MAIN GRID ── */}
-      <div className="grid gap-5" style={{ gridTemplateColumns: "1fr 1fr 320px" }}>
+      {/* ── MAIN 3-COL GRID ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "280px 1fr 260px", gap: 12 }}>
 
-        {/* ── COL 1 ── */}
-        <div className="flex flex-col gap-5">
+        {/* ── LEFT: SCHEDULE + HABITS + GOALS ── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
-          {/* Calendar / Today's Mission */}
-          <HudCard className="p-6" delay={.22}>
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-                  style={{ background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.15)" }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="2">
-                    <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-                  </svg>
-                </div>
-                <h2 className="text-base font-bold" style={{ color: "var(--t1)" }}>Today&apos;s Schedule</h2>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold px-2.5 py-1 rounded-full"
-                  style={{ background: "rgba(6,182,212,0.06)", color: "var(--teal)", border: "1px solid rgba(6,182,212,0.12)" }}>
-                  {EVENTS.length} events
-                </span>
-                <span className="text-xs" style={{ color: "var(--t3)" }}>
-                  {time.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
-                </span>
-              </div>
-            </div>
-            <div className="space-y-2">
+          {/* Schedule */}
+          <HudCard delay={.22} style={{ padding: "20px 20px 16px" }}>
+            <Label>Today&apos;s Schedule</Label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               {EVENTS.map((ev, i) => (
-                <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl group"
-                  style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(6,182,212,0.06)" }}>
-                  <span className="text-xs font-mono w-14 text-right flex-shrink-0" style={{ color: "var(--t3)" }}>
-                    {ev.time.replace(" AM","a").replace(" PM","p")}
+                <div key={i} style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  padding: "9px 10px", borderRadius: 4,
+                  background: "var(--surface2)",
+                  borderLeft: `2px solid ${ev.type === "Health" ? "var(--green)" : "var(--blue)"}`,
+                }}>
+                  <span style={{ fontFamily: "monospace", fontSize: 11, color: "var(--t3)", width: 42, flexShrink: 0 }}>
+                    {ev.time.replace(" AM", "a").replace(" PM", "p")}
                   </span>
-                  <div className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                    style={{ background: ev.type === "Health" ? "#10b981" : "var(--teal)" }} />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold truncate" style={{ color: "var(--t1)" }}>{ev.title}</div>
-                    <div className="text-xs" style={{ color: "var(--t3)" }}>{ev.duration}</div>
-                  </div>
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded flex-shrink-0"
-                    style={{
-                      background: ev.type === "Health" ? "rgba(16,185,129,0.08)" : "rgba(6,182,212,0.06)",
-                      color: ev.type === "Health" ? "#10b981" : "var(--teal)",
-                    }}>
-                    {ev.type}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </HudCard>
-
-          {/* Goal Pulse */}
-          <HudCard className="p-6" delay={.26}>
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-bold" style={{ color: "var(--t1)" }}>Goal Pulse</h2>
-              <a href="/dashboard/goals" className="text-xs font-semibold" style={{ color: "var(--teal)" }}>View all →</a>
-            </div>
-            <div className="space-y-5">
-              {[
-                { label: "$100K Income",    pct: 0,  note: "Starts July 2026" },
-                { label: "Emergency Fund",  pct: 28, note: "$2.8K / $10K" },
-                { label: "Gym Streak",      pct: 65, note: "12 weeks in" },
-              ].map(g => (
-                <div key={g.label}>
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <span className="text-sm font-semibold" style={{ color: "var(--t1)" }}>{g.label}</span>
-                      <span className="text-xs ml-2" style={{ color: "var(--t3)" }}>{g.note}</span>
-                    </div>
-                    <span className="text-sm font-bold font-mono" style={{ color: g.pct > 0 ? "#10b981" : "var(--t3)" }}>{g.pct}%</span>
-                  </div>
-                  <div className="h-1 rounded-full" style={{ background: "rgba(255,255,255,0.04)" }}>
-                    <div className="h-1 rounded-full transition-all duration-1000"
-                      style={{ width: `${g.pct || 1}%`, background: "#10b981", boxShadow: g.pct > 0 ? "0 0 6px rgba(16,185,129,0.5)" : "none" }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ev.title}</div>
+                    <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 1 }}>{ev.duration}</div>
                   </div>
                 </div>
               ))}
@@ -262,158 +230,163 @@ export default function Dashboard() {
           </HudCard>
 
           {/* Habits */}
-          <HudCard className="p-6" delay={.3}>
-            <h2 className="text-base font-bold mb-4" style={{ color: "var(--t1)" }}>Habits</h2>
-            <div className="space-y-2">
+          <HudCard delay={.26} style={{ padding: "20px 20px 16px" }}>
+            <Label>Habits</Label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               {HABITS.map((h, i) => (
-                <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl"
-                  style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(6,182,212,0.06)" }}>
-                  <div className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0"
-                    style={{
-                      background: h.done ? "rgba(16,185,129,0.12)" : "transparent",
-                      border: `1px solid ${h.done ? "rgba(16,185,129,0.4)" : "rgba(6,182,212,0.12)"}`,
-                    }}>
-                    {h.done && (
-                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="3.5">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    )}
-                  </div>
-                  <span className="text-sm flex-1" style={{ color: h.done ? "var(--t1)" : "var(--t3)" }}>{h.label}</span>
-                  {h.streak > 0 && <span className="text-xs font-bold" style={{ color: "var(--orange)" }}>🔥{h.streak}</span>}
-                </div>
-              ))}
-            </div>
-          </HudCard>
-        </div>
-
-        {/* ── COL 2 — NEWS ── */}
-        <div className="flex flex-col gap-5">
-          <HudCard className="p-6 flex-1" delay={.24}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-                  style={{ background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.15)" }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="2">
-                    <path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/>
-                  </svg>
-                </div>
-                <h2 className="text-base font-bold" style={{ color: "var(--t1)" }}>Intel Feed</h2>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#10b981", animation: "pulse-dot 2s ease-in-out infinite" }} />
-                <span className="text-xs" style={{ color: "var(--t3)" }}>Live</span>
-              </div>
-            </div>
-
-            {/* Filters */}
-            <div className="flex gap-1.5 flex-wrap mb-4">
-              {ALL_TAGS.map(tag => (
-                <button key={tag} onClick={() => setActiveTag(tag)}
-                  className="text-xs font-semibold px-2.5 py-1 rounded-full transition-all"
-                  style={{
-                    background: activeTag === tag ? "rgba(6,182,212,0.15)" : "rgba(255,255,255,0.03)",
-                    border: `1px solid ${activeTag === tag ? "rgba(6,182,212,0.35)" : "rgba(6,182,212,0.08)"}`,
-                    color: activeTag === tag ? "var(--teal)" : "var(--t3)",
+                <div key={i} style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  padding: "9px 10px", borderRadius: 4,
+                  background: "var(--surface2)",
+                }}>
+                  <div style={{
+                    width: 14, height: 14, borderRadius: 3, flexShrink: 0,
+                    background: h.done ? "rgba(34,197,94,0.15)" : "transparent",
+                    border: `1px solid ${h.done ? "rgba(34,197,94,0.5)" : "var(--border2)"}`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
-                  {tag === "Breaking" ? "🔴 Breaking" : tag}
-                </button>
+                    {h.done && <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3.5"><polyline points="20 6 9 17 4 12" /></svg>}
+                  </div>
+                  <span style={{ fontSize: 12, flex: 1, color: h.done ? "var(--t1)" : "var(--t3)", fontWeight: h.done ? 500 : 400 }}>{h.label}</span>
+                  {h.streak > 0 && <span style={{ fontSize: 11, color: "var(--amber)", fontWeight: 700 }}>🔥{h.streak}</span>}
+                </div>
               ))}
             </div>
+          </HudCard>
 
-            {/* Articles */}
-            <div className="space-y-1">
-              {displayNews.slice(0, 8).map((n, i) => (
-                <a key={i} href={n.link} target="_blank" rel="noopener noreferrer"
-                  className="flex items-start gap-3 px-4 py-3.5 rounded-xl group transition-colors"
-                  style={{ border: "1px solid rgba(6,182,212,0.05)", display: "flex", textDecoration: "none", background: "rgba(255,255,255,0.01)" }}>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium leading-snug mb-2" style={{ color: "var(--t1)" }}>{n.title}</p>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs" style={{ color: "var(--t3)" }}>{n.source}</span>
-                      <span className="text-xs font-semibold px-1.5 py-0.5 rounded"
-                        style={{ background: "rgba(6,182,212,0.07)", color: "var(--teal)" }}>
-                        {n.tag}
-                      </span>
-                      <span className="text-xs font-bold px-1.5 py-0.5 rounded"
-                        style={{ background: `${BIAS_C[n.bias] || "#999"}15`, color: BIAS_C[n.bias] || "#999" }}>
-                        {n.bias}
-                      </span>
+          {/* Goal Pulse */}
+          <HudCard delay={.30} style={{ padding: "20px 20px 20px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)" }}>Goal Pulse</p>
+              <a href="/dashboard/goals" style={{ fontSize: 11, color: "var(--blue)", textDecoration: "none" }}>View all →</a>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {[
+                { label: "$100K Income",   pct: 0,  note: "Starts July 2026" },
+                { label: "Emergency Fund", pct: 28, note: "$2.8K / $10K"     },
+                { label: "Gym Streak",     pct: 65, note: "12 weeks"         },
+              ].map(g => (
+                <div key={g.label}>
+                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 6 }}>
+                    <div>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)" }}>{g.label}</span>
+                      <span style={{ fontSize: 11, color: "var(--t3)", marginLeft: 6 }}>{g.note}</span>
                     </div>
+                    <span style={{ fontSize: 12, fontWeight: 700, fontFamily: "monospace", color: g.pct > 0 ? "var(--green)" : "var(--t3)" }}>{g.pct}%</span>
                   </div>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                    className="flex-shrink-0 mt-1 opacity-0 group-hover:opacity-40 transition-opacity"
-                    style={{ color: "var(--teal)" }}>
-                    <path d="M5 12h14M12 5l7 7-7 7" />
-                  </svg>
-                </a>
+                  <div style={{ height: 3, borderRadius: 2, background: "var(--border2)" }}>
+                    <div style={{ height: 3, borderRadius: 2, width: `${g.pct || 1}%`, background: g.pct > 0 ? "var(--green)" : "var(--border2)", transition: "width 1s ease" }} />
+                  </div>
+                </div>
               ))}
-              {displayNews.length === 0 && (
-                <div className="text-sm text-center py-8" style={{ color: "var(--t3)" }}>No articles in this category.</div>
-              )}
             </div>
           </HudCard>
         </div>
 
-        {/* ── COL 3 — CRYPTO + STATUS ── */}
-        <div className="flex flex-col gap-5">
+        {/* ── CENTER: INTEL FEED (full height) ── */}
+        <HudCard delay={.24} style={{ padding: "20px 20px 16px", display: "flex", flexDirection: "column" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)" }}>Intel Feed</p>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--green)", animation: "pulse-dot 2s ease-in-out infinite", display: "inline-block" }} />
+              <span style={{ fontSize: 11, color: "var(--t3)" }}>Live · {(news.length || NEWS_FALLBACK.length)} articles</span>
+            </div>
+          </div>
+
+          {/* Filter tabs */}
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
+            {ALL_TAGS.map(tag => (
+              <button key={tag} onClick={() => setActiveTag(tag)} style={{
+                fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 3, cursor: "pointer",
+                background: activeTag === tag ? "rgba(69,137,255,0.15)" : "transparent",
+                border: `1px solid ${activeTag === tag ? "rgba(69,137,255,0.4)" : "var(--border)"}`,
+                color: activeTag === tag ? "var(--blue)" : "var(--t3)",
+                transition: "all .15s",
+              }}>
+                {tag === "Breaking" ? "● Breaking" : tag}
+              </button>
+            ))}
+          </div>
+
+          <Divider />
+
+          {/* Articles */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 1, overflow: "auto", flex: 1 }}>
+            {displayNews.slice(0, 10).map((n, i) => (
+              <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{
+                display: "block", padding: "12px 10px", borderRadius: 4, textDecoration: "none",
+                borderBottom: i < displayNews.slice(0, 10).length - 1 ? "1px solid var(--border)" : "none",
+              }}>
+                <p style={{ fontSize: 13, fontWeight: 500, color: "var(--t1)", lineHeight: 1.5, marginBottom: 6 }}>{n.title}</p>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 11, color: "var(--t3)" }}>{n.source}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 2, background: "var(--surface3)", color: "var(--t2)" }}>{n.tag}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 2, color: BIAS_COLOR[n.bias] || "var(--t3)", background: `${BIAS_COLOR[n.bias] || "#888"}18` }}>
+                    {n.bias}
+                  </span>
+                </div>
+              </a>
+            ))}
+            {displayNews.length === 0 && (
+              <p style={{ fontSize: 13, color: "var(--t3)", padding: "20px 10px" }}>No articles in this category.</p>
+            )}
+          </div>
+        </HudCard>
+
+        {/* ── RIGHT: CRYPTO + BRIEF ── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
           {/* Crypto */}
-          <HudCard className="p-6" delay={.2}>
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-bold" style={{ color: "var(--t1)" }}>Crypto</h2>
-              <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#10b981", animation: "pulse-dot 2s ease-in-out infinite" }} />
-                <span className="text-xs" style={{ color: "var(--t3)" }}>Live</span>
+          <HudCard delay={.2} style={{ padding: "20px 20px 16px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <Label>Crypto</Label>
+              <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 16 }}>
+                <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--green)", animation: "pulse-dot 2s ease-in-out infinite", display: "inline-block" }} />
+                <span style={{ fontSize: 10, color: "var(--t3)" }}>Live</span>
               </div>
             </div>
-            {CRYPTO_CARDS.map(a => (
-              <div key={a.symbol} className="mb-5 last:mb-0">
-                <div className="flex items-center justify-between mb-2">
+            {CRYPTO_ROWS.map((a, i) => (
+              <div key={a.symbol} style={{ marginBottom: i < CRYPTO_ROWS.length - 1 ? 20 : 0 }}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
                   <div>
-                    <div className="text-sm font-bold" style={{ color: "var(--t1)" }}>{a.symbol}
-                      <span className="text-xs font-normal ml-1.5" style={{ color: "var(--t3)" }}>{a.name}</span>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--t1)" }}>
+                      {a.symbol} <span style={{ fontSize: 11, fontWeight: 400, color: "var(--t3)" }}>{a.name}</span>
                     </div>
-                    <div className="text-xs mt-0.5" style={{ color: "var(--t3)" }}>{a.hold} · {a.val}</div>
+                    <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 2 }}>{a.hold} · {a.val}</div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-sm font-bold font-mono" style={{ color: "var(--t1)" }}>{a.price}</div>
-                    <div className="text-xs font-bold" style={{ color: a.isUp ? "#10b981" : "#f43f5e" }}>{a.change}</div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "monospace", color: "var(--t1)" }}>{a.price}</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: a.isUp ? "var(--green)" : "var(--red)" }}>{a.change}</div>
                   </div>
                 </div>
-                <Sparkline data={a.data} color="#10b981" height={36} id={`d-${a.symbol}`} />
+                <Sparkline data={a.data} color={a.isUp ? "var(--green)" : "var(--red)"} height={32} id={`d-${a.symbol}`} />
               </div>
             ))}
           </HudCard>
 
           {/* M.A.X. Brief */}
-          <HudCard className="p-6" delay={.28}>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.2)" }}>
-                <span className="text-xs font-black" style={{ color: "var(--teal)" }}>M</span>
-              </div>
-              <span className="text-sm font-bold" style={{ color: "var(--t1)" }}>M.A.X. Brief</span>
-            </div>
-            <div className="space-y-3">
+          <HudCard delay={.28} style={{ padding: "20px 20px 20px" }}>
+            <Label>M.A.X. Brief</Label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {[
-                { icon: "📈", text: "BTC holding above key support. XRP ETF odds rising — watch CoinDesk." },
-                { icon: "📅", text: "Client call at 11 AM is your highest-leverage event today." },
-                { icon: "💪", text: "Gym streak at 12. Pull day tonight — don't skip." },
-                { icon: "📬", text: "3 urgent emails. Reply before the client call." },
+                { icon: "↗", text: "BTC above key support. XRP ETF odds at 72% — hold position.", c: "var(--green)" },
+                { icon: "◎", text: "Client call at 11 AM is your highest-leverage event today.",  c: "var(--blue)"  },
+                { icon: "↑", text: "12-day gym streak. Pull day at 6 PM — don't skip.",           c: "var(--amber)" },
+                { icon: "!", text: "3 urgent emails. Reply before the client call.",               c: "var(--red)"   },
               ].map((b, i) => (
-                <div key={i} className="flex items-start gap-2.5">
-                  <span className="text-base flex-shrink-0">{b.icon}</span>
-                  <span className="text-xs leading-relaxed" style={{ color: "var(--t2)" }}>{b.text}</span>
+                <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: b.c, flexShrink: 0, marginTop: 1, width: 14, textAlign: "center" }}>{b.icon}</span>
+                  <span style={{ fontSize: 12, color: "var(--t2)", lineHeight: 1.5 }}>{b.text}</span>
                 </div>
               ))}
             </div>
-            <a href="/dashboard/chat" className="flex items-center justify-center gap-2 w-full mt-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-80"
-              style={{ background: "rgba(6,182,212,0.08)", color: "var(--teal)", border: "1px solid rgba(6,182,212,0.15)" }}>
-              Talk to M.A.X.
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
+            <a href="/dashboard/chat" style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+              marginTop: 16, padding: "10px 0", borderRadius: 4, fontSize: 12, fontWeight: 700,
+              background: "rgba(69,137,255,0.1)", color: "var(--blue)", border: "1px solid rgba(69,137,255,0.2)",
+              textDecoration: "none",
+            }}>
+              Talk to M.A.X. →
             </a>
           </HudCard>
         </div>
