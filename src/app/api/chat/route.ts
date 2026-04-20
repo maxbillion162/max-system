@@ -14,7 +14,8 @@ export async function POST(request: Request) {
     const reply = await chatWithMax(messages);
     return NextResponse.json({ reply });
   } catch (err) {
-    console.error("Chat error:", err);
-    return NextResponse.json({ error: "Chat failed" }, { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("Chat error:", msg);
+    return NextResponse.json({ error: "Chat failed", detail: msg }, { status: 500 });
   }
 }
