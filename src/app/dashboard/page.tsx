@@ -302,30 +302,31 @@ export default function Dashboard() {
       </div>
 
       {/* ── NET WORTH HERO ── */}
-      <HudCard className="afu" delay={.04} style={{ padding: "24px 28px", marginBottom: 16, position: "relative" }}>
-        {/* Edit pencil */}
-        <a href="/dashboard/finance" title="Edit portfolio" style={{
-          position: "absolute", top: 16, right: 16,
-          display: "flex", alignItems: "center", gap: 5,
-          fontSize: 11, fontWeight: 600, color: "var(--t3)",
-          textDecoration: "none", padding: "5px 10px", borderRadius: 4,
-          border: "1px solid var(--border)", background: "var(--surface2)",
-          transition: "all .15s",
-        }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--t1)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--blue)"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--t3)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; }}
-        >
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-          </svg>
-          Edit Portfolio
-        </a>
+      <HudCard className="afu" delay={.04} style={{ padding: "20px 28px 24px", marginBottom: 16 }}>
+        {/* Header row */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--t3)" }}>Tracked Net Worth</p>
+          <a href="/dashboard/finance" style={{
+            display: "flex", alignItems: "center", gap: 5,
+            fontSize: 11, fontWeight: 600, color: "var(--t3)",
+            textDecoration: "none", padding: "5px 10px", borderRadius: 4,
+            border: "1px solid var(--border)", background: "var(--surface2)",
+            transition: "all .15s",
+          }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--t1)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--blue)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--t3)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; }}
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            Edit Portfolio
+          </a>
+        </div>
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           {/* Left: total */}
           <div>
-            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 10 }}>Tracked Net Worth</p>
             <div style={{ fontSize: 48, fontWeight: 800, fontFamily: "monospace", color: "var(--t1)", letterSpacing: "-0.02em", lineHeight: 1 }}>
               ${netWorth.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
