@@ -15,7 +15,7 @@ export async function fetchCryptoPrices(): Promise<CryptoAsset[]> {
 
   const res = await fetch(url, {
     headers: { Accept: "application/json" },
-    next: { revalidate: 60 }, // cache 60 seconds
+    cache: "no-store",
   });
 
   if (!res.ok) throw new Error(`CoinGecko error: ${res.status}`);

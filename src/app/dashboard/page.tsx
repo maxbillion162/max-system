@@ -214,8 +214,12 @@ export default function Dashboard() {
     return () => clearInterval(t);
   }, []);
 
-  useEffect(() => {
+  function fetchCrypto() {
     fetch("/api/crypto").then(r => r.json()).then(j => { if (j.data) setCrypto(j.data); }).catch(() => {});
+  }
+
+  useEffect(() => {
+    fetchCrypto();
     fetch("/api/weather?location=orlando").then(r => r.json()).then(j => { if (j.data) setWeather(j.data); }).catch(() => {});
     fetch("/api/news?count=30").then(r => r.json()).then(j => { if (j.data) setNews(j.data); }).catch(() => {});
     supabase.from("habits").select("id,name,completed").then(({ data }) => { if (data) setHabits(data); });
@@ -223,6 +227,8 @@ export default function Dashboard() {
     supabase.from("wealth").select("*").limit(1).then(({ data }) => {
       if (data && data.length > 0) setWealth({ ...WEALTH_DEFAULTS, ...data[0] });
     });
+    const cryptoInterval = setInterval(fetchCrypto, 30000);
+    return () => clearInterval(cryptoInterval);
   }, []);
 
   async function updateWealth(key: keyof typeof WEALTH_DEFAULTS, val: number) {
