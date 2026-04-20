@@ -79,9 +79,6 @@ export default function GoalsPage() {
   }
 
   const avgPct = Math.round(goals.reduce((a, g) => a + (g.current / g.target) * 100, 0) / goals.length);
-  const milestonesDone = goals.flatMap(g => g.milestones).filter(m => m.v <= g.current).length;
-
-  // Fix: need to reference goals for milestonesDone
   const milestonesDoneCount = goals.reduce((acc, g) => acc + g.milestones.filter(m => m.v <= g.current).length, 0);
 
   return (
