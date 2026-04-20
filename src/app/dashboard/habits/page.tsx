@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { HudCard } from "@/components/ui/HudCard";
+import { supabase } from "@/lib/supabase";
 
 const INIT = [
   { id:1, label:"Up by 7:30 AM",      cat:"Morning", color:"#ec4899", streak:0,  best:5,  h:[false,false,true,true,true,false,false] },
@@ -17,11 +18,28 @@ const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 export default function HabitsPage() {
   const [habits, setHabits] = useState(INIT);
 
-  function toggle(id: number) {
+  // Load today's completions from Supabase on mount
+  useEffect(() => {
+    supabase.from("habits").select("id,completed").then(({ data }) => {
+      if (!data || data.length === 0) return;
+      const map = Object.fromEntries(data.map(r => [r.id, r.completed]));
+      setHabits(p => p.map(h => {
+        const saved = map[String(h.id)];
+        if (saved === undefined) return h;
+        const nh = [...h.h]; nh[6] = saved;
+        return { ...h, h: nh };
+      }));
+    });
+  }, []);
+
+  async function toggle(id: number) {
     setHabits(p => p.map(h => {
       if (h.id !== id) return h;
       const nh = [...h.h]; nh[6] = !nh[6];
-      return { ...h, h: nh, streak: nh[6] ? h.streak + 1 : Math.max(0, h.streak - 1) };
+      const newCompleted = nh[6];
+      // Upsert to Supabase
+      supabase.from("habits").upsert({ id: String(id), name: h.label, completed: newCompleted, updated_at: new Date().toISOString() }).then(() => {});
+      return { ...h, h: nh, streak: newCompleted ? h.streak + 1 : Math.max(0, h.streak - 1) };
     }));
   }
 
