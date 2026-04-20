@@ -128,14 +128,14 @@ export default function FinancePage() {
                     <div className="text-right">
                       <div className="text-lg font-bold font-mono" style={{ color:"var(--t1)" }}>${a.price.toLocaleString()}</div>
                       <div className="text-base font-bold" style={{ color:a.c24>=0?"var(--green)":"var(--red)" }}>
-                        {a.c24>=0?"+":""}{a.c24}%
+                        {a.c24>=0?"+":""}{Number(a.c24).toFixed(2)}%
                       </div>
                     </div>
                   </div>
-                  <Sparkline data={a.data} color={a.color} height={44} id={`f-${a.symbol}`} />
+                  <Sparkline data={a.data} color={a.c24>=0?"var(--green)":"var(--red)"} height={44} id={`f-${a.symbol}`} />
                   <div className="flex justify-between mt-2 text-sm">
-                    <span style={{ color:"var(--t3)" }}>7-day: <span style={{ color:"var(--green)" }}>+{a.c7}%</span></span>
-                    <span className="font-bold font-mono" style={{ color:a.color }}>${a.value.toFixed(2)}</span>
+                    <span style={{ color:"var(--t3)" }}>7-day: <span style={{ color:a.c7>=0?"var(--green)":"var(--red)" }}>{a.c7>=0?"+":""}{Number(a.c7).toFixed(2)}%</span></span>
+                    <span className="font-bold font-mono" style={{ color:"var(--t1)" }}>${a.value.toFixed(2)}</span>
                   </div>
                 </div>
               ))}

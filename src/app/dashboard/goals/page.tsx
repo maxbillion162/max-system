@@ -74,7 +74,7 @@ export default function GoalsPage() {
         </div>
 
         {/* Goal cards */}
-        <div className="space-y-5">
+        <div className="space-y-6">
           {GOALS.map((g, gi) => {
             const pct = Math.min(100, Math.round((g.current / g.target) * 100));
             const C = 2 * Math.PI * 22;
@@ -84,7 +84,7 @@ export default function GoalsPage() {
               : `${g.current} of ${g.target} ${g.unit}`;
 
             return (
-              <HudCard key={g.label} className="p-7" delay={.15 + gi * .07}>
+              <HudCard key={g.label} className="p-8" delay={.15 + gi * .07}>
                 <div className="flex items-start gap-6">
                   {/* Radial */}
                   <div className="flex-shrink-0 flex flex-col items-center gap-1">

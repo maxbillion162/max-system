@@ -201,19 +201,19 @@ export default function Dashboard() {
       </div>
 
       {/* ── MAIN 3-COL GRID ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "280px 1fr 260px", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "300px 1fr 280px", gap: 12 }}>
 
         {/* ── LEFT: SCHEDULE + HABITS + GOALS ── */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
           {/* Schedule */}
-          <HudCard delay={.22} style={{ padding: "20px 20px 16px" }}>
+          <HudCard delay={.22} style={{ padding: "24px 24px 20px" }}>
             <Label>Today&apos;s Schedule</Label>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               {EVENTS.map((ev, i) => (
                 <div key={i} style={{
                   display: "flex", alignItems: "center", gap: 10,
-                  padding: "9px 10px", borderRadius: 4,
+                  padding: "12px 12px", borderRadius: 4,
                   background: "var(--surface2)",
                   borderLeft: `2px solid ${ev.type === "Health" ? "var(--green)" : "var(--blue)"}`,
                 }}>
@@ -284,7 +284,7 @@ export default function Dashboard() {
         </div>
 
         {/* ── CENTER: INTEL FEED (full height) ── */}
-        <HudCard delay={.24} style={{ padding: "20px 20px 16px", display: "flex", flexDirection: "column" }}>
+        <HudCard delay={.24} style={{ padding: "24px 24px 20px", display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)" }}>Intel Feed</p>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -314,16 +314,13 @@ export default function Dashboard() {
           <div style={{ display: "flex", flexDirection: "column", gap: 1, overflow: "auto", flex: 1 }}>
             {displayNews.slice(0, 10).map((n, i) => (
               <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{
-                display: "block", padding: "12px 10px", borderRadius: 4, textDecoration: "none",
+                display: "block", padding: "14px 10px", borderRadius: 4, textDecoration: "none",
                 borderBottom: i < displayNews.slice(0, 10).length - 1 ? "1px solid var(--border)" : "none",
               }}>
                 <p style={{ fontSize: 13, fontWeight: 500, color: "var(--t1)", lineHeight: 1.5, marginBottom: 6 }}>{n.title}</p>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ fontSize: 11, color: "var(--t3)" }}>{n.source}</span>
                   <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 2, background: "var(--surface3)", color: "var(--t2)" }}>{n.tag}</span>
-                  <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 2, color: BIAS_COLOR[n.bias] || "var(--t3)", background: `${BIAS_COLOR[n.bias] || "#888"}18` }}>
-                    {n.bias}
-                  </span>
                 </div>
               </a>
             ))}
