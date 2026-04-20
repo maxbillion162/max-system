@@ -36,6 +36,12 @@ const GOAL_META: Record<string, { label: string; target: number; unit: string; c
 };
 
 // ── Inline editable field ─────────────────────────────────────────────────────
+function formatVal(value: number, prefix: string): string {
+  if (prefix) return `${prefix}${value.toLocaleString()}`;
+  // Crypto amounts — show exact value, up to 8 decimal places, strip trailing zeros
+  return parseFloat(value.toFixed(8)).toString();
+}
+
 function InlineEdit({ value, label, prefix = "", onSave, color = "var(--blue)" }: {
   value: number; label: string; prefix?: string; onSave: (v: number) => void; color?: string;
 }) {
@@ -73,7 +79,7 @@ function InlineEdit({ value, label, prefix = "", onSave, color = "var(--blue)" }
         display: "flex", alignItems: "center", gap: 4,
       }}>
       <span style={{ fontSize: 13, fontWeight: 700, fontFamily: "monospace", color }}>
-        {prefix}{value.toLocaleString()}
+        {formatVal(value, prefix)}
       </span>
       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" style={{ opacity: 0.5 }}>
         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
