@@ -149,7 +149,7 @@ export function buildBriefingEmail(data: BriefingData): string {
           <div style="color:${S.t3};font-size:12px;margin-top:2px;">${c!.symbol === "BTC" ? "0.02 BTC" : "200 XRP"} · Value: <span style="color:${S.t1};font-weight:600;">$${(c!.symbol === "BTC" ? c!.price * 0.02 : c!.price * 200).toFixed(2)}</span></div>
         </td>
         <td style="padding:12px 0;text-align:right;">
-          <div style="color:${S.t1};font-size:15px;font-weight:700;font-family:monospace;">$${c!.symbol === "BTC" ? Math.round(c!.price).toLocaleString() : c!.price.toFixed(4)}</div>
+          <div style="color:${S.t1};font-size:15px;font-weight:700;font-family:monospace;">$${c!.symbol === "BTC" ? Math.round(c!.price).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",") : c!.price.toFixed(4)}</div>
           <div style="font-size:12px;font-weight:600;margin-top:2px;">
             <span style="color:${c!.change24h >= 0 ? S.green : S.red};">${pct(c!.change24h)} 24h</span>
             <span style="color:${S.t3};"> · </span>
