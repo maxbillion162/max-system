@@ -1,65 +1,207 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { HudCard } from "@/components/ui/HudCard";
 import { Sparkline } from "@/components/ui/Sparkline";
+import { supabase } from "@/lib/supabase";
 
-const PORT_DATA    = [5620, 5750, 6100, 5890, 6030, 6220, 6320];
 const BTC_FALLBACK = [88200, 89100, 91400, 90800, 92300, 93100, 94210];
 const XRP_FALLBACK = [2.31, 2.18, 2.25, 2.09, 2.14, 2.29, 2.18];
 
-interface LiveCrypto { symbol: string; price: number; change24h: number; change7d: number; sparkline?: number[] }
-interface LiveWeather { tempF: number; condition: string; precipChance: number; windMph: number; feelsLikeF: number; forecast?: { day: string; high: number; low: number }[] }
-interface NewsItem    { title: string; source: string; bias: string; tag: string; link: string }
+interface LiveCrypto  { symbol: string; price: number; change24h: number; change7d: number; sparkline?: number[] }
+interface LiveWeather { tempF: number; condition: string; precipChance: number; windMph: number; feelsLikeF: number; forecast?: { day: string; high: number; low: number; precipChance?: number }[] }
+interface NewsItem    { title: string; source: string; tag: string; link: string; snippet: string; pubDate: string; breaking?: boolean }
+interface Habit       { id: string; name: string; completed: boolean }
+interface Goal        { id: string; current: number }
 
-const EVENTS = [
-  { time: "9:00 AM",  title: "Team standup",                    duration: "30 min", type: "Work"   },
-  { time: "11:00 AM", title: "Client call — Northside Staffing", duration: "1 hr",   type: "Work"   },
-  { time: "2:00 PM",  title: "Review Q2 pipeline",              duration: "45 min", type: "Work"   },
-  { time: "6:00 PM",  title: "Gym — Pull Day",                  duration: "1 hr",   type: "Health" },
-];
+const WEALTH_DEFAULTS = { ira: 2720, savings: 2800, btc_amount: 0.02, xrp_amount: 200 };
 
-const HABITS = [
-  { label: "Up by 7:30 AM", done: true,  streak: 4  },
-  { label: "Gym",           done: true,  streak: 12 },
-  { label: "Read / Learn",  done: false, streak: 3  },
-  { label: "Protein goal",  done: false, streak: 0  },
-];
+const ALL_TAGS = ["All", "Breaking", "Finance", "Crypto", "Politics", "AI", "Tech"];
 
 const NEWS_FALLBACK: NewsItem[] = [
-  { title: "Fed holds rates — implications for crypto ETF approvals this quarter", source: "Bloomberg", bias: "C",   tag: "Finance", link: "#" },
-  { title: "OpenAI launches GPT-5 with breakthrough reasoning capabilities",       source: "The Verge", bias: "C-L", tag: "AI",      link: "#" },
-  { title: "XRP ETF approval odds climb to 72% on Polymarket amid SEC signals",   source: "CoinDesk",  bias: "C",   tag: "Crypto",  link: "#" },
-  { title: "Florida unemployment hits 3.1% — staffing sector hiring up 8%",       source: "Sun Sentinel", bias: "C", tag: "Local",  link: "#" },
-  { title: "Apple unveils Vision Pro 2 with spatial computing breakthrough",       source: "TechCrunch", bias: "C-L", tag: "Tech",   link: "#" },
-  { title: "Senate passes budget bill with crypto provision attached",             source: "Reuters",   bias: "C",   tag: "Finance", link: "#" },
+  { title: "Fed holds rates steady — markets await next inflation print", source: "Reuters", tag: "Finance", link: "#", snippet: "", pubDate: "", breaking: false },
+  { title: "BTC breaks $97K resistance for first time this week", source: "CoinDesk", tag: "Crypto", link: "#", snippet: "", pubDate: "", breaking: true },
+  { title: "XRP ETF approval odds climb to 72% on Polymarket", source: "CoinTelegraph", tag: "Crypto", link: "#", snippet: "", pubDate: "", breaking: false },
+  { title: "Senate passes budget reconciliation bill — market implications", source: "Politico", tag: "Politics", link: "#", snippet: "", pubDate: "", breaking: false },
+  { title: "OpenAI releases new reasoning model surpassing GPT-4o", source: "TechCrunch", tag: "AI", link: "#", snippet: "", pubDate: "", breaking: false },
+  { title: "Florida staffing sector hiring up 8% — opportunity for new AMs", source: "Bloomberg", tag: "Finance", link: "#", snippet: "", pubDate: "", breaking: false },
 ];
 
-const ALL_TAGS  = ["All", "Breaking", "Finance", "Crypto", "AI", "Tech", "Local", "Politics"];
-const BIAS_COLOR: Record<string, string> = {
-  L: "#ef4444", "C-L": "#f59e0b", C: "#22c55e", "C-R": "#4589ff", R: "#a78bfa",
+const GOAL_META: Record<string, { label: string; target: number; unit: string; colorHex: string }> = {
+  "income-100k":    { label: "$100K Income",    target: 100000, unit: "$",       colorHex: "#22c55e" },
+  "emergency-fund": { label: "Emergency Fund",  target: 10000,  unit: "$",       colorHex: "#8b5cf6" },
+  "gym-52weeks":    { label: "Gym Streak",       target: 52,     unit: "weeks",   colorHex: "#06b6d4" },
+  "ai-learning":    { label: "AI Learning",      target: 30,     unit: "sessions",colorHex: "#f97316" },
+  "morning-routine":{ label: "Morning Routine",  target: 30,     unit: "days",    colorHex: "#ec4899" },
 };
 
-/* Label */
-function Label({ children }: { children: React.ReactNode }) {
+// ── Inline editable field ─────────────────────────────────────────────────────
+function InlineEdit({ value, label, prefix = "", onSave, color = "var(--blue)" }: {
+  value: number; label: string; prefix?: string; onSave: (v: number) => void; color?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft]     = useState(String(value));
+  const inputRef              = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { if (editing) inputRef.current?.select(); }, [editing]);
+
+  function commit() {
+    const n = parseFloat(draft.replace(/,/g, ""));
+    if (!isNaN(n) && n >= 0) onSave(n);
+    setEditing(false);
+  }
+
+  if (editing) return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <span style={{ fontSize: 11, color: "var(--t3)" }}>{prefix}</span>
+      <input ref={inputRef} type="number" value={draft} onChange={e => setDraft(e.target.value)}
+        onKeyDown={e => { if (e.key === "Enter") commit(); if (e.key === "Escape") setEditing(false); }}
+        onBlur={commit}
+        style={{
+          background: "var(--surface3)", border: `1px solid ${color}60`, borderRadius: 4,
+          color: "var(--t1)", fontFamily: "monospace", fontSize: 13, fontWeight: 700,
+          padding: "2px 8px", width: 100, outline: "none",
+        }} />
+    </div>
+  );
+
   return (
-    <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 16 }}>
-      {children}
-    </p>
+    <button onClick={() => { setDraft(String(value)); setEditing(true); }}
+      title={`Click to edit ${label}`}
+      style={{
+        background: "none", border: "none", cursor: "pointer", padding: 0,
+        display: "flex", alignItems: "center", gap: 4,
+      }}>
+      <span style={{ fontSize: 13, fontWeight: 700, fontFamily: "monospace", color }}>
+        {prefix}{value.toLocaleString()}
+      </span>
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" style={{ opacity: 0.5 }}>
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+    </button>
   );
 }
 
-/* Section divider */
-function Divider() {
-  return <div style={{ height: 1, background: "var(--border)", margin: "0 0 16px" }} />;
+// ── Insight generator ─────────────────────────────────────────────────────────
+function generateInsights(params: {
+  btc: LiveCrypto | undefined; xrp: LiveCrypto | undefined;
+  btcAmt: number; xrpAmt: number;
+  netWorth: number; cryptoGain: number;
+  habits: Habit[]; goals: Goal[];
+  weather: LiveWeather | null;
+  hour: number;
+}): { icon: string; text: string; color: string; priority: number }[] {
+  const { btc, xrp, btcAmt, xrpAmt, cryptoGain, habits, goals, weather, hour } = params;
+  const insights: { icon: string; text: string; color: string; priority: number }[] = [];
+
+  // Crypto
+  if (btc) {
+    const gain = btc.price * btcAmt;
+    const dailyChange = gain * (btc.change24h / 100);
+    if (Math.abs(btc.change24h) >= 3) {
+      insights.push({
+        icon: btc.change24h > 0 ? "↗" : "↘",
+        text: `BTC ${btc.change24h > 0 ? "up" : "down"} ${Math.abs(btc.change24h).toFixed(1)}% today — your ${btcAmt} BTC ${btc.change24h > 0 ? "gained" : "lost"} $${Math.abs(dailyChange).toFixed(0)}. ${btc.change7d > 0 ? `Up ${btc.change7d.toFixed(1)}% this week.` : `Down ${Math.abs(btc.change7d).toFixed(1)}% this week.`}`,
+        color: btc.change24h > 0 ? "var(--green)" : "var(--red)",
+        priority: 1,
+      });
+    } else {
+      insights.push({
+        icon: "◈",
+        text: `BTC trading at $${Math.round(btc.price).toLocaleString()} — ${btc.change24h >= 0 ? "+" : ""}${btc.change24h.toFixed(2)}% today. Portfolio holding steady.`,
+        color: "var(--t2)",
+        priority: 3,
+      });
+    }
+  }
+
+  if (xrp && Math.abs(xrp.change24h) >= 4) {
+    const xrpGain = xrp.price * xrpAmt * (xrp.change24h / 100);
+    insights.push({
+      icon: xrp.change24h > 0 ? "↗" : "↘",
+      text: `XRP ${xrp.change24h > 0 ? "surging" : "dropping"} ${Math.abs(xrp.change24h).toFixed(1)}% — your 200 XRP ${xrp.change24h > 0 ? "gained" : "lost"} $${Math.abs(xrpGain).toFixed(0)} today.`,
+      color: xrp.change24h > 0 ? "var(--green)" : "var(--red)",
+      priority: 1,
+    });
+  }
+
+  if (cryptoGain > 50) {
+    insights.push({
+      icon: "◎",
+      text: `Crypto up $${cryptoGain.toFixed(0)} today. Consider whether to take partial profits or hold into next resistance.`,
+      color: "var(--green)",
+      priority: 2,
+    });
+  }
+
+  // Habits
+  const done    = habits.filter(h => h.completed).length;
+  const total   = habits.length;
+  const pct     = total > 0 ? Math.round((done / total) * 100) : 0;
+  const gymDone = habits.find(h => h.name === "Gym")?.completed;
+
+  if (pct === 100) {
+    insights.push({ icon: "✦", text: "Perfect day on habits. Every box checked — this is how the streak gets built.", color: "var(--green)", priority: 2 });
+  } else if (total > 0 && done < total) {
+    const remaining = total - done;
+    insights.push({
+      icon: "◉",
+      text: hour < 18
+        ? `${done}/${total} habits done (${pct}%). ${remaining} left — plenty of time.`
+        : `${remaining} habit${remaining > 1 ? "s" : ""} still open tonight. Close them out before you sleep.`,
+      color: pct >= 50 ? "var(--amber)" : "var(--red)",
+      priority: hour >= 18 ? 1 : 3,
+    });
+  }
+
+  if (!gymDone && hour >= 15) {
+    insights.push({ icon: "↑", text: "Gym not logged yet. Don't let today be the day the streak breaks.", color: "var(--amber)", priority: 2 });
+  }
+
+  // Goals
+  const emergencyGoal = goals.find(g => g.id === "emergency-fund");
+  if (emergencyGoal) {
+    const pctDone = (emergencyGoal.current / 10000) * 100;
+    const remaining = 10000 - emergencyGoal.current;
+    insights.push({
+      icon: "◈",
+      text: `Emergency fund at ${pctDone.toFixed(0)}% ($${emergencyGoal.current.toLocaleString()}/$10K). Need $${remaining.toLocaleString()} more — at $200/mo that's ${Math.ceil(remaining / 200)} months.`,
+      color: "var(--blue)",
+      priority: 4,
+    });
+  }
+
+  // Weather
+  if (weather && weather.precipChance >= 60) {
+    insights.push({ icon: "◌", text: `${weather.precipChance}% rain today in Orlando. Factor that into your commute and gym timing.`, color: "var(--t3)", priority: 5 });
+  }
+
+  return insights.sort((a, b) => a.priority - b.priority).slice(0, 5);
 }
 
+// ── Time ago helper ───────────────────────────────────────────────────────────
+function timeAgo(dateStr: string): string {
+  if (!dateStr) return "";
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+// ── Main Dashboard ─────────────────────────────────────────────────────────────
 export default function Dashboard() {
-  const [time, setTime]           = useState(new Date());
-  const [crypto, setCrypto]       = useState<LiveCrypto[]>([]);
-  const [weather, setWeather]     = useState<LiveWeather | null>(null);
-  const [news, setNews]           = useState<NewsItem[]>([]);
+  const [time, setTime]       = useState(new Date());
+  const [crypto, setCrypto]   = useState<LiveCrypto[]>([]);
+  const [weather, setWeather] = useState<LiveWeather | null>(null);
+  const [news, setNews]       = useState<NewsItem[]>([]);
   const [activeTag, setActiveTag] = useState("All");
+  const [habits, setHabits]   = useState<Habit[]>([]);
+  const [goals, setGoals]     = useState<Goal[]>([]);
+  const [wealth, setWealth]   = useState(WEALTH_DEFAULTS);
+  const [savingWealth, setSavingWealth] = useState(false);
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000);
@@ -69,60 +211,69 @@ export default function Dashboard() {
   useEffect(() => {
     fetch("/api/crypto").then(r => r.json()).then(j => { if (j.data) setCrypto(j.data); }).catch(() => {});
     fetch("/api/weather?location=orlando").then(r => r.json()).then(j => { if (j.data) setWeather(j.data); }).catch(() => {});
-    fetch("/api/news?count=20").then(r => r.json()).then(j => { if (j.data) setNews(j.data); }).catch(() => {});
+    fetch("/api/news?count=30").then(r => r.json()).then(j => { if (j.data) setNews(j.data); }).catch(() => {});
+    supabase.from("habits").select("id,name,completed").then(({ data }) => { if (data) setHabits(data); });
+    supabase.from("goals").select("id,current").then(({ data }) => { if (data) setGoals(data); });
+    supabase.from("wealth").select("*").limit(1).then(({ data }) => {
+      if (data && data.length > 0) setWealth({ ...WEALTH_DEFAULTS, ...data[0] });
+    });
   }, []);
+
+  async function updateWealth(key: keyof typeof WEALTH_DEFAULTS, val: number) {
+    const updated = { ...wealth, [key]: val };
+    setWealth(updated);
+    setSavingWealth(true);
+    await supabase.from("wealth").upsert({ id: "max", ...updated });
+    setTimeout(() => setSavingWealth(false), 800);
+  }
 
   const btc = crypto.find(c => c.symbol === "BTC");
   const xrp = crypto.find(c => c.symbol === "XRP");
+
+  const btcVal     = btc ? btc.price * wealth.btc_amount : 0;
+  const xrpVal     = xrp ? xrp.price * wealth.xrp_amount : 0;
+  const cryptoTotal = btcVal + xrpVal;
+  const netWorth   = cryptoTotal + wealth.ira + wealth.savings;
+
+  const btcGain  = btc ? btcVal * (btc.change24h / 100) : 0;
+  const xrpGain  = xrp ? xrpVal * (xrp.change24h / 100) : 0;
+  const cryptoGain = btcGain + xrpGain;
+  const netWorthChange = cryptoGain;
 
   const h        = time.getHours();
   const greeting = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
   const dayLabel = time.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
   const timeStr  = time.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
-  const habitsDone = HABITS.filter(h => h.done).length;
-  const C    = 2 * Math.PI * 22;
-  const dash = C - (habitsDone / HABITS.length) * C;
+  const habitsDone = habits.filter(hb => hb.completed).length;
+  const ringC      = 2 * Math.PI * 22;
+  const ringDash   = habits.length > 0 ? ringC - (habitsDone / habits.length) * ringC : ringC;
 
   const displayNews = (news.length ? news : NEWS_FALLBACK).filter(n =>
-    activeTag === "All" || activeTag === "Breaking" ? true : n.tag === activeTag
+    activeTag === "All" ? true : activeTag === "Breaking" ? n.breaking : n.tag === activeTag
   );
 
+  const insights = generateInsights({ btc, xrp, btcAmt: wealth.btc_amount, xrpAmt: wealth.xrp_amount, netWorth, cryptoGain, habits, goals, weather, hour: h });
+
   const CRYPTO_ROWS = [
-    {
-      symbol: "BTC", name: "Bitcoin", hold: "0.02 BTC",
-      price:  btc ? `$${btc.price.toLocaleString("en-US", { maximumFractionDigits: 0 })}` : "—",
-      change: btc ? `${btc.change24h >= 0 ? "+" : ""}${btc.change24h.toFixed(2)}%` : "—",
-      val:    btc ? `$${(btc.price * 0.02).toFixed(2)}` : "—",
-      data:   btc?.sparkline?.length ? btc.sparkline.slice(-20) : BTC_FALLBACK,
-      isUp:   (btc?.change24h ?? 0) >= 0,
-    },
-    {
-      symbol: "XRP", name: "Ripple", hold: "200 XRP",
-      price:  xrp ? `$${xrp.price.toFixed(4)}` : "—",
-      change: xrp ? `${xrp.change24h >= 0 ? "+" : ""}${xrp.change24h.toFixed(2)}%` : "—",
-      val:    xrp ? `$${(xrp.price * 200).toFixed(2)}` : "—",
-      data:   xrp?.sparkline?.length ? xrp.sparkline.slice(-20) : XRP_FALLBACK,
-      isUp:   (xrp?.change24h ?? 0) >= 0,
-    },
+    { symbol: "BTC", name: "Bitcoin", amt: wealth.btc_amount, price: btc?.price ?? 0, change: btc?.change24h ?? 0, val: btcVal, data: btc?.sparkline?.slice(-20) ?? BTC_FALLBACK },
+    { symbol: "XRP", name: "Ripple",  amt: wealth.xrp_amount, price: xrp?.price ?? 0, change: xrp?.change24h ?? 0, val: xrpVal, data: xrp?.sparkline?.slice(-20) ?? XRP_FALLBACK },
   ];
 
   return (
-    <div style={{ padding: "32px 40px", background: "var(--bg)", minHeight: "100vh" }}>
+    <div style={{ padding: "28px 36px", background: "var(--bg)", minHeight: "100vh" }}>
 
       {/* ── HEADER ── */}
-      <div className="afu" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28 }}>
+      <div className="afu" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
-          <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 8 }}>
-            {dayLabel}
-          </p>
-          <h1 style={{ fontSize: 32, fontWeight: 800, color: "var(--t1)", letterSpacing: "-0.02em", marginBottom: 10 }}>
-            {greeting}, Max.
-          </h1>
-          <div style={{ display: "flex", alignItems: "center", gap: 16, fontSize: 13, color: "var(--t3)" }}>
-            <span>{habitsDone}/{HABITS.length} habits done</span>
+          <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 6 }}>{dayLabel}</p>
+          <h1 style={{ fontSize: 30, fontWeight: 800, color: "var(--t1)", letterSpacing: "-0.02em", marginBottom: 8 }}>{greeting}, Max.</h1>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 12, color: "var(--t3)" }}>
+            <span>{habitsDone}/{habits.length || 6} habits</span>
             <span style={{ color: "var(--border2)" }}>·</span>
-            <span>{EVENTS.length} events today</span>
+            <span style={{ color: netWorthChange >= 0 ? "var(--green)" : "var(--red)", fontWeight: 600 }}>
+              {netWorthChange >= 0 ? "+" : ""}${netWorthChange.toFixed(0)} today
+            </span>
             <span style={{ color: "var(--border2)" }}>·</span>
             <span style={{ color: btc && btc.change24h >= 0 ? "var(--green)" : "var(--red)", fontWeight: 600 }}>
               BTC {btc ? `${btc.change24h >= 0 ? "+" : ""}${btc.change24h.toFixed(2)}%` : "—"}
@@ -130,9 +281,7 @@ export default function Dashboard() {
           </div>
         </div>
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontFamily: "monospace", fontSize: 36, fontWeight: 800, color: "var(--t1)", letterSpacing: "-0.02em" }}>
-            {timeStr}
-          </div>
+          <div style={{ fontFamily: "monospace", fontSize: 34, fontWeight: 800, color: "var(--t1)", letterSpacing: "-0.02em" }}>{timeStr}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-end", marginTop: 6 }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--green)", animation: "pulse-dot 2s ease-in-out infinite", display: "inline-block" }} />
             <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: "var(--green)", textTransform: "uppercase" }}>M.A.X. Online</span>
@@ -140,161 +289,196 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── STAT CARDS ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
+      {/* ── NET WORTH HERO ── */}
+      <HudCard className="afu" delay={.04} style={{ padding: "24px 28px", marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
 
-        {/* Weather */}
-        <HudCard className="afu" delay={.05} style={{ padding: 20 }}>
-          <Label>Orlando</Label>
-          {weather ? (
-            <>
-              <div style={{ display: "flex", alignItems: "flex-end", gap: 10, marginBottom: 8 }}>
-                <span style={{ fontSize: 44, fontWeight: 800, color: "var(--t1)", lineHeight: 1, fontFamily: "monospace" }}>{weather.tempF}°</span>
-                <span style={{ fontSize: 13, color: "var(--t2)", marginBottom: 4 }}>{weather.condition}</span>
-              </div>
-              <div style={{ display: "flex", gap: 12, fontSize: 12, color: "var(--t3)" }}>
-                <span>Rain {weather.precipChance}%</span>
-                <span>Wind {weather.windMph}mph</span>
-                <span>Feels {weather.feelsLikeF}°</span>
-              </div>
-            </>
-          ) : (
-            <div style={{ fontSize: 32, fontWeight: 800, color: "var(--t3)" }}>—</div>
-          )}
-        </HudCard>
-
-        {/* Portfolio */}
-        <HudCard className="afu" delay={.1} style={{ padding: 20 }}>
-          <Label>Portfolio</Label>
-          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 10 }}>
-            <span style={{ fontSize: 36, fontWeight: 800, color: "var(--t1)", lineHeight: 1, fontFamily: "monospace" }}>$6,320</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "var(--green)" }}>+1.18%</span>
-          </div>
-          <Sparkline data={PORT_DATA} color="var(--green)" height={30} id="port-stat" />
-        </HudCard>
-
-        {/* Habits ring */}
-        <HudCard className="afu" delay={.15} style={{ padding: 20 }}>
-          <Label>Habits Today</Label>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <svg width="52" height="52" viewBox="0 0 52 52" style={{ flexShrink: 0 }}>
-              <circle cx="26" cy="26" r="22" fill="none" stroke="var(--border2)" strokeWidth="4" />
-              <circle cx="26" cy="26" r="22" fill="none" stroke="var(--blue)" strokeWidth="4"
-                strokeDasharray={C} strokeDashoffset={dash} strokeLinecap="round" transform="rotate(-90 26 26)"
-                style={{ transition: "stroke-dashoffset .6s ease" }} />
-              <text x="26" y="30" textAnchor="middle" fontSize="12" fontWeight="800" fill="var(--t1)">{habitsDone}/{HABITS.length}</text>
-            </svg>
-            <div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: "var(--t1)" }}>{Math.round((habitsDone / HABITS.length) * 100)}%</div>
-              <div style={{ fontSize: 12, color: "var(--amber)", marginTop: 2, fontWeight: 600 }}>🔥 12-day streak</div>
+          {/* Left: total */}
+          <div>
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 10 }}>
+              Tracked Net Worth {savingWealth && <span style={{ color: "var(--blue)", marginLeft: 8 }}>Saving…</span>}
+            </p>
+            <div style={{ fontSize: 48, fontWeight: 800, fontFamily: "monospace", color: "var(--t1)", letterSpacing: "-0.02em", lineHeight: 1 }}>
+              ${netWorth.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
+              <span style={{ fontSize: 15, fontWeight: 700, color: netWorthChange >= 0 ? "var(--green)" : "var(--red)" }}>
+                {netWorthChange >= 0 ? "+" : ""}${netWorthChange.toFixed(2)} today
+              </span>
+              <span style={{ fontSize: 13, color: "var(--t3)" }}>from crypto movement</span>
             </div>
           </div>
-        </HudCard>
 
-        {/* Inbox */}
-        <HudCard className="afu" delay={.2} style={{ padding: 20 }}>
-          <Label>Inbox</Label>
-          <div style={{ fontSize: 44, fontWeight: 800, color: "var(--red)", lineHeight: 1, fontFamily: "monospace", marginBottom: 8 }}>3</div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--red)" }}>Urgent — reply today</div>
-          <div style={{ fontSize: 12, color: "var(--t3)", marginTop: 3 }}>12 total · 4 need response</div>
-        </HudCard>
-      </div>
+          {/* Right: breakdown — all editable */}
+          <div style={{ display: "flex", gap: 32 }}>
+            {/* Crypto (auto) */}
+            <div style={{ textAlign: "center" }}>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 10 }}>Crypto</p>
+              <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "monospace", color: "var(--amber)" }}>
+                ${cryptoTotal.toFixed(0)}
+              </div>
+              <p style={{ fontSize: 10, color: "var(--t3)", marginTop: 4 }}>Auto · live prices</p>
+            </div>
+
+            <div style={{ width: 1, background: "var(--border)", alignSelf: "stretch" }} />
+
+            {/* BTC amount */}
+            <div style={{ textAlign: "center" }}>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 10 }}>BTC Held</p>
+              <InlineEdit value={wealth.btc_amount} label="BTC amount" onSave={v => updateWealth("btc_amount", v)} color="var(--amber)" />
+              <p style={{ fontSize: 10, color: "var(--t3)", marginTop: 4 }}>= ${btcVal.toFixed(0)}</p>
+            </div>
+
+            {/* XRP amount */}
+            <div style={{ textAlign: "center" }}>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 10 }}>XRP Held</p>
+              <InlineEdit value={wealth.xrp_amount} label="XRP amount" onSave={v => updateWealth("xrp_amount", v)} color="var(--amber)" />
+              <p style={{ fontSize: 10, color: "var(--t3)", marginTop: 4 }}>= ${xrpVal.toFixed(0)}</p>
+            </div>
+
+            <div style={{ width: 1, background: "var(--border)", alignSelf: "stretch" }} />
+
+            {/* Roth IRA */}
+            <div style={{ textAlign: "center" }}>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 10 }}>Roth IRA</p>
+              <InlineEdit value={wealth.ira} label="Roth IRA" prefix="$" onSave={v => updateWealth("ira", v)} color="var(--blue)" />
+              <p style={{ fontSize: 10, color: "var(--t3)", marginTop: 4 }}>Schwab</p>
+            </div>
+
+            {/* Savings */}
+            <div style={{ textAlign: "center" }}>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 10 }}>Savings</p>
+              <InlineEdit value={wealth.savings} label="Savings" prefix="$" onSave={v => updateWealth("savings", v)} color="var(--green)" />
+              <p style={{ fontSize: 10, color: "var(--t3)", marginTop: 4 }}>Cash</p>
+            </div>
+          </div>
+        </div>
+      </HudCard>
 
       {/* ── MAIN 3-COL GRID ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "300px 1fr 280px", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "280px 1fr 260px", gap: 12 }}>
 
-        {/* ── LEFT: SCHEDULE + HABITS + GOALS ── */}
+        {/* ── LEFT: WEATHER + HABITS + GOAL PULSE ── */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
-          {/* Schedule */}
-          <HudCard delay={.22} style={{ padding: "24px 24px 20px" }}>
-            <Label>Today&apos;s Schedule</Label>
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {EVENTS.map((ev, i) => (
-                <div key={i} style={{
-                  display: "flex", alignItems: "center", gap: 10,
-                  padding: "12px 12px", borderRadius: 4,
-                  background: "var(--surface2)",
-                  borderLeft: `2px solid ${ev.type === "Health" ? "var(--green)" : "var(--blue)"}`,
-                }}>
-                  <span style={{ fontFamily: "monospace", fontSize: 11, color: "var(--t3)", width: 42, flexShrink: 0 }}>
-                    {ev.time.replace(" AM", "a").replace(" PM", "p")}
-                  </span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ev.title}</div>
-                    <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 1 }}>{ev.duration}</div>
+          {/* Weather */}
+          <HudCard delay={.08} style={{ padding: "20px 20px 16px" }}>
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 14 }}>Orlando Weather</p>
+            {weather ? (
+              <>
+                <div style={{ display: "flex", alignItems: "flex-end", gap: 10, marginBottom: 6 }}>
+                  <span style={{ fontSize: 48, fontWeight: 800, color: "var(--t1)", lineHeight: 1, fontFamily: "monospace" }}>{weather.tempF}°</span>
+                  <div style={{ marginBottom: 4 }}>
+                    <div style={{ fontSize: 13, color: "var(--t2)", fontWeight: 500 }}>{weather.condition}</div>
+                    <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 2 }}>Feels {weather.feelsLikeF}° · Wind {weather.windMph}mph</div>
                   </div>
                 </div>
-              ))}
-            </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14 }}>
+                  <div style={{ flex: 1, height: 3, borderRadius: 2, background: "var(--border2)" }}>
+                    <div style={{ height: 3, borderRadius: 2, width: `${weather.precipChance}%`, background: weather.precipChance > 50 ? "var(--blue)" : "var(--t4)", transition: "width 1s ease" }} />
+                  </div>
+                  <span style={{ fontSize: 11, color: weather.precipChance > 50 ? "var(--blue)" : "var(--t3)", fontWeight: 600, flexShrink: 0 }}>Rain {weather.precipChance}%</span>
+                </div>
+                {weather.forecast && (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 4 }}>
+                    {weather.forecast.slice(0, 5).map((f, i) => (
+                      <div key={i} style={{ textAlign: "center", padding: "8px 4px", borderRadius: 4, background: "var(--surface2)", border: "1px solid var(--border)" }}>
+                        <div style={{ fontSize: 10, color: "var(--t3)", fontWeight: 600, marginBottom: 4 }}>{f.day}</div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--t1)", fontFamily: "monospace" }}>{f.high}°</div>
+                        <div style={{ fontSize: 10, color: "var(--t3)" }}>{f.low}°</div>
+                        {(f.precipChance ?? 0) > 30 && <div style={{ fontSize: 9, color: "var(--blue)", marginTop: 2 }}>{f.precipChance}%</div>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div style={{ fontSize: 32, fontWeight: 800, color: "var(--t3)" }}>—</div>
+            )}
           </HudCard>
 
           {/* Habits */}
-          <HudCard delay={.26} style={{ padding: "20px 20px 16px" }}>
-            <Label>Habits</Label>
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {HABITS.map((h, i) => (
-                <div key={i} style={{
-                  display: "flex", alignItems: "center", gap: 10,
-                  padding: "9px 10px", borderRadius: 4,
-                  background: "var(--surface2)",
-                }}>
+          <HudCard delay={.12} style={{ padding: "20px 20px 16px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)" }}>Today&apos;s Habits</p>
+              <a href="/dashboard/habits" style={{ fontSize: 11, color: "var(--blue)", textDecoration: "none" }}>Manage →</a>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 14 }}>
+              <svg width="52" height="52" viewBox="0 0 52 52" style={{ flexShrink: 0 }}>
+                <circle cx="26" cy="26" r="22" fill="none" stroke="var(--border2)" strokeWidth="4" />
+                <circle cx="26" cy="26" r="22" fill="none" stroke="var(--blue)" strokeWidth="4"
+                  strokeDasharray={ringC} strokeDashoffset={ringDash} strokeLinecap="round" transform="rotate(-90 26 26)"
+                  style={{ transition: "stroke-dashoffset .6s ease" }} />
+                <text x="26" y="30" textAnchor="middle" fontSize="11" fontWeight="800" fill="var(--t1)">{habitsDone}/{habits.length || 0}</text>
+              </svg>
+              <div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: "var(--t1)" }}>
+                  {habits.length > 0 ? `${Math.round((habitsDone / habits.length) * 100)}%` : "—"}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 2 }}>done today</div>
+              </div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {habits.slice(0, 5).map((hb, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", borderRadius: 4, background: "var(--surface2)" }}>
                   <div style={{
-                    width: 14, height: 14, borderRadius: 3, flexShrink: 0,
-                    background: h.done ? "rgba(34,197,94,0.15)" : "transparent",
-                    border: `1px solid ${h.done ? "rgba(34,197,94,0.5)" : "var(--border2)"}`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
+                    width: 14, height: 14, borderRadius: 3, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                    background: hb.completed ? "rgba(34,197,94,0.15)" : "transparent",
+                    border: `1px solid ${hb.completed ? "rgba(34,197,94,0.5)" : "var(--border2)"}`,
                   }}>
-                    {h.done && <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3.5"><polyline points="20 6 9 17 4 12" /></svg>}
+                    {hb.completed && <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3.5"><polyline points="20 6 9 17 4 12" /></svg>}
                   </div>
-                  <span style={{ fontSize: 12, flex: 1, color: h.done ? "var(--t1)" : "var(--t3)", fontWeight: h.done ? 500 : 400 }}>{h.label}</span>
-                  {h.streak > 0 && <span style={{ fontSize: 11, color: "var(--amber)", fontWeight: 700 }}>🔥{h.streak}</span>}
+                  <span style={{ fontSize: 12, flex: 1, color: hb.completed ? "var(--t1)" : "var(--t3)", fontWeight: hb.completed ? 500 : 400 }}>{hb.name}</span>
                 </div>
               ))}
+              {habits.length === 0 && <p style={{ fontSize: 12, color: "var(--t3)" }}>Loading habits…</p>}
             </div>
           </HudCard>
 
           {/* Goal Pulse */}
-          <HudCard delay={.30} style={{ padding: "20px 20px 20px" }}>
+          <HudCard delay={.16} style={{ padding: "20px 20px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
               <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)" }}>Goal Pulse</p>
-              <a href="/dashboard/goals" style={{ fontSize: 11, color: "var(--blue)", textDecoration: "none" }}>View all →</a>
+              <a href="/dashboard/goals" style={{ fontSize: 11, color: "var(--blue)", textDecoration: "none" }}>All goals →</a>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {[
-                { label: "$100K Income",   pct: 0,  note: "Starts July 2026" },
-                { label: "Emergency Fund", pct: 28, note: "$2.8K / $10K"     },
-                { label: "Gym Streak",     pct: 65, note: "12 weeks"         },
-              ].map(g => (
-                <div key={g.label}>
-                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 6 }}>
-                    <div>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)" }}>{g.label}</span>
-                      <span style={{ fontSize: 11, color: "var(--t3)", marginLeft: 6 }}>{g.note}</span>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {Object.entries(GOAL_META).slice(0, 4).map(([id, meta]) => {
+                const g = goals.find(x => x.id === id);
+                const cur = g?.current ?? 0;
+                const pct = Math.min(100, Math.round((cur / meta.target) * 100));
+                const disp = meta.unit === "$" ? `$${cur.toLocaleString()}` : `${cur} ${meta.unit}`;
+                return (
+                  <div key={id}>
+                    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 5 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)" }}>{meta.label}</span>
+                      <span style={{ fontSize: 11, fontFamily: "monospace", color: meta.colorHex, fontWeight: 700 }}>{pct}%</span>
                     </div>
-                    <span style={{ fontSize: 12, fontWeight: 700, fontFamily: "monospace", color: g.pct > 0 ? "var(--green)" : "var(--t3)" }}>{g.pct}%</span>
+                    <div style={{ height: 3, borderRadius: 2, background: "var(--border2)", marginBottom: 3 }}>
+                      <div style={{ height: 3, borderRadius: 2, width: `${pct || 1}%`, background: meta.colorHex, transition: "width 1s ease" }} />
+                    </div>
+                    <div style={{ fontSize: 10, color: "var(--t3)" }}>{disp} of {meta.unit === "$" ? `$${meta.target.toLocaleString()}` : `${meta.target} ${meta.unit}`}</div>
                   </div>
-                  <div style={{ height: 3, borderRadius: 2, background: "var(--border2)" }}>
-                    <div style={{ height: 3, borderRadius: 2, width: `${g.pct || 1}%`, background: g.pct > 0 ? "var(--green)" : "var(--border2)", transition: "width 1s ease" }} />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </HudCard>
         </div>
 
-        {/* ── CENTER: INTEL FEED (full height) ── */}
-        <HudCard delay={.24} style={{ padding: "24px 24px 20px", display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)" }}>Intel Feed</p>
+        {/* ── CENTER: INTEL FEED ── */}
+        <HudCard delay={.1} style={{ padding: "20px 24px", display: "flex", flexDirection: "column", minHeight: 600 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+            <div>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 2 }}>Intel Feed</p>
+              <p style={{ fontSize: 11, color: "var(--t3)" }}>{(news.length || NEWS_FALLBACK.length)} articles · live</p>
+            </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--green)", animation: "pulse-dot 2s ease-in-out infinite", display: "inline-block" }} />
-              <span style={{ fontSize: 11, color: "var(--t3)" }}>Live · {(news.length || NEWS_FALLBACK.length)} articles</span>
+              <span style={{ fontSize: 11, color: "var(--t3)" }}>Live</span>
             </div>
           </div>
 
           {/* Filter tabs */}
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
+          <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 14 }}>
             {ALL_TAGS.map(tag => (
               <button key={tag} onClick={() => setActiveTag(tag)} style={{
                 fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 3, cursor: "pointer",
@@ -308,19 +492,36 @@ export default function Dashboard() {
             ))}
           </div>
 
-          <Divider />
+          <div style={{ height: 1, background: "var(--border)", marginBottom: 12 }} />
 
           {/* Articles */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 1, overflow: "auto", flex: 1 }}>
-            {displayNews.slice(0, 10).map((n, i) => (
+          <div style={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column" }}>
+            {displayNews.slice(0, 20).map((n, i) => (
               <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{
-                display: "block", padding: "14px 10px", borderRadius: 4, textDecoration: "none",
-                borderBottom: i < displayNews.slice(0, 10).length - 1 ? "1px solid var(--border)" : "none",
-              }}>
-                <p style={{ fontSize: 13, fontWeight: 500, color: "var(--t1)", lineHeight: 1.5, marginBottom: 6 }}>{n.title}</p>
+                display: "block", padding: "13px 10px", textDecoration: "none",
+                borderLeft: n.breaking ? "2px solid var(--red)" : "2px solid transparent",
+                borderBottom: i < displayNews.slice(0, 20).length - 1 ? "1px solid var(--border)" : "none",
+                background: n.breaking ? "rgba(239,68,68,0.02)" : "transparent",
+                borderRadius: n.breaking ? "0 4px 4px 0" : 0,
+                transition: "background .15s",
+              }}
+                onMouseEnter={e => (e.currentTarget.style.background = "var(--surface2)")}
+                onMouseLeave={e => (e.currentTarget.style.background = n.breaking ? "rgba(239,68,68,0.02)" : "transparent")}
+              >
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 5 }}>
+                  {n.breaking && (
+                    <span style={{ fontSize: 9, fontWeight: 800, color: "var(--red)", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 3, padding: "2px 5px", flexShrink: 0, marginTop: 1, letterSpacing: "0.05em" }}>LIVE</span>
+                  )}
+                  <p style={{ fontSize: 13, fontWeight: 500, color: "var(--t1)", lineHeight: 1.5, margin: 0 }}>{n.title}</p>
+                </div>
+                {n.snippet && (
+                  <p style={{ fontSize: 11, color: "var(--t3)", lineHeight: 1.5, margin: "0 0 5px", paddingLeft: n.breaking ? 0 : 0 }}>{n.snippet.slice(0, 120)}{n.snippet.length > 120 ? "…" : ""}</p>
+                )}
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 11, color: "var(--t3)" }}>{n.source}</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "var(--t3)" }}>{n.source}</span>
+                  <span style={{ fontSize: 9, color: "var(--t4)" }}>·</span>
                   <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 2, background: "var(--surface3)", color: "var(--t2)" }}>{n.tag}</span>
+                  {n.pubDate && <span style={{ fontSize: 10, color: "var(--t4)", marginLeft: "auto" }}>{timeAgo(n.pubDate)}</span>}
                 </div>
               </a>
             ))}
@@ -330,14 +531,14 @@ export default function Dashboard() {
           </div>
         </HudCard>
 
-        {/* ── RIGHT: CRYPTO + BRIEF ── */}
+        {/* ── RIGHT: CRYPTO + M.A.X. BRIEF ── */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
           {/* Crypto */}
-          <HudCard delay={.2} style={{ padding: "20px 20px 16px" }}>
+          <HudCard delay={.1} style={{ padding: "20px 20px 16px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <Label>Crypto</Label>
-              <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 16 }}>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)" }}>Holdings</p>
+              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                 <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--green)", animation: "pulse-dot 2s ease-in-out infinite", display: "inline-block" }} />
                 <span style={{ fontSize: 10, color: "var(--t3)" }}>Live</span>
               </div>
@@ -349,33 +550,37 @@ export default function Dashboard() {
                     <div style={{ fontSize: 13, fontWeight: 700, color: "var(--t1)" }}>
                       {a.symbol} <span style={{ fontSize: 11, fontWeight: 400, color: "var(--t3)" }}>{a.name}</span>
                     </div>
-                    <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 2 }}>{a.hold} · {a.val}</div>
+                    <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 2 }}>{a.amt} {a.symbol} · ${a.val.toFixed(2)}</div>
                   </div>
                   <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "monospace", color: "var(--t1)" }}>{a.price}</div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: a.isUp ? "var(--green)" : "var(--red)" }}>{a.change}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "monospace", color: "var(--t1)" }}>
+                      ${a.symbol === "BTC" ? Math.round(a.price).toLocaleString() : a.price.toFixed(4)}
+                    </div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: a.change >= 0 ? "var(--green)" : "var(--red)" }}>
+                      {a.change >= 0 ? "+" : ""}{a.change.toFixed(2)}%
+                    </div>
                   </div>
                 </div>
-                <Sparkline data={a.data} color={a.isUp ? "var(--green)" : "var(--red)"} height={32} id={`d-${a.symbol}`} />
+                <Sparkline data={a.data} color={a.change >= 0 ? "var(--green)" : "var(--red)"} height={32} id={`d-${a.symbol}`} />
               </div>
             ))}
           </HudCard>
 
           {/* M.A.X. Brief */}
-          <HudCard delay={.28} style={{ padding: "20px 20px 20px" }}>
-            <Label>M.A.X. Brief</Label>
+          <HudCard delay={.18} style={{ padding: "20px 20px", flex: 1 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)" }}>M.A.X. Brief</p>
+              <span style={{ fontSize: 10, color: "var(--blue)", fontWeight: 600 }}>Live data</span>
+            </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {[
-                { icon: "↗", text: "BTC above key support. XRP ETF odds at 72% — hold position.", c: "var(--green)" },
-                { icon: "◎", text: "Client call at 11 AM is your highest-leverage event today.",  c: "var(--blue)"  },
-                { icon: "↑", text: "12-day gym streak. Pull day at 6 PM — don't skip.",           c: "var(--amber)" },
-                { icon: "!", text: "3 urgent emails. Reply before the client call.",               c: "var(--red)"   },
-              ].map((b, i) => (
-                <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: b.c, flexShrink: 0, marginTop: 1, width: 14, textAlign: "center" }}>{b.icon}</span>
-                  <span style={{ fontSize: 12, color: "var(--t2)", lineHeight: 1.5 }}>{b.text}</span>
+              {insights.length > 0 ? insights.map((ins, i) => (
+                <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", paddingBottom: 12, borderBottom: i < insights.length - 1 ? "1px solid var(--border)" : "none" }}>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: ins.color, flexShrink: 0, marginTop: 1, width: 14, textAlign: "center" }}>{ins.icon}</span>
+                  <span style={{ fontSize: 12, color: "var(--t2)", lineHeight: 1.6 }}>{ins.text}</span>
                 </div>
-              ))}
+              )) : (
+                <p style={{ fontSize: 12, color: "var(--t3)" }}>Loading insights…</p>
+              )}
             </div>
             <a href="/dashboard/chat" style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
@@ -383,7 +588,7 @@ export default function Dashboard() {
               background: "rgba(69,137,255,0.1)", color: "var(--blue)", border: "1px solid rgba(69,137,255,0.2)",
               textDecoration: "none",
             }}>
-              Talk to M.A.X. →
+              Ask M.A.X. →
             </a>
           </HudCard>
         </div>
