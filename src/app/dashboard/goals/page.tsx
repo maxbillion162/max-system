@@ -50,31 +50,31 @@ export default function GoalsPage() {
   const milestonesDone = GOALS.flatMap(g => g.milestones).filter(m => (m as { done?: boolean }).done).length;
 
   return (
-    <div className="grid-bg min-h-screen" style={{ padding: "40px 48px" }}>
+    <div style={{ padding: "40px 52px", background: "var(--bg)", minHeight: "100vh" }}>
       <div style={{ maxWidth: 900 }}>
 
-        <div className="mb-8 afu">
-          <p className="text-sm font-semibold tracking-widest uppercase mb-2" style={{ color: "var(--teal)", opacity: .6 }}>Goals HQ</p>
-          <h1 className="text-4xl font-black tracking-tight mb-2 grad-text">Your Targets</h1>
-          <p className="text-base" style={{ color: "var(--t2)" }}>Every goal tracked. Every milestone visible. No excuses.</p>
+        <div className="afu" style={{ marginBottom: 36 }}>
+          <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--blue)", opacity: 0.7, marginBottom: 8 }}>Goals HQ</p>
+          <h1 style={{ fontSize: 36, fontWeight: 800, color: "var(--t1)", letterSpacing: "-0.02em", marginBottom: 6 }}>Your Targets</h1>
+          <p style={{ fontSize: 14, color: "var(--t2)" }}>Every goal tracked. Every milestone visible. No excuses.</p>
         </div>
 
         {/* Summary */}
-        <div className="grid grid-cols-3 gap-5 mb-7">
+        <div className="grid grid-cols-3 gap-5" style={{ marginBottom: 28 }}>
           {[
-            { label: "Active Goals",    val: GOALS.length.toString(),      color: "var(--teal)"  },
-            { label: "Milestones Hit",  val: milestonesDone.toString(),    color: "var(--green)" },
-            { label: "Avg Progress",    val: `${avgPct}%`,                 color: "var(--orange)"},
+            { label: "Active Goals",   val: GOALS.length.toString(),   color: "var(--blue)"  },
+            { label: "Milestones Hit", val: milestonesDone.toString(), color: "var(--green)" },
+            { label: "Avg Progress",   val: `${avgPct}%`,              color: "var(--amber)" },
           ].map((s, i) => (
-            <HudCard key={s.label} className="p-6" delay={i * .07}>
-              <p className="text-sm font-semibold tracking-widest uppercase mb-3" style={{ color: "var(--t3)" }}>{s.label}</p>
-              <div className="text-5xl font-black" style={{ color: s.color }}>{s.val}</div>
+            <HudCard key={s.label} style={{ padding: "24px 28px" }} delay={i * .07}>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 14 }}>{s.label}</p>
+              <div style={{ fontSize: 44, fontWeight: 800, color: s.color, fontFamily: "monospace" }}>{s.val}</div>
             </HudCard>
           ))}
         </div>
 
         {/* Goal cards */}
-        <div className="space-y-6">
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {GOALS.map((g, gi) => {
             const pct = Math.min(100, Math.round((g.current / g.target) * 100));
             const C = 2 * Math.PI * 22;
@@ -84,7 +84,7 @@ export default function GoalsPage() {
               : `${g.current} of ${g.target} ${g.unit}`;
 
             return (
-              <HudCard key={g.label} className="p-8" delay={.15 + gi * .07}>
+              <HudCard key={g.label} style={{ padding: "32px 32px" }} delay={.15 + gi * .07}>
                 <div className="flex items-start gap-6">
                   {/* Radial */}
                   <div className="flex-shrink-0 flex flex-col items-center gap-1">
@@ -116,9 +116,8 @@ export default function GoalsPage() {
                     <p className="text-sm leading-relaxed mb-4" style={{ color: "var(--t2)" }}>{g.desc}</p>
 
                     {/* Progress bar */}
-                    <div className="h-2 rounded-full mb-2" style={{ background: "rgba(6,182,212,0.07)" }}>
-                      <div className="h-2 rounded-full transition-all duration-1000"
-                        style={{ width: `${pct || 1}%`, background: g.colorHex, boxShadow: `0 0 10px ${g.colorHex}50` }} />
+                    <div style={{ height: 4, borderRadius: 2, background: "var(--border2)", marginBottom: 8 }}>
+                      <div style={{ height: 4, borderRadius: 2, width: `${pct || 1}%`, background: g.colorHex, transition: "width 1s ease" }} />
                     </div>
                     <div className="flex items-center justify-between mb-4">
                       <span className="text-sm font-mono" style={{ color: "var(--t3)" }}>{dispVal}</span>
