@@ -14,6 +14,7 @@ interface NewsItem    { title: string; source: string; tag: string; link: string
 interface Habit       { id: string; name: string; completed: boolean }
 interface Goal        { id: string; current: number }
 interface Task        { id: string; text: string; completed: boolean }
+interface CalEvent    { id: string; title: string; start: string; end: string; allDay: boolean; location: string }
 
 const WEALTH_DEFAULTS = { ira: 2720, savings: 2800, btc_amount: 0.02, xrp_amount: 200 };
 
@@ -243,6 +244,8 @@ export default function Dashboard() {
   const [addingTask, setAddingTask] = useState(false);
   const [newTaskText, setNewTaskText] = useState("");
   const [alertDismissed, setAlertDismissed] = useState(false);
+  const [calEvents, setCalEvents]           = useState<CalEvent[]>([]);
+  const [calConnected, setCalConnected]     = useState<boolean | null>(null);
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000);
@@ -263,6 +266,18 @@ export default function Dashboard() {
       if (data && data.length > 0) setWealth({ ...WEALTH_DEFAULTS, ...data[0] });
     });
     supabase.from("tasks").select("id,text,completed").order("created_at").then(({ data }) => { if (data) setTasks(data); });
+
+    // Fetch today's calendar events
+    const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+    const todayEnd   = new Date(); todayEnd.setHours(23,59,59,999);
+    fetch(`/api/google/calendar?timeMin=${todayStart.toISOString()}&timeMax=${todayEnd.toISOString()}`)
+      .then(r => r.json())
+      .then(j => {
+        setCalConnected(j.connected ?? false);
+        if (j.events) setCalEvents(j.events as CalEvent[]);
+      })
+      .catch(() => setCalConnected(false));
+
     const cryptoInterval = setInterval(fetchCrypto, 30000);
     return () => clearInterval(cryptoInterval);
   }, []);
@@ -571,28 +586,48 @@ export default function Dashboard() {
             <a href="/dashboard/calendar" style={{ fontSize: 11, color: "var(--blue)", textDecoration: "none" }}>Full calendar →</a>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {[
-              { time: "9:00a",  title: "Team standup",                    duration: "30 min", type: "Work"   },
-              { time: "11:00a", title: "Client call — Northside Staffing", duration: "1 hr",   type: "Work"   },
-              { time: "2:00p",  title: "Review Q2 pipeline",              duration: "45 min", type: "Work"   },
-              { time: "6:00p",  title: "Gym — Pull Day",                  duration: "1 hr",   type: "Health" },
-            ].map((ev, i) => (
-              <div key={i} style={{
-                display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 4,
-                background: "var(--surface2)", borderLeft: `2px solid ${ev.type === "Health" ? "var(--green)" : "var(--blue)"}`,
+            {calConnected === false ? (
+              <a href="/api/auth/google" style={{
+                display: "flex", alignItems: "center", gap: 8, padding: "12px", borderRadius: 6,
+                background: "rgba(69,137,255,0.05)", border: "1px dashed rgba(69,137,255,0.2)",
+                textDecoration: "none",
               }}>
-                <span style={{ fontFamily: "monospace", fontSize: 11, color: "var(--t3)", width: 40, flexShrink: 0 }}>{ev.time}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--t1)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ev.title}</div>
-                  <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 1 }}>{ev.duration}</div>
-                </div>
-                <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 3, flexShrink: 0,
-                  background: ev.type === "Health" ? "rgba(34,197,94,0.08)" : "rgba(69,137,255,0.08)",
-                  color: ev.type === "Health" ? "var(--green)" : "var(--blue)",
-                  border: `1px solid ${ev.type === "Health" ? "rgba(34,197,94,0.2)" : "rgba(69,137,255,0.2)"}`,
-                }}>{ev.type}</span>
-              </div>
-            ))}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+                </svg>
+                <span style={{ fontSize: 12, color: "var(--blue)", fontWeight: 600 }}>Connect Google Calendar</span>
+              </a>
+            ) : calEvents.length === 0 && calConnected ? (
+              <p style={{ fontSize: 12, color: "var(--t4)", padding: "8px 0", textAlign: "center" }}>No events today.</p>
+            ) : calConnected === null ? (
+              <p style={{ fontSize: 12, color: "var(--t4)", padding: "8px 0" }}>Loading…</p>
+            ) : (
+              calEvents.map((ev, i) => {
+                const start   = new Date(ev.start);
+                const end     = new Date(ev.end);
+                const timeStr = ev.allDay ? "All day" : start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+                const durMs   = end.getTime() - start.getTime();
+                const durMin  = Math.round(durMs / 60000);
+                const durStr  = durMin >= 60
+                  ? `${Math.floor(durMin/60)}h${durMin%60 ? ` ${durMin%60}m` : ""}`
+                  : `${durMin}m`;
+                const isPast  = !ev.allDay && end < new Date();
+                return (
+                  <div key={ev.id ?? i} style={{
+                    display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 4,
+                    background: isPast ? "rgba(255,255,255,0.01)" : "var(--surface2)",
+                    borderLeft: `2px solid ${isPast ? "var(--border2)" : "var(--blue)"}`,
+                    opacity: isPast ? 0.5 : 1,
+                  }}>
+                    <span style={{ fontFamily: "monospace", fontSize: 11, color: "var(--t3)", width: 46, flexShrink: 0 }}>{timeStr}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--t1)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ev.title}</div>
+                      {!ev.allDay && <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 1 }}>{durStr}{ev.location ? ` · ${ev.location}` : ""}</div>}
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </HudCard>
 

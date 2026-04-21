@@ -1,138 +1,116 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { HudCard } from "@/components/ui/HudCard";
+import { createClient } from "@supabase/supabase-js";
 
-type FilterType = "all" | "chat" | "action" | "telegram";
-type SortType   = "newest" | "oldest";
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
-interface ArchiveEntry {
+interface ChatMessage {
   id: string;
-  type: "chat" | "action" | "telegram";
-  title: string;
-  preview: string;
-  timestamp: string;
-  messages?: { role: "user" | "max"; content: string }[];
-  actionDetail?: string;
+  session_id: string;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
 }
 
-/* Placeholder data — will be replaced with real Supabase history in Phase 4 */
-const SAMPLE: ArchiveEntry[] = [
-  {
-    id: "1", type: "chat", title: "Portfolio Analysis",
-    preview: "What's my net worth right now and how is crypto performing?",
-    timestamp: new Date(Date.now() - 1000 * 60 * 35).toISOString(),
-    messages: [
-      { role: "user", content: "What's my net worth right now and how is crypto performing?" },
-      { role: "max",  content: "Your tracked net worth sits at $8,420. BTC is up 3.2% today adding $54 to your position. XRP is flat at +0.4%. IRA and cash holdings are unchanged. You're up ~$56 on the day from crypto movement alone." },
-      { role: "user", content: "Should I add more to BTC this week?" },
-      { role: "max",  content: "Your emergency fund is at $2,800 of a $10K target. Until that's fully funded, putting more into BTC adds risk. If you have discretionary cash above your monthly needs, small adds are fine — but the emergency fund should take priority at your stage." },
-    ],
-  },
-  {
-    id: "2", type: "action", title: "Task Added",
-    preview: "Added task: Review Q2 pipeline before Thursday meeting",
-    timestamp: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
-    actionDetail: "Task 'Review Q2 pipeline before Thursday meeting' added to task list with high priority.",
-  },
-  {
-    id: "3", type: "telegram", title: "Telegram: /crypto",
-    preview: "BTC $94,210 (+3.2%) · XRP $2.29 (+0.4%)",
-    timestamp: new Date(Date.now() - 1000 * 60 * 180).toISOString(),
-    messages: [
-      { role: "user", content: "/crypto" },
-      { role: "max",  content: "Crypto — Live\nBTC  $94,210  (+3.2% 24h)\nXRP  $2.2900  (+0.4% 24h)" },
-    ],
-  },
-  {
-    id: "4", type: "chat", title: "Habit Check-in",
-    preview: "Can you summarize my habit performance this week?",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
-    messages: [
-      { role: "user", content: "Can you summarize my habit performance this week?" },
-      { role: "max",  content: "Gym streak is strong at 12 days — don't break that. Morning routine is your weakest link, 2/5 this week. Protein goal missed 3 days. The pattern is evening discipline breaks down when you miss the gym. Worth tracking that correlation." },
-    ],
-  },
-  {
-    id: "5", type: "action", title: "Wealth Updated",
-    preview: "BTC holdings updated: 0.02 → 0.025 BTC",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(),
-    actionDetail: "Portfolio updated via Finance Hub. BTC amount changed from 0.02 to 0.025 BTC. Net worth recalculated.",
-  },
-  {
-    id: "6", type: "telegram", title: "Telegram: Morning status",
-    preview: "How are my habits looking today?",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 20).toISOString(),
-    messages: [
-      { role: "user", content: "How are my habits looking today?" },
-      { role: "max",  content: "3 of 6 habits done. Gym: ✅ Workout logged: ✅ Morning routine: ✅ Read 30 min: ❌ Phone off by 11: ❌ Protein goal: ❌\n\nSolid start. Get the reading in before tonight." },
-    ],
-  },
-];
+interface Session {
+  session_id: string;
+  messages: ChatMessage[];
+  first_at: string;
+  last_at: string;
+  preview: string;
+  title: string;
+}
+
+interface TelegramMsg {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+}
+
+type TabType = "chat" | "telegram";
 
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60000);
+  if (m < 1)   return "just now";
   if (m < 60)  return `${m}m ago`;
   const h = Math.floor(m / 60);
   if (h < 24)  return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
+  const d = Math.floor(h / 24);
+  if (d === 1) return "Yesterday";
+  if (d < 7)   return `${d}d ago`;
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-const TYPE_COLOR: Record<string, string> = {
-  chat:     "var(--blue)",
-  action:   "var(--green)",
-  telegram: "var(--amber)",
-};
-
-const TYPE_LABEL: Record<string, string> = {
-  chat:     "Chat",
-  action:   "Action",
-  telegram: "Telegram",
-};
-
-const TYPE_ICON: Record<string, React.ReactNode> = {
-  chat: (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-    </svg>
-  ),
-  action: (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  ),
-  telegram: (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
-    </svg>
-  ),
-};
+function groupBySession(messages: ChatMessage[]): Session[] {
+  const map = new Map<string, ChatMessage[]>();
+  for (const m of messages) {
+    if (!map.has(m.session_id)) map.set(m.session_id, []);
+    map.get(m.session_id)!.push(m);
+  }
+  return Array.from(map.entries())
+    .map(([session_id, msgs]) => {
+      const sorted   = msgs.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      const firstUser = sorted.find(m => m.role === "user");
+      const last      = sorted[sorted.length - 1];
+      const title     = firstUser?.content.slice(0, 60) ?? "Conversation";
+      const preview   = sorted.find(m => m.role === "assistant")?.content.slice(0, 100) ?? "";
+      return { session_id, messages: sorted, first_at: sorted[0].created_at, last_at: last.created_at, preview, title };
+    })
+    .sort((a, b) => new Date(b.last_at).getTime() - new Date(a.last_at).getTime());
+}
 
 export default function ArchivePage() {
-  const [filter,   setFilter]   = useState<FilterType>("all");
-  const [sort,     setSort]     = useState<SortType>("newest");
-  const [search,   setSearch]   = useState("");
-  const [selected, setSelected] = useState<ArchiveEntry | null>(SAMPLE[0]);
+  const [tab,       setTab]       = useState<TabType>("chat");
+  const [sessions,  setSessions]  = useState<Session[]>([]);
+  const [telegram,  setTelegram]  = useState<TelegramMsg[]>([]);
+  const [loading,   setLoading]   = useState(true);
+  const [selected,  setSelected]  = useState<Session | null>(null);
+  const [search,    setSearch]    = useState("");
 
-  const filtered = SAMPLE
-    .filter(e => filter === "all" || e.type === filter)
-    .filter(e => !search || e.title.toLowerCase().includes(search.toLowerCase()) || e.preview.toLowerCase().includes(search.toLowerCase()))
-    .sort((a, b) => sort === "newest"
-      ? new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      : new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-    );
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      const [chatRes, tgRes] = await Promise.all([
+        supabase.from("chat_history").select("*").order("created_at", { ascending: false }).limit(400),
+        supabase.from("telegram_history").select("*").order("created_at", { ascending: false }).limit(200),
+      ]);
+      if (chatRes.data) {
+        const grouped = groupBySession(chatRes.data as ChatMessage[]);
+        setSessions(grouped);
+        if (grouped.length > 0 && !selected) setSelected(grouped[0]);
+      }
+      if (tgRes.data) setTelegram(tgRes.data as TelegramMsg[]);
+      setLoading(false);
+    }
+    load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const stats = {
-    chats:    SAMPLE.filter(e => e.type === "chat").length,
-    actions:  SAMPLE.filter(e => e.type === "action").length,
-    telegram: SAMPLE.filter(e => e.type === "telegram").length,
-  };
+  const filteredSessions = sessions.filter(s =>
+    !search || s.title.toLowerCase().includes(search.toLowerCase()) || s.preview.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const telegramPairs: { user: TelegramMsg; assistant: TelegramMsg | null }[] = [];
+  const sorted = [...telegram].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  for (let i = 0; i < sorted.length; i++) {
+    if (sorted[i].role === "user") {
+      telegramPairs.push({ user: sorted[i], assistant: sorted[i + 1]?.role === "assistant" ? sorted[i + 1] : null });
+      if (sorted[i + 1]?.role === "assistant") i++;
+    }
+  }
+  telegramPairs.reverse();
 
   return (
     <div style={{ padding: "28px 36px", background: "var(--bg)", minHeight: "100vh" }}>
 
-      {/* ── HEADER ── */}
+      {/* Header */}
       <div className="afu" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
           <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 6 }}>M.A.X. History</p>
@@ -140,11 +118,10 @@ export default function ArchivePage() {
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           {[
-            { label: "Conversations", value: stats.chats,    color: "var(--blue)"  },
-            { label: "Actions",       value: stats.actions,  color: "var(--green)" },
-            { label: "Telegram",      value: stats.telegram, color: "var(--amber)" },
+            { label: "Conversations", value: sessions.length,        color: "var(--blue)"  },
+            { label: "Telegram",      value: telegramPairs.length,   color: "var(--amber)" },
           ].map(s => (
-            <div key={s.label} style={{ padding: "10px 16px", borderRadius: 8, background: "var(--surface)", border: "1px solid var(--border)", textAlign: "center" }}>
+            <div key={s.label} style={{ padding: "10px 20px", borderRadius: 8, background: "var(--surface)", border: "1px solid var(--border)", textAlign: "center" }}>
               <p style={{ fontSize: 22, fontWeight: 800, color: s.color, fontFamily: "monospace" }}>{s.value}</p>
               <p style={{ fontSize: 10, color: "var(--t3)", fontWeight: 600, marginTop: 2 }}>{s.label}</p>
             </div>
@@ -152,106 +129,97 @@ export default function ArchivePage() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "360px 1fr", gap: 16, height: "calc(100vh - 180px)" }}>
+      {/* Tabs */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+        {(["chat", "telegram"] as TabType[]).map(t => (
+          <button key={t} onClick={() => setTab(t)} style={{
+            padding: "7px 18px", borderRadius: 6, cursor: "pointer", fontSize: 12, fontWeight: 600,
+            background: tab === t ? "rgba(69,137,255,0.12)" : "transparent",
+            border: `1px solid ${tab === t ? "rgba(69,137,255,0.3)" : "var(--border)"}`,
+            color: tab === t ? "var(--blue)" : "var(--t3)", transition: "all .15s", textTransform: "capitalize",
+          }}>{t === "chat" ? "Web Chat" : "Telegram"}</button>
+        ))}
+      </div>
 
-        {/* ── LEFT: Entry list ── */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {loading ? (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 300 }}>
+          <div style={{ display: "flex", gap: 6 }}>
+            {[0,1,2].map(i => <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--blue)", opacity: 0.5, animation: `bounce 0.8s ease-in-out ${i*0.18}s infinite` }} />)}
+          </div>
+        </div>
+      ) : tab === "chat" ? (
 
-          {/* Controls */}
-          <div style={{ display: "flex", gap: 8 }}>
-            <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "7px 12px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "340px 1fr", gap: 16, height: "calc(100vh - 220px)" }}>
+
+          {/* Left: session list */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "7px 12px" }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--t4)" strokeWidth="2" strokeLinecap="round">
                 <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
               </svg>
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search archive…"
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search conversations…"
                 style={{ background: "none", border: "none", outline: "none", fontSize: 12, color: "var(--t1)", flex: 1 }} />
             </div>
-            <select value={sort} onChange={e => setSort(e.target.value as SortType)} style={{
-              background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8,
-              padding: "7px 10px", fontSize: 11, color: "var(--t2)", outline: "none", cursor: "pointer",
-            }}>
-              <option value="newest">Newest</option>
-              <option value="oldest">Oldest</option>
-            </select>
-          </div>
 
-          {/* Filter tabs */}
-          <div style={{ display: "flex", gap: 4 }}>
-            {(["all","chat","action","telegram"] as FilterType[]).map(f => (
-              <button key={f} onClick={() => setFilter(f)} style={{
-                flex: 1, padding: "6px 0", borderRadius: 6, cursor: "pointer", fontSize: 11, fontWeight: 600,
-                background: filter === f ? "rgba(69,137,255,0.12)" : "transparent",
-                border: `1px solid ${filter === f ? "rgba(69,137,255,0.3)" : "var(--border)"}`,
-                color: filter === f ? "var(--blue)" : "var(--t3)", transition: "all .15s",
-                textTransform: "capitalize",
-              }}>{f}</button>
-            ))}
-          </div>
-
-          {/* Entry list */}
-          <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
-            {filtered.length === 0 && (
-              <p style={{ fontSize: 12, color: "var(--t4)", textAlign: "center", padding: "40px 0" }}>No entries found.</p>
-            )}
-            {filtered.map(entry => (
-              <button key={entry.id} onClick={() => setSelected(entry)} style={{
-                textAlign: "left", padding: "12px 14px", borderRadius: 8, cursor: "pointer",
-                background: selected?.id === entry.id ? "rgba(69,137,255,0.08)" : "var(--surface)",
-                border: `1px solid ${selected?.id === entry.id ? "rgba(69,137,255,0.25)" : "var(--border)"}`,
-                transition: "all .15s",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                  <span style={{ color: TYPE_COLOR[entry.type], display: "flex" }}>{TYPE_ICON[entry.type]}</span>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: TYPE_COLOR[entry.type], letterSpacing: "0.06em" }}>{TYPE_LABEL[entry.type].toUpperCase()}</span>
-                  <span style={{ fontSize: 10, color: "var(--t4)", marginLeft: "auto" }}>{timeAgo(entry.timestamp)}</span>
-                </div>
-                <p style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)", marginBottom: 4, lineHeight: 1.4 }}>{entry.title}</p>
-                <p style={{ fontSize: 11, color: "var(--t3)", lineHeight: 1.4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{entry.preview}</p>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* ── RIGHT: Detail view ── */}
-        <HudCard style={{ padding: "20px 24px", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-          {!selected ? (
-            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <p style={{ fontSize: 13, color: "var(--t4)" }}>Select an entry to view details.</p>
-            </div>
-          ) : (
-            <>
-              {/* Detail header */}
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16, paddingBottom: 14, borderBottom: "1px solid var(--border)" }}>
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                    <span style={{ color: TYPE_COLOR[selected.type], display: "flex" }}>{TYPE_ICON[selected.type]}</span>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: TYPE_COLOR[selected.type], letterSpacing: "0.08em" }}>{TYPE_LABEL[selected.type].toUpperCase()}</span>
-                  </div>
-                  <h2 style={{ fontSize: 16, fontWeight: 700, color: "var(--t1)", marginBottom: 4 }}>{selected.title}</h2>
-                  <p style={{ fontSize: 11, color: "var(--t4)" }}>
-                    {new Date(selected.timestamp).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
-                    {" · "}
-                    {new Date(selected.timestamp).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
+            <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
+              {filteredSessions.length === 0 && (
+                <div style={{ padding: "40px 20px", textAlign: "center" }}>
+                  <p style={{ fontSize: 13, color: "var(--t3)", marginBottom: 8 }}>
+                    {sessions.length === 0 ? "No conversations yet." : "No results."}
                   </p>
-                </div>
-                <div style={{ padding: "4px 10px", borderRadius: 20, background: `${TYPE_COLOR[selected.type]}15`, border: `1px solid ${TYPE_COLOR[selected.type]}30` }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: TYPE_COLOR[selected.type] }}>{timeAgo(selected.timestamp)}</span>
-                </div>
-              </div>
-
-              {/* Action detail */}
-              {selected.type === "action" && selected.actionDetail && (
-                <div style={{ padding: "14px 16px", borderRadius: 8, background: "rgba(34,197,94,0.05)", border: "1px solid rgba(34,197,94,0.12)", marginBottom: 16 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--green)" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: "var(--green)", letterSpacing: "0.08em" }}>ACTION COMPLETED</span>
-                  </div>
-                  <p style={{ fontSize: 13, color: "var(--t2)", lineHeight: 1.6 }}>{selected.actionDetail}</p>
+                  {sessions.length === 0 && (
+                    <p style={{ fontSize: 11, color: "var(--t4)", lineHeight: 1.6 }}>
+                      Start a chat with M.A.X. and it will appear here.
+                    </p>
+                  )}
                 </div>
               )}
+              {filteredSessions.map(s => (
+                <button key={s.session_id} onClick={() => setSelected(s)} style={{
+                  textAlign: "left", padding: "12px 14px", borderRadius: 8, cursor: "pointer",
+                  background: selected?.session_id === s.session_id ? "rgba(69,137,255,0.08)" : "var(--surface)",
+                  border: `1px solid ${selected?.session_id === s.session_id ? "rgba(69,137,255,0.25)" : "var(--border)"}`,
+                  transition: "all .15s",
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                    </svg>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "var(--blue)", letterSpacing: "0.06em" }}>CHAT</span>
+                    <span style={{ fontSize: 10, color: "var(--t4)", marginLeft: "auto" }}>{timeAgo(s.last_at)}</span>
+                  </div>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)", marginBottom: 4, lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {s.title}{s.title.length >= 60 ? "…" : ""}
+                  </p>
+                  <p style={{ fontSize: 11, color: "var(--t3)", lineHeight: 1.4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {s.preview}
+                  </p>
+                  <p style={{ fontSize: 10, color: "var(--t4)", marginTop: 4 }}>{s.messages.length} messages</p>
+                </button>
+              ))}
+            </div>
+          </div>
 
-              {/* Conversation */}
-              {selected.messages && (
+          {/* Right: conversation detail */}
+          <HudCard style={{ padding: "20px 24px", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+            {!selected ? (
+              <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <p style={{ fontSize: 13, color: "var(--t4)" }}>Select a conversation to view.</p>
+              </div>
+            ) : (
+              <>
+                <div style={{ marginBottom: 16, paddingBottom: 14, borderBottom: "1px solid var(--border)" }}>
+                  <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--t1)", marginBottom: 4, lineHeight: 1.4 }}>
+                    {selected.title}{selected.title.length >= 60 ? "…" : ""}
+                  </h2>
+                  <p style={{ fontSize: 11, color: "var(--t4)" }}>
+                    {new Date(selected.first_at).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+                    {" · "}
+                    {new Date(selected.first_at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
+                    {" · "}
+                    {selected.messages.length} messages
+                  </p>
+                </div>
                 <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
                   {selected.messages.map((m, i) => (
                     <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
@@ -263,7 +231,7 @@ export default function ArchivePage() {
                           : { background: "var(--surface2)", color: "var(--t2)", border: "1px solid var(--border)" }
                         ),
                       }}>
-                        {m.role === "max" && (
+                        {m.role === "assistant" && (
                           <p style={{ fontSize: 9, fontWeight: 700, color: "var(--blue)", letterSpacing: "0.1em", marginBottom: 4 }}>M.A.X.</p>
                         )}
                         {m.content.split("\n").map((line, li, arr) => (
@@ -273,11 +241,50 @@ export default function ArchivePage() {
                     </div>
                   ))}
                 </div>
-              )}
-            </>
-          )}
-        </HudCard>
-      </div>
+              </>
+            )}
+          </HudCard>
+        </div>
+
+      ) : (
+
+        /* Telegram tab */
+        <div style={{ display: "grid", gridTemplateColumns: "340px 1fr", gap: 16, height: "calc(100vh - 220px)" }}>
+          <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
+            {telegramPairs.length === 0 && (
+              <div style={{ padding: "40px 20px", textAlign: "center" }}>
+                <p style={{ fontSize: 13, color: "var(--t3)", marginBottom: 8 }}>No Telegram messages yet.</p>
+                <p style={{ fontSize: 11, color: "var(--t4)" }}>Message M.A.X. on Telegram and it will appear here.</p>
+              </div>
+            )}
+            {telegramPairs.map((pair, i) => (
+              <div key={i} style={{
+                padding: "12px 14px", borderRadius: 8,
+                background: "var(--surface)", border: "1px solid var(--border)",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" strokeWidth="2" strokeLinecap="round">
+                    <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
+                  </svg>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--amber)", letterSpacing: "0.06em" }}>TELEGRAM</span>
+                  <span style={{ fontSize: 10, color: "var(--t4)", marginLeft: "auto" }}>{timeAgo(pair.user.created_at)}</span>
+                </div>
+                <p style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)", marginBottom: pair.assistant ? 8 : 0, lineHeight: 1.4 }}>
+                  {pair.user.content}
+                </p>
+                {pair.assistant && (
+                  <p style={{ fontSize: 11, color: "var(--t3)", lineHeight: 1.5, paddingTop: 8, borderTop: "1px solid var(--border)" }}>
+                    {pair.assistant.content.slice(0, 180)}{pair.assistant.content.length > 180 ? "…" : ""}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+          <HudCard style={{ padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <p style={{ fontSize: 13, color: "var(--t4)" }}>Select a message to view the full exchange.</p>
+          </HudCard>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { HudCard } from "@/components/ui/HudCard";
 
 type Msg = { role: "user" | "max"; content: string; time: string };
@@ -44,6 +44,7 @@ export default function ChatPage() {
   const [voiceOut, setVoiceOut]   = useState(false);
   const bottomRef  = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<ISpeechRecognition | null>(null);
+  const sessionId = useMemo(() => crypto.randomUUID(), []);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
@@ -108,6 +109,7 @@ export default function ChatPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          session_id: sessionId,
           messages: updated.map(m => ({
             role: m.role === "max" ? "model" : "user",
             content: m.content,

@@ -76,9 +76,12 @@ export default function EmailPage() {
   const [cat,       setCat]       = useState<Cat>("all");
   const [selected,  setSelected]  = useState<Email | null>(null);
   const [search,    setSearch]    = useState("");
-  const [drafting,  setDrafting]  = useState(false);
-  const [draftText, setDraftText] = useState("");
-  const [draftSent, setDraftSent] = useState(false);
+  const [drafting,     setDrafting]     = useState(false);
+  const [draftText,    setDraftText]    = useState("");
+  const [draftSent,    setDraftSent]    = useState(false);
+  const [aiDigest,     setAiDigest]     = useState("");
+  const [aiActions,    setAiActions]    = useState<Record<string, string>>({});
+  const [digestLoading,setDigestLoading]= useState(false);
 
   useEffect(() => {
     fetch("/api/google/gmail?maxResults=50")
@@ -107,6 +110,23 @@ export default function EmailPage() {
           });
           setEmails(parsed);
           setSelected(parsed[0] ?? null);
+
+          // Generate AI inbox digest
+          setDigestLoading(true);
+          fetch("/api/email/digest", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              emails: parsed.map(e => ({ from: e.from, subject: e.subject, snippet: e.preview, category: e.category })),
+            }),
+          })
+            .then(r => r.json())
+            .then(j => {
+              if (j.digest) setAiDigest(j.digest);
+              if (j.actions) setAiActions(j.actions);
+            })
+            .catch(() => {})
+            .finally(() => setDigestLoading(false));
         } else {
           setEmails(PLACEHOLDER_EMAILS);
           setSelected(PLACEHOLDER_EMAILS[0]);
@@ -154,8 +174,8 @@ export default function EmailPage() {
   const noise        = emails.filter(e => e.category === "noise");
 
   const aiSummary = connected
-    ? `${actionCount} action item${actionCount !== 1 ? "s" : ""} in your inbox${actionUnread > 0 ? ` (${actionUnread} unread)` : ""}. ${fyi.length} informational${noise.length > 0 ? `, ${noise.length} noise.` : "."}`
-    : "Connect Gmail to get your real inbox with M.A.X. AI triage — action items, FYI, and noise sorted automatically.";
+    ? (aiDigest || (digestLoading ? "Analyzing your inbox…" : `${actionCount} action item${actionCount !== 1 ? "s" : ""}${actionUnread > 0 ? ` (${actionUnread} unread)` : ""}. ${fyi.length} FYI, ${noise.length} noise.`))
+    : "Connect Gmail to get your real inbox with M.A.X. AI triage.";
 
   if (loading) {
     return (
@@ -289,6 +309,18 @@ export default function EmailPage() {
 
             <div style={{ flex: 1, overflowY: "auto", padding: "28px 32px" }}>
               <div style={{ maxWidth: 640 }}>
+                {/* M.A.X. action hint for action-category emails */}
+                {selected.category === "action" && aiActions[selected.subject] && (
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 14px", borderRadius: 8, marginBottom: 20, background: "rgba(69,137,255,0.05)", border: "1px solid rgba(69,137,255,0.15)" }}>
+                    <div style={{ width: 20, height: 20, borderRadius: 5, background: "rgba(69,137,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <span style={{ fontSize: 9, fontWeight: 900, color: "var(--blue)" }}>M</span>
+                    </div>
+                    <p style={{ fontSize: 12, color: "var(--t2)", lineHeight: 1.6 }}>
+                      <span style={{ fontWeight: 700, color: "var(--blue)" }}>Action: </span>
+                      {aiActions[selected.subject]}
+                    </p>
+                  </div>
+                )}
                 {selected.body ? (
                   <pre style={{ fontSize: 13, color: "var(--t2)", lineHeight: 1.8, whiteSpace: "pre-wrap", fontFamily: "inherit", margin: 0 }}>{selected.body}</pre>
                 ) : (
