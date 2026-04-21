@@ -116,13 +116,15 @@ export async function readCrypto() {
 
 /* ────────────────────────────────── WEATHER ── */
 export async function readWeather(location = "orlando") {
-  const res  = await fetch(`${process.env.NEXTAUTH_URL ?? "http://localhost:3000"}/api/weather?location=${location}`).then(r => r.json()).catch(() => null);
+  const base = process.env.APP_URL ?? process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000";
+  const res  = await fetch(`${base}/api/weather?location=${location}`).then(r => r.json()).catch(() => null);
   return res?.data ?? null;
 }
 
 /* ────────────────────────────────── NEWS ── */
 export async function readNews(count = 10) {
-  const res = await fetch(`${process.env.NEXTAUTH_URL ?? "http://localhost:3000"}/api/news?count=${count}`).then(r => r.json()).catch(() => null);
+  const base = process.env.APP_URL ?? process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000";
+  const res = await fetch(`${base}/api/news?count=${count}`).then(r => r.json()).catch(() => null);
   return res?.data ?? [];
 }
 
