@@ -170,11 +170,17 @@ export async function webSearch(query: string) {
 
   const res = await fetch("https://api.tavily.com/search", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ api_key: apiKey, query, max_results: 5, search_depth: "basic" }),
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({ query, max_results: 5, search_depth: "basic" }),
   });
 
-  if (!res.ok) return { error: `Search failed: ${res.status}` };
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    return { error: `Search failed: ${res.status} — ${errText.slice(0, 200)}` };
+  }
   const data = await res.json();
   return {
     answer: data.answer ?? null,
