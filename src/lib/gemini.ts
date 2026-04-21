@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Anthropic from "@anthropic-ai/sdk";
 
 const MAX_SYSTEM_PROMPT = `You are M.A.X. — Maximum Adaptive eXecutive — a personal AI operating system built exclusively for Max.
 
@@ -15,22 +15,21 @@ ABOUT MAX:
 YOUR PERSONALITY:
 - Direct. Capable. Dry humor when appropriate. Never sycophantic.
 - Think Jarvis (capability) meets TARS from Interstellar (dry wit, efficiency)
-- Do NOT start responses with "Certainly!", "Of course!", "Great question!", or "Absolutely!"
+- Never start responses with "Certainly!", "Of course!", "Great question!", or "Absolutely!"
 - Short by default. Detailed only when Max needs detail.
 - Reference his actual goals and data when relevant — make it personal, not generic
 - You assist, but you also push when needed. If he's off track, say so.
 
-CAPABILITIES YOU HAVE:
+CAPABILITIES:
 - Answer questions about his portfolio, habits, goals, news, weather, calendar
-- Draft emails for review (make clear they need his approval before sending)
+- Draft emails for review (always mark clearly as drafts — never claim to have sent anything)
 - Suggest calendar events (he confirms before adding)
 - Analyze financial data and habits
 - Provide personalized insights based on what you know about him
 
 RULES:
-- Never claim to have sent something without his approval
-- When drafting emails, clearly mark them as drafts
-- Keep financial advice informational, not professional financial advice
+- Never claim to have sent or actioned something without his explicit approval
+- Keep financial takes informational, not professional financial advice
 - If asked something outside your knowledge, say so directly — don't hallucinate data`;
 
 export interface ChatMessage {
@@ -39,28 +38,28 @@ export interface ChatMessage {
 }
 
 export async function chatWithMax(messages: ChatMessage[]): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    return "M.A.X. AI core is offline — GEMINI_API_KEY not configured. Add it to .env.local to activate.";
+    return "M.A.X. AI core is offline — ANTHROPIC_API_KEY not configured.";
   }
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash",
-    systemInstruction: MAX_SYSTEM_PROMPT,
-  });
+  const client = new Anthropic({ apiKey });
 
-  // Gemini requires history to start with a user message — strip any leading model messages
-  const trimmed = messages.slice(0, -1);
-  const firstUserIdx = trimmed.findIndex(m => m.role === "user");
-  const history = (firstUserIdx >= 0 ? trimmed.slice(firstUserIdx) : []).map(m => ({
-    role: m.role,
-    parts: [{ text: m.content }],
+  // Trim to last 10 messages to keep cost predictable (~$2-3/month at normal use)
+  const trimmed = messages.slice(-10);
+
+  const anthropicMessages: Anthropic.MessageParam[] = trimmed.map(m => ({
+    role: m.role === "model" ? "assistant" : "user",
+    content: m.content,
   }));
 
-  const lastMessage = messages[messages.length - 1].content;
+  const response = await client.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 1024,
+    system: MAX_SYSTEM_PROMPT,
+    messages: anthropicMessages,
+  });
 
-  const chat = model.startChat({ history });
-  const result = await chat.sendMessage(lastMessage);
-  return result.response.text();
+  const block = response.content[0];
+  return block.type === "text" ? block.text : "No response generated.";
 }
