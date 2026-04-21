@@ -1,0 +1,75 @@
+import { google } from "googleapis";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+export function getOAuthClient() {
+  return new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    process.env.GOOGLE_REDIRECT_URI
+  );
+}
+
+export function getAuthUrl() {
+  const client = getOAuthClient();
+  return client.generateAuthUrl({
+    access_type: "offline",
+    prompt: "consent",
+    scope: [
+      "https://www.googleapis.com/auth/gmail.readonly",
+      "https://www.googleapis.com/auth/gmail.compose",
+      "https://www.googleapis.com/auth/calendar",
+      "https://www.googleapis.com/auth/calendar.events",
+    ],
+  });
+}
+
+export async function getStoredTokens() {
+  const { data } = await supabase
+    .from("google_tokens")
+    .select("*")
+    .eq("user_id", "max")
+    .single();
+  return data;
+}
+
+export async function storeTokens(tokens: {
+  access_token: string;
+  refresh_token?: string | null;
+  expiry_date?: number | null;
+}) {
+  await supabase.from("google_tokens").upsert({
+    user_id: "max",
+    access_token: tokens.access_token,
+    refresh_token: tokens.refresh_token,
+    expiry_date: tokens.expiry_date,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: "user_id" });
+}
+
+export async function getAuthenticatedClient() {
+  const tokens = await getStoredTokens();
+  if (!tokens) return null;
+
+  const client = getOAuthClient();
+  client.setCredentials({
+    access_token: tokens.access_token,
+    refresh_token: tokens.refresh_token,
+    expiry_date: tokens.expiry_date,
+  });
+
+  // Auto-refresh if expired
+  client.on("tokens", async (newTokens) => {
+    await storeTokens({
+      access_token: newTokens.access_token ?? tokens.access_token,
+      refresh_token: newTokens.refresh_token ?? tokens.refresh_token,
+      expiry_date: newTokens.expiry_date ?? tokens.expiry_date,
+    });
+  });
+
+  return client;
+}
