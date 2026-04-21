@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { HudCard } from "@/components/ui/HudCard";
 
 interface Email {
@@ -70,6 +71,7 @@ const PLACEHOLDER_EMAILS: Email[] = [
 ];
 
 export default function EmailPage() {
+  const router = useRouter();
   const [emails,    setEmails]    = useState<Email[]>([]);
   const [connected, setConnected] = useState(false);
   const [loading,   setLoading]   = useState(true);
@@ -160,6 +162,12 @@ export default function EmailPage() {
       setDrafting(false);
     }
   }
+
+  // Persist unread count for sidebar badge
+  useEffect(() => {
+    if (emails.length === 0) return;
+    try { localStorage.setItem("email-unread-count", String(emails.filter(e => e.unread).length)); } catch {}
+  }, [emails]);
 
   const filtered = emails.filter(e => {
     const matchCat    = cat === "all" || e.category === cat;
@@ -293,9 +301,17 @@ export default function EmailPage() {
                   </div>
                   <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--t1)", lineHeight: 1.3, letterSpacing: "-0.01em" }}>{selected.subject}</h2>
                 </div>
-                <button onClick={() => window.dispatchEvent(new CustomEvent("max-open-chat"))} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 13px", borderRadius: 8, cursor: "pointer", flexShrink: 0, marginLeft: 16, background: "rgba(69,137,255,0.08)", border: "1px solid rgba(69,137,255,0.2)", fontSize: 11, fontWeight: 700, color: "var(--blue)" }}>
+                <button
+                  onClick={() => {
+                    if (!selected) return;
+                    const ctx = `Draft a reply to ${selected.from} about "${selected.subject}". Here's what they said: ${selected.body || selected.preview}`;
+                    try { localStorage.setItem("max-draft-context", ctx); } catch {}
+                    router.push("/dashboard/chat");
+                  }}
+                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 13px", borderRadius: 8, cursor: "pointer", flexShrink: 0, marginLeft: 16, background: "rgba(69,137,255,0.08)", border: "1px solid rgba(69,137,255,0.2)", fontSize: 11, fontWeight: 700, color: "var(--blue)" }}
+                >
                   <span style={{ fontSize: 11, fontWeight: 900 }}>M</span>
-                  Ask M.A.X.
+                  Draft Reply with M.A.X.
                 </button>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

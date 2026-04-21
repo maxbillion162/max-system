@@ -53,10 +53,7 @@ function CityCard({ city, lat, lon, tz }: { city: string; lat: number; lon: numb
   }, [lat, lon]);
 
   return (
-    <div style={{
-      padding: "12px 14px", borderRadius: 8,
-      background: "var(--surface)", border: "1px solid var(--border)",
-    }}>
+    <div style={{ padding: "12px 14px", borderRadius: 8, background: "var(--surface)", border: "1px solid var(--border)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
         <p style={{ fontSize: 10, fontWeight: 700, color: "var(--t3)", letterSpacing: "0.08em" }}>{city.toUpperCase()}</p>
         <span style={{ width: 4, height: 4, borderRadius: "50%", background: "var(--green)", display: "inline-block", animation: "pulse-dot 2s ease-in-out infinite" }} />
@@ -77,36 +74,94 @@ function timeAgo(dateStr: string) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
+function isRelevantTicker(n: NewsItem): boolean {
+  const t = n.title.toLowerCase();
+  return n.breaking === true ||
+    n.tag === "Crypto" || n.tag === "AI" || n.tag === "Finance" || n.tag === "Markets" ||
+    t.includes("btc") || t.includes("xrp") || t.includes("bitcoin") || t.includes("ripple") ||
+    t.includes("market") || t.includes("fed") || t.includes("stock") || t.includes("inflation");
+}
+
 export default function FeedPage() {
-  const [news,      setNews]      = useState<NewsItem[]>([]);
-  const [loading,   setLoading]   = useState(true);
-  const [tag,       setTag]       = useState("All");
-  const [search,    setSearch]    = useState("");
-  const [lastFetch, setLastFetch] = useState<Date | null>(null);
-  const [tickIdx,   setTickIdx]   = useState(0);
-  const intervalRef               = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+  const [news,         setNews]         = useState<NewsItem[]>([]);
+  const [loading,      setLoading]      = useState(true);
+  const [tag,          setTag]          = useState("All");
+  const [search,       setSearch]       = useState("");
+  const [lastFetch,    setLastFetch]    = useState<Date | null>(null);
+  const [maxSummary,   setMaxSummary]   = useState("");
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [saved,        setSaved]        = useState<Set<string>>(new Set());
+  const [liveCrypto,   setLiveCrypto]   = useState<{ btc: number; xrp: number; btcChg: number; xrpChg: number } | null>(null);
+  const [tickerHover,  setTickerHover]  = useState(false);
+  const intervalRef    = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+
+  // Load saved bookmarks from localStorage
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem("feed-saved");
+      if (s) setSaved(new Set(JSON.parse(s) as string[]));
+    } catch {}
+  }, []);
+
+  function toggleSave(link: string) {
+    setSaved(prev => {
+      const next = new Set(prev);
+      next.has(link) ? next.delete(link) : next.add(link);
+      try { localStorage.setItem("feed-saved", JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  }
 
   async function fetchNews() {
     try {
       const res = await fetch("/api/news?count=50");
       const j   = await res.json();
-      if (j.data) { setNews(j.data); setLastFetch(new Date()); }
+      if (j.data) {
+        setNews(j.data);
+        setLastFetch(new Date());
+        // Fetch M.A.X. personalized summary
+        setSummaryLoading(true);
+        fetch("/api/feed/summary", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ articles: (j.data as NewsItem[]).slice(0, 20).map((a: NewsItem) => ({ title: a.title, source: a.source, tag: a.tag, snippet: a.snippet })) }),
+        })
+          .then(r => r.json())
+          .then(s => { if (s.summary) setMaxSummary(s.summary); })
+          .catch(() => {})
+          .finally(() => setSummaryLoading(false));
+      }
     } catch {}
     setLoading(false);
   }
+
+  // Fetch live crypto prices
+  useEffect(() => {
+    async function fetchCrypto() {
+      try {
+        const r = await fetch("/api/crypto");
+        const j = await r.json();
+        if (j.data) {
+          const btc = j.data.find((d: { symbol: string }) => d.symbol === "BTC");
+          const xrp = j.data.find((d: { symbol: string }) => d.symbol === "XRP");
+          if (btc && xrp) setLiveCrypto({ btc: btc.price, xrp: xrp.price, btcChg: btc.change24h ?? 0, xrpChg: xrp.change24h ?? 0 });
+        }
+      } catch {}
+    }
+    fetchCrypto();
+    const id = setInterval(fetchCrypto, 2 * 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     fetchNews();
     intervalRef.current = setInterval(fetchNews, 5 * 60 * 1000);
     return () => clearInterval(intervalRef.current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    const id = setInterval(() => setTickIdx(t => t + 1), 4000);
-    return () => clearInterval(id);
-  }, []);
+  const tickerItems = news.filter(isRelevantTicker).slice(0, 16);
 
-  const breaking = news.filter(n => n.breaking);
   const filtered = news.filter(n => {
     const matchTag    = tag === "All" ? true : tag === "Breaking" ? n.breaking : n.tag === tag;
     const matchSearch = !search || n.title.toLowerCase().includes(search.toLowerCase()) || n.source.toLowerCase().includes(search.toLowerCase());
@@ -118,8 +173,16 @@ export default function FeedPage() {
   return (
     <div style={{ padding: "28px 36px", background: "var(--bg)", minHeight: "100vh" }}>
 
+      {/* CSS for marquee */}
+      <style>{`
+        @keyframes marquee {
+          0%   { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+      `}</style>
+
       {/* ── HEADER ── */}
-      <div className="afu" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
+      <div className="afu" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
         <div>
           <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 6 }}>M.A.X. Intelligence</p>
           <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--t1)", letterSpacing: "-0.02em" }}>World Intel Feed</h1>
@@ -136,22 +199,63 @@ export default function FeedPage() {
         </div>
       </div>
 
-      {/* ── BREAKING TICKER ── */}
-      {breaking.length > 0 && (
-        <div className="afu" style={{ display: "flex", alignItems: "center", marginBottom: 16, borderRadius: 6, overflow: "hidden", border: "1px solid rgba(239,68,68,0.18)" }}>
-          <div style={{ padding: "8px 12px", background: "rgba(239,68,68,0.12)", flexShrink: 0 }}>
-            <span style={{ fontSize: 10, fontWeight: 800, color: "var(--red)", letterSpacing: "0.1em" }}>● LIVE</span>
+      {/* ── ROLLING TICKER ── */}
+      {tickerItems.length > 0 && (
+        <div
+          className="afu"
+          style={{ display: "flex", alignItems: "center", marginBottom: 14, borderRadius: 6, overflow: "hidden", border: "1px solid rgba(6,182,212,0.15)", background: "rgba(6,182,212,0.03)", cursor: "default" }}
+          onMouseEnter={() => setTickerHover(true)}
+          onMouseLeave={() => setTickerHover(false)}
+        >
+          <div style={{ padding: "8px 12px", background: "rgba(6,182,212,0.08)", flexShrink: 0, borderRight: "1px solid rgba(6,182,212,0.12)" }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color: "var(--teal)", letterSpacing: "0.1em" }}>● LIVE</span>
           </div>
-          <div style={{ flex: 1, overflow: "hidden", padding: "8px 14px" }}>
-            <p style={{ fontSize: 12, color: "var(--t2)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {breaking[tickIdx % breaking.length]?.title}
-            </p>
+          <div style={{ flex: 1, overflow: "hidden", padding: "0" }}>
+            <div style={{
+              display: "flex",
+              width: "200%",
+              animation: "marquee 40s linear infinite",
+              animationPlayState: tickerHover ? "paused" : "running",
+            }}>
+              {[...tickerItems, ...tickerItems].map((n, i) => (
+                <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{
+                  display: "inline-flex", alignItems: "center", gap: 10, padding: "8px 24px",
+                  flexShrink: 0, textDecoration: "none", borderRight: "1px solid rgba(6,182,212,0.08)",
+                }}>
+                  {n.breaking && <span style={{ fontSize: 9, fontWeight: 800, color: "var(--red)", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 3, padding: "1px 5px", flexShrink: 0 }}>LIVE</span>}
+                  <span style={{ fontSize: 12, color: "var(--t2)", whiteSpace: "nowrap", fontWeight: n.breaking ? 600 : 400 }}>{n.title}</span>
+                  <span style={{ fontSize: 10, color: "var(--t4)", whiteSpace: "nowrap", flexShrink: 0 }}>— {n.source}</span>
+                </a>
+              ))}
+            </div>
           </div>
-          <div style={{ padding: "8px 12px", flexShrink: 0, borderLeft: "1px solid rgba(239,68,68,0.12)" }}>
-            <span style={{ fontSize: 10, color: "var(--t4)" }}>{breaking[tickIdx % breaking.length]?.source}</span>
-          </div>
+          {tickerHover && (
+            <div style={{ padding: "8px 12px", flexShrink: 0, borderLeft: "1px solid rgba(6,182,212,0.08)" }}>
+              <span style={{ fontSize: 10, color: "var(--t4)" }}>⏸ paused</span>
+            </div>
+          )}
         </div>
       )}
+
+      {/* ── M.A.X. PERSONALIZED SUMMARY ── */}
+      <div className="afu" style={{ marginBottom: 16, padding: "14px 18px", borderRadius: 10, background: "rgba(69,137,255,0.04)", border: "1px solid rgba(69,137,255,0.12)", display: "flex", alignItems: "flex-start", gap: 12 }}>
+        <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(69,137,255,0.1)", border: "1px solid rgba(69,137,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <span style={{ fontSize: 12, fontWeight: 900, color: "var(--blue)" }}>M</span>
+        </div>
+        <div style={{ flex: 1 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", color: "var(--blue)", marginBottom: 5 }}>M.A.X. BRIEF</p>
+          {summaryLoading ? (
+            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+              {[0,1,2].map(i => <div key={i} style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--blue)", opacity: 0.4, animation: `bounce 0.8s ease-in-out ${i*0.18}s infinite` }} />)}
+              <span style={{ fontSize: 12, color: "var(--t3)", marginLeft: 4 }}>Analyzing news…</span>
+            </div>
+          ) : (
+            <p style={{ fontSize: 13, color: "var(--t2)", lineHeight: 1.7 }}>
+              {maxSummary || (loading ? "Loading news…" : "Refresh to get M.A.X. briefing.")}
+            </p>
+          )}
+        </div>
+      </div>
 
       {/* ── WORLD CLOCKS ── */}
       <div className="afu" style={{ marginBottom: 20 }}>
@@ -207,28 +311,42 @@ export default function FeedPage() {
             <div>
               {filtered.length === 0 && <p style={{ fontSize: 13, color: "var(--t3)", padding: "40px 0", textAlign: "center" }}>No articles match.</p>}
               {filtered.map((n, i) => (
-                <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{
-                  display: "block", padding: "16px 0",
+                <div key={i} style={{
+                  padding: "16px 0",
                   borderBottom: i < filtered.length - 1 ? "1px solid var(--border)" : "none",
                   borderLeft: n.breaking ? "2px solid var(--red)" : "2px solid transparent",
                   paddingLeft: n.breaking ? 14 : 0,
-                  textDecoration: "none", transition: "background .15s",
-                }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.01)")}
-                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                >
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 6 }}>
-                    {n.breaking && <span style={{ fontSize: 9, fontWeight: 800, color: "var(--red)", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 3, padding: "2px 5px", flexShrink: 0, letterSpacing: "0.05em" }}>LIVE</span>}
-                    <p style={{ fontSize: 14, fontWeight: 600, color: "var(--t1)", lineHeight: 1.5, margin: 0 }}>{n.title}</p>
-                  </div>
-                  {n.snippet && <p style={{ fontSize: 12, color: "var(--t3)", lineHeight: 1.6, marginBottom: 8 }}>{n.snippet.slice(0, 160)}{n.snippet.length > 160 ? "…" : ""}</p>}
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--t3)" }}>{n.source}</span>
-                    <span style={{ fontSize: 9, color: "var(--t4)" }}>·</span>
-                    <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 3, background: "var(--surface2)", color: "var(--t2)" }}>{n.tag}</span>
-                    {n.pubDate && <span style={{ fontSize: 10, color: "var(--t4)", marginLeft: "auto" }}>{timeAgo(n.pubDate)}</span>}
-                  </div>
-                </a>
+                  position: "relative",
+                }}>
+                  <a href={n.link} target="_blank" rel="noopener noreferrer" style={{ display: "block", textDecoration: "none" }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 6 }}>
+                      {n.breaking && <span style={{ fontSize: 9, fontWeight: 800, color: "var(--red)", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 3, padding: "2px 5px", flexShrink: 0, letterSpacing: "0.05em" }}>LIVE</span>}
+                      <p style={{ fontSize: 14, fontWeight: 600, color: "var(--t1)", lineHeight: 1.5, margin: 0 }}>{n.title}</p>
+                    </div>
+                    {n.snippet && <p style={{ fontSize: 12, color: "var(--t3)", lineHeight: 1.6, marginBottom: 8 }}>{n.snippet.slice(0, 160)}{n.snippet.length > 160 ? "…" : ""}</p>}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: "var(--t3)" }}>{n.source}</span>
+                      <span style={{ fontSize: 9, color: "var(--t4)" }}>·</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 3, background: "var(--surface2)", color: "var(--t2)" }}>{n.tag}</span>
+                      {n.pubDate && <span style={{ fontSize: 10, color: "var(--t4)", marginLeft: "auto" }}>{timeAgo(n.pubDate)}</span>}
+                    </div>
+                  </a>
+                  {/* Bookmark button */}
+                  <button
+                    onClick={() => toggleSave(n.link)}
+                    title={saved.has(n.link) ? "Unsave" : "Save"}
+                    style={{
+                      position: "absolute", top: 14, right: 0,
+                      background: "none", border: "none", cursor: "pointer",
+                      color: saved.has(n.link) ? "var(--amber)" : "var(--t4)",
+                      padding: 4, transition: "color .15s",
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill={saved.has(n.link) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                    </svg>
+                  </button>
+                </div>
               ))}
             </div>
           )}
@@ -236,6 +354,57 @@ export default function FeedPage() {
 
         {/* Right sidebar */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
+          {/* Live Crypto */}
+          <HudCard style={{ padding: "16px 18px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
+              <span style={{ width: 5, height: 5, borderRadius: "50%", background: liveCrypto ? "var(--green)" : "var(--amber)", display: "inline-block", animation: "pulse-dot 2s ease-in-out infinite" }} />
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)" }}>Live Crypto</p>
+            </div>
+            {liveCrypto ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {[
+                  { sym: "BTC", name: "Bitcoin",  price: liveCrypto.btc, chg: liveCrypto.btcChg },
+                  { sym: "XRP", name: "Ripple",   price: liveCrypto.xrp, chg: liveCrypto.xrpChg },
+                ].map(c => (
+                  <div key={c.sym} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", borderRadius: 6, background: "var(--surface2)", border: "1px solid var(--border)" }}>
+                    <div>
+                      <p style={{ fontSize: 13, fontWeight: 800, color: "var(--t1)" }}>{c.sym}</p>
+                      <p style={{ fontSize: 10, color: "var(--t4)" }}>{c.name}</p>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <p style={{ fontSize: 14, fontWeight: 700, fontFamily: "monospace", color: "var(--t1)" }}>
+                        {c.sym === "BTC" ? `$${Math.round(c.price).toLocaleString()}` : `$${c.price.toFixed(4)}`}
+                      </p>
+                      <p style={{ fontSize: 12, fontWeight: 700, color: c.chg >= 0 ? "var(--green)" : "var(--red)" }}>
+                        {c.chg >= 0 ? "+" : ""}{c.chg.toFixed(2)}%
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ display: "flex", gap: 4, padding: "8px 0" }}>
+                {[0,1,2].map(i => <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--blue)", opacity: 0.4, animation: `bounce 0.8s ease-in-out ${i*0.18}s infinite` }} />)}
+              </div>
+            )}
+          </HudCard>
+
+          {/* Saved articles */}
+          {saved.size > 0 && (
+            <HudCard style={{ padding: "16px 18px" }}>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--amber)", marginBottom: 10 }}>★ Saved</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {news.filter(n => saved.has(n.link)).slice(0, 5).map((n, i) => (
+                  <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+                    <p style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)", lineHeight: 1.4, marginBottom: 2 }}>{n.title.slice(0, 70)}{n.title.length > 70 ? "…" : ""}</p>
+                    <p style={{ fontSize: 10, color: "var(--t4)" }}>{n.source}</p>
+                  </a>
+                ))}
+              </div>
+            </HudCard>
+          )}
+
           <HudCard style={{ padding: "16px 18px" }}>
             <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 12 }}>Coverage by Topic</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -256,20 +425,6 @@ export default function FeedPage() {
               })}
             </div>
           </HudCard>
-
-          {breaking.length > 0 && (
-            <HudCard style={{ padding: "16px 18px" }}>
-              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--red)", marginBottom: 12 }}>● Breaking Now</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {breaking.slice(0, 4).map((n, i) => (
-                  <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
-                    <p style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)", lineHeight: 1.5, marginBottom: 3 }}>{n.title}</p>
-                    <p style={{ fontSize: 10, color: "var(--t4)" }}>{n.source} · {timeAgo(n.pubDate)}</p>
-                  </a>
-                ))}
-              </div>
-            </HudCard>
-          )}
 
           <HudCard style={{ padding: "16px 18px" }}>
             <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 12 }}>Top Sources</p>

@@ -33,6 +33,11 @@ interface TelegramMsg {
   created_at: string;
 }
 
+interface TelegramPair {
+  user: TelegramMsg;
+  assistant: TelegramMsg | null;
+}
+
 type TabType = "chat" | "telegram";
 
 function timeAgo(iso: string) {
@@ -48,6 +53,21 @@ function timeAgo(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+function dateGroup(iso: string): string {
+  const now  = new Date();
+  const d    = new Date(iso);
+  const diff = Math.floor(
+    (new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() -
+     new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()) / 86400000
+  );
+  if (diff === 0) return "Today";
+  if (diff === 1) return "Yesterday";
+  if (diff < 7)  return "This Week";
+  return "Older";
+}
+
+const GROUP_ORDER = ["Today", "Yesterday", "This Week", "Older"];
+
 function groupBySession(messages: ChatMessage[]): Session[] {
   const map = new Map<string, ChatMessage[]>();
   for (const m of messages) {
@@ -56,7 +76,7 @@ function groupBySession(messages: ChatMessage[]): Session[] {
   }
   return Array.from(map.entries())
     .map(([session_id, msgs]) => {
-      const sorted   = msgs.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      const sorted    = msgs.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
       const firstUser = sorted.find(m => m.role === "user");
       const last      = sorted[sorted.length - 1];
       const title     = firstUser?.content.slice(0, 60) ?? "Conversation";
@@ -72,6 +92,7 @@ export default function ArchivePage() {
   const [telegram,  setTelegram]  = useState<TelegramMsg[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [selected,  setSelected]  = useState<Session | null>(null);
+  const [selectedTg,setSelectedTg]= useState<TelegramPair | null>(null);
   const [search,    setSearch]    = useState("");
 
   useEffect(() => {
@@ -84,7 +105,7 @@ export default function ArchivePage() {
       if (chatRes.data) {
         const grouped = groupBySession(chatRes.data as ChatMessage[]);
         setSessions(grouped);
-        if (grouped.length > 0 && !selected) setSelected(grouped[0]);
+        if (grouped.length > 0) setSelected(grouped[0]);
       }
       if (tgRes.data) setTelegram(tgRes.data as TelegramMsg[]);
       setLoading(false);
@@ -97,7 +118,7 @@ export default function ArchivePage() {
     !search || s.title.toLowerCase().includes(search.toLowerCase()) || s.preview.toLowerCase().includes(search.toLowerCase())
   );
 
-  const telegramPairs: { user: TelegramMsg; assistant: TelegramMsg | null }[] = [];
+  const telegramPairs: TelegramPair[] = [];
   const sorted = [...telegram].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   for (let i = 0; i < sorted.length; i++) {
     if (sorted[i].role === "user") {
@@ -107,19 +128,31 @@ export default function ArchivePage() {
   }
   telegramPairs.reverse();
 
+  const filteredTg = telegramPairs.filter(p =>
+    !search ||
+    p.user.content.toLowerCase().includes(search.toLowerCase()) ||
+    (p.assistant?.content ?? "").toLowerCase().includes(search.toLowerCase())
+  );
+
+  // Group filtered sessions by date
+  const groupedSessions = GROUP_ORDER.reduce((acc, g) => {
+    acc[g] = filteredSessions.filter(s => dateGroup(s.last_at) === g);
+    return acc;
+  }, {} as Record<string, Session[]>);
+
   return (
     <div style={{ padding: "28px 36px", background: "var(--bg)", minHeight: "100vh" }}>
 
       {/* Header */}
-      <div className="afu" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
+      <div className="afu" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
           <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 6 }}>M.A.X. History</p>
           <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--t1)", letterSpacing: "-0.02em" }}>Archive</h1>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           {[
-            { label: "Conversations", value: sessions.length,        color: "var(--blue)"  },
-            { label: "Telegram",      value: telegramPairs.length,   color: "var(--amber)" },
+            { label: "Conversations", value: sessions.length,      color: "var(--blue)"  },
+            { label: "Telegram",      value: telegramPairs.length, color: "var(--amber)" },
           ].map(s => (
             <div key={s.label} style={{ padding: "10px 20px", borderRadius: 8, background: "var(--surface)", border: "1px solid var(--border)", textAlign: "center" }}>
               <p style={{ fontSize: 22, fontWeight: 800, color: s.color, fontFamily: "monospace" }}>{s.value}</p>
@@ -129,16 +162,28 @@ export default function ArchivePage() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
-        {(["chat", "telegram"] as TabType[]).map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{
-            padding: "7px 18px", borderRadius: 6, cursor: "pointer", fontSize: 12, fontWeight: 600,
-            background: tab === t ? "rgba(69,137,255,0.12)" : "transparent",
-            border: `1px solid ${tab === t ? "rgba(69,137,255,0.3)" : "var(--border)"}`,
-            color: tab === t ? "var(--blue)" : "var(--t3)", transition: "all .15s", textTransform: "capitalize",
-          }}>{t === "chat" ? "Web Chat" : "Telegram"}</button>
-        ))}
+      {/* Search + Tabs */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "7px 12px", flex: 1, maxWidth: 360 }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--t4)" strokeWidth="2" strokeLinecap="round">
+            <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
+          </svg>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search all history…"
+            style={{ background: "none", border: "none", outline: "none", fontSize: 12, color: "var(--t1)", flex: 1 }} />
+          {search && (
+            <button onClick={() => setSearch("")} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--t4)", padding: 0, fontSize: 14, lineHeight: 1 }}>×</button>
+          )}
+        </div>
+        <div style={{ display: "flex", gap: 6 }}>
+          {(["chat", "telegram"] as TabType[]).map(t => (
+            <button key={t} onClick={() => setTab(t)} style={{
+              padding: "7px 18px", borderRadius: 6, cursor: "pointer", fontSize: 12, fontWeight: 600,
+              background: tab === t ? "rgba(69,137,255,0.12)" : "transparent",
+              border: `1px solid ${tab === t ? "rgba(69,137,255,0.3)" : "var(--border)"}`,
+              color: tab === t ? "var(--blue)" : "var(--t3)", transition: "all .15s", textTransform: "capitalize",
+            }}>{t === "chat" ? "Web Chat" : "Telegram"}</button>
+          ))}
+        </div>
       </div>
 
       {loading ? (
@@ -149,55 +194,56 @@ export default function ArchivePage() {
         </div>
       ) : tab === "chat" ? (
 
-        <div style={{ display: "grid", gridTemplateColumns: "340px 1fr", gap: 16, height: "calc(100vh - 220px)" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "340px 1fr", gap: 16, height: "calc(100vh - 240px)" }}>
 
-          {/* Left: session list */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "7px 12px" }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--t4)" strokeWidth="2" strokeLinecap="round">
-                <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
-              </svg>
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search conversations…"
-                style={{ background: "none", border: "none", outline: "none", fontSize: 12, color: "var(--t1)", flex: 1 }} />
-            </div>
-
-            <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
-              {filteredSessions.length === 0 && (
-                <div style={{ padding: "40px 20px", textAlign: "center" }}>
-                  <p style={{ fontSize: 13, color: "var(--t3)", marginBottom: 8 }}>
-                    {sessions.length === 0 ? "No conversations yet." : "No results."}
-                  </p>
-                  {sessions.length === 0 && (
-                    <p style={{ fontSize: 11, color: "var(--t4)", lineHeight: 1.6 }}>
-                      Start a chat with M.A.X. and it will appear here.
-                    </p>
-                  )}
-                </div>
-              )}
-              {filteredSessions.map(s => (
-                <button key={s.session_id} onClick={() => setSelected(s)} style={{
-                  textAlign: "left", padding: "12px 14px", borderRadius: 8, cursor: "pointer",
-                  background: selected?.session_id === s.session_id ? "rgba(69,137,255,0.08)" : "var(--surface)",
-                  border: `1px solid ${selected?.session_id === s.session_id ? "rgba(69,137,255,0.25)" : "var(--border)"}`,
-                  transition: "all .15s",
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round">
-                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                    </svg>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: "var(--blue)", letterSpacing: "0.06em" }}>CHAT</span>
-                    <span style={{ fontSize: 10, color: "var(--t4)", marginLeft: "auto" }}>{timeAgo(s.last_at)}</span>
+          {/* Left: session list with date groups */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 0, overflowY: "auto" }}>
+            {filteredSessions.length === 0 && (
+              <div style={{ padding: "40px 20px", textAlign: "center" }}>
+                <p style={{ fontSize: 13, color: "var(--t3)", marginBottom: 8 }}>
+                  {sessions.length === 0 ? "No conversations yet." : "No results."}
+                </p>
+                {sessions.length === 0 && (
+                  <p style={{ fontSize: 11, color: "var(--t4)", lineHeight: 1.6 }}>Start a chat with M.A.X. and it will appear here.</p>
+                )}
+              </div>
+            )}
+            {GROUP_ORDER.map(group => {
+              const items = groupedSessions[group];
+              if (!items || items.length === 0) return null;
+              return (
+                <div key={group}>
+                  <div style={{ padding: "10px 4px 6px", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(6,182,212,0.35)" }}>
+                    {group}
                   </div>
-                  <p style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)", marginBottom: 4, lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {s.title}{s.title.length >= 60 ? "…" : ""}
-                  </p>
-                  <p style={{ fontSize: 11, color: "var(--t3)", lineHeight: 1.4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {s.preview}
-                  </p>
-                  <p style={{ fontSize: 10, color: "var(--t4)", marginTop: 4 }}>{s.messages.length} messages</p>
-                </button>
-              ))}
-            </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 8 }}>
+                    {items.map(s => (
+                      <button key={s.session_id} onClick={() => setSelected(s)} style={{
+                        textAlign: "left", padding: "12px 14px", borderRadius: 8, cursor: "pointer",
+                        background: selected?.session_id === s.session_id ? "rgba(69,137,255,0.08)" : "var(--surface)",
+                        border: `1px solid ${selected?.session_id === s.session_id ? "rgba(69,137,255,0.25)" : "var(--border)"}`,
+                        transition: "all .15s",
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                          </svg>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: "var(--blue)", letterSpacing: "0.06em" }}>CHAT</span>
+                          <span style={{ fontSize: 10, color: "var(--t4)", marginLeft: "auto" }}>{timeAgo(s.last_at)}</span>
+                        </div>
+                        <p style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)", marginBottom: 4, lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {s.title}{s.title.length >= 60 ? "…" : ""}
+                        </p>
+                        <p style={{ fontSize: 11, color: "var(--t3)", lineHeight: 1.4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {s.preview}
+                        </p>
+                        <p style={{ fontSize: 10, color: "var(--t4)", marginTop: 4 }}>{s.messages.length} messages</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           {/* Right: conversation detail */}
@@ -249,18 +295,24 @@ export default function ArchivePage() {
       ) : (
 
         /* Telegram tab */
-        <div style={{ display: "grid", gridTemplateColumns: "340px 1fr", gap: 16, height: "calc(100vh - 220px)" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "340px 1fr", gap: 16, height: "calc(100vh - 240px)" }}>
           <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
-            {telegramPairs.length === 0 && (
+            {filteredTg.length === 0 && (
               <div style={{ padding: "40px 20px", textAlign: "center" }}>
-                <p style={{ fontSize: 13, color: "var(--t3)", marginBottom: 8 }}>No Telegram messages yet.</p>
-                <p style={{ fontSize: 11, color: "var(--t4)" }}>Message M.A.X. on Telegram and it will appear here.</p>
+                <p style={{ fontSize: 13, color: "var(--t3)", marginBottom: 8 }}>
+                  {telegramPairs.length === 0 ? "No Telegram messages yet." : "No results."}
+                </p>
+                {telegramPairs.length === 0 && (
+                  <p style={{ fontSize: 11, color: "var(--t4)" }}>Message M.A.X. on Telegram and it will appear here.</p>
+                )}
               </div>
             )}
-            {telegramPairs.map((pair, i) => (
-              <div key={i} style={{
-                padding: "12px 14px", borderRadius: 8,
-                background: "var(--surface)", border: "1px solid var(--border)",
+            {filteredTg.map((pair, i) => (
+              <button key={i} onClick={() => setSelectedTg(pair)} style={{
+                textAlign: "left", padding: "12px 14px", borderRadius: 8, cursor: "pointer",
+                background: selectedTg === pair ? "rgba(245,158,11,0.08)" : "var(--surface)",
+                border: `1px solid ${selectedTg === pair ? "rgba(245,158,11,0.25)" : "var(--border)"}`,
+                transition: "all .15s",
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" strokeWidth="2" strokeLinecap="round">
@@ -269,19 +321,57 @@ export default function ArchivePage() {
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--amber)", letterSpacing: "0.06em" }}>TELEGRAM</span>
                   <span style={{ fontSize: 10, color: "var(--t4)", marginLeft: "auto" }}>{timeAgo(pair.user.created_at)}</span>
                 </div>
-                <p style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)", marginBottom: pair.assistant ? 8 : 0, lineHeight: 1.4 }}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {pair.user.content}
                 </p>
                 {pair.assistant && (
-                  <p style={{ fontSize: 11, color: "var(--t3)", lineHeight: 1.5, paddingTop: 8, borderTop: "1px solid var(--border)" }}>
-                    {pair.assistant.content.slice(0, 180)}{pair.assistant.content.length > 180 ? "…" : ""}
+                  <p style={{ fontSize: 11, color: "var(--t3)", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 4 }}>
+                    {pair.assistant.content}
                   </p>
                 )}
-              </div>
+              </button>
             ))}
           </div>
-          <HudCard style={{ padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <p style={{ fontSize: 13, color: "var(--t4)" }}>Select a message to view the full exchange.</p>
+
+          <HudCard style={{ padding: "20px 24px", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+            {!selectedTg ? (
+              <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <p style={{ fontSize: 13, color: "var(--t4)" }}>Select a message to view the full exchange.</p>
+              </div>
+            ) : (
+              <>
+                <div style={{ marginBottom: 16, paddingBottom: 14, borderBottom: "1px solid var(--border)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" strokeWidth="2" strokeLinecap="round">
+                      <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
+                    </svg>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "var(--amber)", letterSpacing: "0.1em" }}>TELEGRAM</span>
+                  </div>
+                  <p style={{ fontSize: 11, color: "var(--t4)" }}>
+                    {new Date(selectedTg.user.created_at).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+                    {" · "}
+                    {new Date(selectedTg.user.created_at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+                <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                    <div style={{ maxWidth: "78%", padding: "10px 14px", borderRadius: 10, fontSize: 13, lineHeight: 1.6, background: "rgba(245,158,11,0.08)", color: "var(--t1)", border: "1px solid rgba(245,158,11,0.18)" }}>
+                      {selectedTg.user.content}
+                    </div>
+                  </div>
+                  {selectedTg.assistant && (
+                    <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                      <div style={{ maxWidth: "78%", padding: "10px 14px", borderRadius: 10, fontSize: 13, lineHeight: 1.6, background: "var(--surface2)", color: "var(--t2)", border: "1px solid var(--border)" }}>
+                        <p style={{ fontSize: 9, fontWeight: 700, color: "var(--amber)", letterSpacing: "0.1em", marginBottom: 4 }}>M.A.X.</p>
+                        {selectedTg.assistant.content.split("\n").map((line, li, arr) => (
+                          <span key={li}>{line}{li < arr.length - 1 && <br />}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </HudCard>
         </div>
       )}

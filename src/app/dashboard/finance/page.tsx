@@ -6,10 +6,11 @@ import { Sparkline } from "@/components/ui/Sparkline";
 import { supabase } from "@/lib/supabase";
 
 /* ── Types ── */
-interface WealthData { ira: number; savings: number; btc_amount: number; xrp_amount: number }
-interface IRAFund    { symbol: string; name: string; nav: number; chg: number; value: number; shares: number }
-interface Bill       { name: string; amt: number; due: number }
-interface LiveCrypto { symbol: string; name: string; price: number; c24: number; c7: number; data: number[] }
+interface WealthData    { ira: number; savings: number; btc_amount: number; xrp_amount: number }
+interface IRAFund       { symbol: string; name: string; nav: number; chg: number; value: number; shares: number }
+interface Bill          { name: string; amt: number; due: number }
+interface LiveCrypto    { symbol: string; name: string; price: number; c24: number; c7: number; data: number[] }
+interface WealthHistory { recorded_at: string; net_worth: number; crypto_total: number; ira_total: number; savings: number }
 
 const WEALTH_DEFAULTS: WealthData = { ira: 2720, savings: 2800, btc_amount: 0.02, xrp_amount: 200 };
 
@@ -300,6 +301,7 @@ export default function FinancePage() {
   const [bills, setBills]         = useState<Bill[]>(BILLS_INIT);
   const [modal, setModal]         = useState<string | null>(null);
   const [saving, setSaving]       = useState(false);
+  const [wealthHistory, setWealthHistory] = useState<WealthHistory[]>([]);
 
   useEffect(() => {
     fetch("/api/crypto").then(r => r.json()).then(j => {
@@ -323,6 +325,20 @@ export default function FinancePage() {
     supabase.from("bills").select("*").order("due").then(({ data }) => {
       if (data && data.length > 0) setBills(data as Bill[]);
     });
+
+    supabase.from("wealth_history").select("*").order("recorded_at", { ascending: true }).limit(30).then(({ data }) => {
+      if (data && data.length > 0) setWealthHistory(data as WealthHistory[]);
+    });
+  }, []);
+
+  // Realtime subscription: update wealth when M.A.X. modifies it
+  useEffect(() => {
+    const channel = supabase.channel("finance-wealth-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "wealth" }, payload => {
+        if (payload.new) setWealth(p => ({ ...p, ...(payload.new as WealthData) }));
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   async function saveWealth(updates: Partial<WealthData>) {
@@ -488,6 +504,26 @@ export default function FinancePage() {
             { label: "Roth IRA", value: iraTotal,        color: "var(--blue)"  },
             { label: "Savings",  value: wealth.savings,  color: "var(--green)" },
           ]} />
+
+          {wealthHistory.length >= 2 && (
+            <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--t4)", marginBottom: 10 }}>Net Worth History (30 days)</p>
+              <Sparkline
+                data={wealthHistory.map(h => h.net_worth)}
+                color="var(--blue)"
+                height={56}
+                id="nw-history"
+              />
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
+                <span style={{ fontSize: 10, color: "var(--t4)" }}>{new Date(wealthHistory[0].recorded_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: wealthHistory[wealthHistory.length-1].net_worth >= wealthHistory[0].net_worth ? "var(--green)" : "var(--red)" }}>
+                  {wealthHistory[wealthHistory.length-1].net_worth >= wealthHistory[0].net_worth ? "+" : ""}
+                  ${(wealthHistory[wealthHistory.length-1].net_worth - wealthHistory[0].net_worth).toLocaleString("en-US", { maximumFractionDigits: 0 })} vs {wealthHistory.length}d ago
+                </span>
+                <span style={{ fontSize: 10, color: "var(--t4)" }}>{new Date(wealthHistory[wealthHistory.length-1].recorded_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+              </div>
+            </div>
+          )}
         </HudCard>
 
         {/* Crypto + Right */}

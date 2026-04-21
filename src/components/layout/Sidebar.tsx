@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -22,6 +23,15 @@ const nav = [
 
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
+  const [emailBadge, setEmailBadge] = useState(0);
+
+  // Read unread count written by email page
+  useState(() => {
+    try {
+      const n = parseInt(localStorage.getItem("email-unread-count") ?? "0");
+      if (!isNaN(n)) setEmailBadge(n);
+    } catch {}
+  });
 
   return (
     <aside
@@ -140,7 +150,10 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     <path d={item.icon} />
                   </svg>
                   {!collapsed && (
-                    <span style={{ fontSize: 13, fontWeight: 500, whiteSpace: "nowrap" }}>{item.label}</span>
+                    <span style={{ fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", flex: 1 }}>{item.label}</span>
+                  )}
+                  {!collapsed && item.href === "/dashboard/email" && emailBadge > 0 && (
+                    <span style={{ fontSize: 10, fontWeight: 800, color: "#fff", background: "var(--red)", padding: "1px 5px", borderRadius: 3, flexShrink: 0 }}>{emailBadge}</span>
                   )}
                 </Link>
               </li>

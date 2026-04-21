@@ -246,6 +246,7 @@ export default function Dashboard() {
   const [alertDismissed, setAlertDismissed] = useState(false);
   const [calEvents, setCalEvents]           = useState<CalEvent[]>([]);
   const [calConnected, setCalConnected]     = useState<boolean | null>(null);
+  const [priv, setPriv]                     = useState(false);
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000);
@@ -342,6 +343,18 @@ export default function Dashboard() {
 
   const insights = generateInsights({ btc, xrp, btcAmt: wealth.btc_amount, xrpAmt: wealth.xrp_amount, netWorth, cryptoGain, habits, goals, weather, hour: h });
 
+  // Privacy mask
+  const mask = (v: string) => priv ? "••••••" : v;
+
+  // Next imminent calendar event (within 90 min)
+  const now = Date.now();
+  const imminentEvent = calEvents
+    .filter(e => !e.allDay)
+    .map(e => ({ ...e, ms: new Date(e.start).getTime() }))
+    .filter(e => e.ms > now && e.ms - now <= 90 * 60 * 1000)
+    .sort((a, b) => a.ms - b.ms)[0];
+  const imminentMins = imminentEvent ? Math.round((imminentEvent.ms - now) / 60000) : null;
+
   const CRYPTO_ROWS = [
     { symbol: "BTC", name: "Bitcoin", amt: wealth.btc_amount, price: btc?.price ?? 0, change: btc?.change24h ?? 0, val: btcVal, data: btc?.sparkline?.slice(-20) ?? BTC_FALLBACK },
     { symbol: "XRP", name: "Ripple",  amt: wealth.xrp_amount, price: xrp?.price ?? 0, change: xrp?.change24h ?? 0, val: xrpVal, data: xrp?.sparkline?.slice(-20) ?? XRP_FALLBACK },
@@ -382,6 +395,23 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* ── IMMINENT EVENT BANNER ── */}
+      {imminentEvent && imminentMins !== null && (
+        <div className="afu" style={{
+          display: "flex", alignItems: "center", gap: 10, padding: "9px 16px", marginBottom: 12, borderRadius: 8,
+          background: "rgba(69,137,255,0.07)", border: "1px solid rgba(69,137,255,0.2)",
+        }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <span style={{ fontSize: 13, color: "var(--t1)", fontWeight: 600 }}>{imminentEvent.title}</span>
+          <span style={{ fontSize: 12, color: "var(--blue)", fontWeight: 700 }}>
+            {imminentMins === 0 ? "starting now" : `in ${imminentMins} min`}
+          </span>
+          {imminentEvent.location && <span style={{ fontSize: 11, color: "var(--t3)", marginLeft: 4 }}>· {imminentEvent.location}</span>}
+        </div>
+      )}
+
       {/* ── HEADER ── */}
       <div className="afu" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
@@ -391,7 +421,7 @@ export default function Dashboard() {
             <span>{habitsDone}/{habits.length || 6} habits</span>
             <span style={{ color: "var(--border2)" }}>·</span>
             <span style={{ color: netWorthChange >= 0 ? "var(--green)" : "var(--red)", fontWeight: 600 }}>
-              {netWorthChange >= 0 ? "+" : ""}${netWorthChange.toFixed(0)} today
+              {netWorthChange >= 0 ? "+" : ""}{mask(`$${netWorthChange.toFixed(0)}`)} today
             </span>
             <span style={{ color: "var(--border2)" }}>·</span>
             <span style={{ color: btc && btc.change24h >= 0 ? "var(--green)" : "var(--red)", fontWeight: 600 }}>
@@ -399,9 +429,29 @@ export default function Dashboard() {
             </span>
           </div>
         </div>
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontFamily: "monospace", fontSize: 34, fontWeight: 800, color: "var(--t1)", letterSpacing: "-0.02em" }}>{timeStr}</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-end", marginTop: 6 }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {/* Privacy toggle */}
+            <button onClick={() => setPriv(p => !p)} title={priv ? "Show financial data" : "Hide financial data"} style={{
+              display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 6, cursor: "pointer",
+              background: priv ? "rgba(245,158,11,0.1)" : "rgba(255,255,255,0.03)",
+              border: `1px solid ${priv ? "rgba(245,158,11,0.3)" : "rgba(255,255,255,0.06)"}`,
+              color: priv ? "var(--amber)" : "var(--t4)", fontSize: 11, fontWeight: 600, transition: "all .2s",
+            }}>
+              {priv ? (
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>
+                </svg>
+              ) : (
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                </svg>
+              )}
+              {priv ? "Hidden" : "Visible"}
+            </button>
+            <div style={{ fontFamily: "monospace", fontSize: 34, fontWeight: 800, color: "var(--t1)", letterSpacing: "-0.02em" }}>{timeStr}</div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--green)", animation: "pulse-dot 2s ease-in-out infinite", display: "inline-block" }} />
             <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: "var(--green)", textTransform: "uppercase" }}>M.A.X. Online</span>
           </div>
@@ -435,11 +485,11 @@ export default function Dashboard() {
           {/* Left: total */}
           <div>
             <div style={{ fontSize: 48, fontWeight: 800, fontFamily: "monospace", color: "var(--t1)", letterSpacing: "-0.02em", lineHeight: 1 }}>
-              ${netWorth.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {mask(`$${netWorth.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
               <span style={{ fontSize: 15, fontWeight: 700, color: netWorthChange >= 0 ? "var(--green)" : "var(--red)" }}>
-                {netWorthChange >= 0 ? "+" : ""}${netWorthChange.toFixed(2)} today
+                {netWorthChange >= 0 ? "+" : ""}{mask(`$${netWorthChange.toFixed(2)}`)} today
               </span>
               <span style={{ fontSize: 13, color: "var(--t3)" }}>from crypto movement</span>
             </div>
@@ -448,11 +498,11 @@ export default function Dashboard() {
           {/* Right: breakdown — read only */}
           <div style={{ display: "flex", gap: 32 }}>
             {[
-              { label: "Crypto",   val: `$${cryptoTotal.toFixed(0)}`,                                              sub: "Live prices",  color: "var(--amber)" },
-              { label: "BTC Held", val: `${parseFloat(wealth.btc_amount.toFixed(8))} BTC`,                         sub: `$${btcVal.toFixed(0)}`, color: "var(--amber)" },
-              { label: "XRP Held", val: `${wealth.xrp_amount} XRP`,                                                sub: `$${xrpVal.toFixed(0)}`, color: "var(--amber)" },
-              { label: "Roth IRA", val: `$${wealth.ira.toLocaleString()}`,                                         sub: "Schwab",       color: "var(--blue)"  },
-              { label: "Savings",  val: `$${wealth.savings.toLocaleString()}`,                                     sub: "Cash",         color: "var(--green)" },
+              { label: "Crypto",   val: mask(`$${cryptoTotal.toFixed(0)}`),                                         sub: "Live prices",                     color: "var(--amber)" },
+              { label: "BTC Held", val: priv ? "••••••" : `${parseFloat(wealth.btc_amount.toFixed(8))} BTC`,       sub: mask(`$${btcVal.toFixed(0)}`),     color: "var(--amber)" },
+              { label: "XRP Held", val: priv ? "••••••" : `${wealth.xrp_amount} XRP`,                              sub: mask(`$${xrpVal.toFixed(0)}`),     color: "var(--amber)" },
+              { label: "Roth IRA", val: mask(`$${wealth.ira.toLocaleString()}`),                                   sub: "Schwab",                          color: "var(--blue)"  },
+              { label: "Savings",  val: mask(`$${wealth.savings.toLocaleString()}`),                               sub: "Cash",                            color: "var(--green)" },
             ].map((r, i, arr) => (
               <div key={r.label} style={{ display: "flex", gap: 32 }}>
                 <div style={{ textAlign: "center" }}>
@@ -811,7 +861,7 @@ export default function Dashboard() {
                     <div style={{ fontSize: 13, fontWeight: 700, color: "var(--t1)" }}>
                       {a.symbol} <span style={{ fontSize: 11, fontWeight: 400, color: "var(--t3)" }}>{a.name}</span>
                     </div>
-                    <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 2 }}>{a.amt} {a.symbol} · ${a.val.toFixed(2)}</div>
+                    <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 2 }}>{priv ? "••••••" : `${a.amt} ${a.symbol}`} · {mask(`$${a.val.toFixed(2)}`)}</div>
                   </div>
                   <div style={{ textAlign: "right" }}>
                     <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "monospace", color: "var(--t1)" }}>
@@ -833,14 +883,19 @@ export default function Dashboard() {
               <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)" }}>M.A.X. Brief</p>
               <span style={{ fontSize: 10, color: "var(--blue)", fontWeight: 600 }}>Live data</span>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {insights.length > 0 ? insights.map((ins, i) => (
-                <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", paddingBottom: 12, borderBottom: i < insights.length - 1 ? "1px solid var(--border)" : "none" }}>
-                  <span style={{ fontSize: 12, fontWeight: 800, color: ins.color, flexShrink: 0, marginTop: 1, width: 14, textAlign: "center" }}>{ins.icon}</span>
-                  <span style={{ fontSize: 12, color: "var(--t2)", lineHeight: 1.6 }}>{ins.text}</span>
-                </div>
-              )) : (
-                <p style={{ fontSize: 12, color: "var(--t3)" }}>Loading insights…</p>
+            <div style={{ fontSize: 13, color: "var(--t2)", lineHeight: 1.8 }}>
+              {insights.length > 0 ? (
+                <>
+                  {insights.map((ins, i) => (
+                    <span key={i}>
+                      <span style={{ color: ins.color, fontWeight: 700 }}>{ins.icon} </span>
+                      {ins.text}
+                      {i < insights.length - 1 ? " " : ""}
+                    </span>
+                  ))}
+                </>
+              ) : (
+                <span style={{ color: "var(--t4)" }}>Loading intel…</span>
               )}
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
