@@ -2,11 +2,12 @@ import Anthropic from "@anthropic-ai/sdk";
 import {
   readHabits, toggleHabit,
   readTasks, addTask, completeTask, deleteTask,
-  readGoals,
+  readGoals, updateGoal,
   readCalendar, createCalendarEvent,
   readGmail, draftEmail,
   readCrypto, readWeather, readNews,
   storeMemory, recallMemory,
+  updateWealth, webSearch,
 } from "@/lib/max-tools";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -189,6 +190,43 @@ const TOOLS: Anthropic.Tool[] = [
       required: ["query"],
     },
   },
+  {
+    name: "update_goal",
+    description: "Update the current progress value for one of Max's goals. Use read_goals first to get the goal ID.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        id:      { type: "string", description: "Goal ID from read_goals" },
+        current: { type: "number", description: "New current progress value" },
+      },
+      required: ["id", "current"],
+    },
+  },
+  {
+    name: "update_wealth",
+    description: "Update Max's financial holdings or savings. Only include the fields that are changing.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        ira:        { type: "number", description: "Roth IRA total value in dollars" },
+        savings:    { type: "number", description: "Emergency fund / savings balance in dollars" },
+        btc_amount: { type: "number", description: "BTC holdings (e.g. 0.02)" },
+        xrp_amount: { type: "number", description: "XRP holdings (e.g. 200)" },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "web_search",
+    description: "Search the web for current information — news, prices, events, research, anything requiring live data.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        query: { type: "string", description: "Search query" },
+      },
+      required: ["query"],
+    },
+  },
 ];
 
 /* ─── Tool executor ─── */
@@ -211,6 +249,9 @@ async function executeTool(name: string, input: Record<string, unknown>): Promis
       case "read_news":            return JSON.stringify(await readNews((input.count as number) ?? 10));
       case "store_memory":         return JSON.stringify(await storeMemory(input.content as string, (input.tags as string[]) ?? []));
       case "recall_memory":        return JSON.stringify(await recallMemory(input.query as string));
+      case "update_goal":          return JSON.stringify(await updateGoal(input.id as string, input.current as number));
+      case "update_wealth":        return JSON.stringify(await updateWealth(input as Parameters<typeof updateWealth>[0]));
+      case "web_search":           return JSON.stringify(await webSearch(input.query as string));
       default:                     return JSON.stringify({ error: `Unknown tool: ${name}` });
     }
   } catch (err) {

@@ -141,3 +141,60 @@ export async function readAllMemories() {
   const { data } = await supabase.from("memories").select("*").order("created_at", { ascending: false }).limit(30);
   return data ?? [];
 }
+
+/* ────────────────────────────────── GOALS UPDATE ── */
+export async function updateGoal(id: string, current: number) {
+  const { data, error } = await supabase.from("goals").update({ current }).eq("id", id).select().single();
+  if (error) return { error: error.message };
+  return { success: true, goal: data };
+}
+
+/* ────────────────────────────────── WEALTH ── */
+export async function readWealth() {
+  const { data } = await supabase.from("wealth").select("*").eq("id", "max").single();
+  return data ?? { ira: 2720, savings: 2800, btc_amount: 0.02, xrp_amount: 200 };
+}
+
+export async function updateWealth(updates: Partial<{ ira: number; savings: number; btc_amount: number; xrp_amount: number }>) {
+  const { error } = await supabase.from("wealth").upsert({ id: "max", ...updates });
+  if (error) return { error: error.message };
+  return { success: true, updated: updates };
+}
+
+/* ────────────────────────────────── WEB SEARCH ── */
+export async function webSearch(query: string) {
+  const apiKey = process.env.TAVILY_API_KEY;
+  if (!apiKey) return { error: "Web search not available — add TAVILY_API_KEY to env" };
+
+  const res = await fetch("https://api.tavily.com/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ api_key: apiKey, query, max_results: 5, search_depth: "basic" }),
+  });
+
+  if (!res.ok) return { error: `Search failed: ${res.status}` };
+  const data = await res.json();
+  return {
+    answer: data.answer ?? null,
+    results: (data.results ?? []).map((r: { title: string; url: string; content: string }) => ({
+      title: r.title,
+      url: r.url,
+      snippet: (r.content ?? "").slice(0, 400),
+    })),
+  };
+}
+
+/* ────────────────────────────────── TELEGRAM HISTORY ── */
+export async function saveTelegramMessage(role: "user" | "assistant", content: string) {
+  await supabase.from("telegram_history").insert({ role, content });
+}
+
+export async function loadTelegramHistory(limit = 12) {
+  const { data } = await supabase
+    .from("telegram_history")
+    .select("role, content")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (!data || data.length === 0) return [];
+  return data.reverse() as { role: "user" | "assistant"; content: string }[];
+}

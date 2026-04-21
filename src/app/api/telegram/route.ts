@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { runAgent, buildContextHeader } from "@/lib/max-agent";
-import { readTasks, addTask, completeTask, readHabits, readGoals, readCrypto, readCalendar } from "@/lib/max-tools";
+import { readTasks, addTask, completeTask, readHabits, readGoals, readCrypto, readCalendar, saveTelegramMessage, loadTelegramHistory } from "@/lib/max-tools";
 
 const BOT_TOKEN       = process.env.TELEGRAM_BOT_TOKEN;
 const ALLOWED_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
@@ -201,13 +201,26 @@ export async function POST(request: Request) {
 
     // Fall through to agent for /brief, /weather, /memory, or any free-form message
     if (reply === null) {
-      const ctx = await buildContextHeader();
-      const agentInput = text.startsWith("/")
-        ? `${ctx}\nUser sent Telegram command: ${text}\nRespond concisely in plain text (this is Telegram — no markdown headers, keep it tight).`
-        : `${ctx}\n${text}\n\n[Note: This message is from Telegram. Keep response concise and plain — no long blocks of text.]`;
+      const [ctx, history] = await Promise.all([buildContextHeader(), loadTelegramHistory(10)]);
 
-      reply = await runAgent([{ role: "user", content: agentInput }], false);
+      const telegramNote = "[Note: This is a Telegram message. Keep response concise and plain — no long blocks.]";
+      const userContent = text.startsWith("/")
+        ? `${ctx}\nUser sent Telegram command: ${text}\nRespond concisely in plain text (no markdown headers).`
+        : `${ctx}\n${text}\n\n${telegramNote}`;
+
+      const messages: { role: "user" | "assistant"; content: string }[] = [
+        ...history,
+        { role: "user", content: userContent },
+      ];
+
+      reply = await runAgent(messages, false);
     }
+
+    // Persist both sides of the conversation
+    await Promise.all([
+      saveTelegramMessage("user", text),
+      reply ? saveTelegramMessage("assistant", reply) : Promise.resolve(),
+    ]);
 
     await send(chatId, reply ?? "Error.");
     return NextResponse.json({ ok: true });
