@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { fetchCryptoPrices } from "@/lib/crypto";
+import { chatWithMax } from "@/lib/gemini";
 
 const BOT_TOKEN       = process.env.TELEGRAM_BOT_TOKEN;
 const ALLOWED_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
@@ -99,15 +100,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true });
     }
 
-    /* AI chat — try Gemini, fall back gracefully */
+    /* AI chat */
     try {
-      const { chatWithMax } = await import("@/lib/gemini");
       const reply = await chatWithMax([{ role: "user", content: text }]);
       await send(chatId, reply);
-    } catch {
-      await send(chatId,
-        "M.A.X. AI core is temporarily offline (quota). Use /help for available commands."
-      );
+    } catch (err) {
+      console.error("Telegram AI error:", err);
+      await send(chatId, "M.A.X. encountered an error. Try again.");
     }
 
     return NextResponse.json({ ok: true });

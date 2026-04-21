@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Sidebar from "@/components/layout/Sidebar";
+import MaxChatBubble from "@/components/ui/MaxChatBubble";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -18,6 +19,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       >
         {children}
       </main>
+      <MaxChatBubble />
     </div>
   );
 }

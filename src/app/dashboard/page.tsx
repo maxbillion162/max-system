@@ -13,6 +13,7 @@ interface LiveWeather { tempF: number; condition: string; precipChance: number; 
 interface NewsItem    { title: string; source: string; tag: string; link: string; snippet: string; pubDate: string; breaking?: boolean }
 interface Habit       { id: string; name: string; completed: boolean }
 interface Goal        { id: string; current: number }
+interface Task        { id: string; text: string; completed: boolean }
 
 const WEALTH_DEFAULTS = { ira: 2720, savings: 2800, btc_amount: 0.02, xrp_amount: 200 };
 
@@ -204,10 +205,14 @@ export default function Dashboard() {
   const [weather, setWeather] = useState<LiveWeather | null>(null);
   const [news, setNews]       = useState<NewsItem[]>([]);
   const [activeTag, setActiveTag] = useState("All");
-  const [habits, setHabits]   = useState<Habit[]>([]);
-  const [goals, setGoals]     = useState<Goal[]>([]);
-  const [wealth, setWealth]   = useState(WEALTH_DEFAULTS);
+  const [habits, setHabits]       = useState<Habit[]>([]);
+  const [goals, setGoals]         = useState<Goal[]>([]);
+  const [wealth, setWealth]       = useState(WEALTH_DEFAULTS);
   const [savingWealth, setSavingWealth] = useState(false);
+  const [tasks, setTasks]         = useState<Task[]>([]);
+  const [addingTask, setAddingTask] = useState(false);
+  const [newTaskText, setNewTaskText] = useState("");
+  const [alertDismissed, setAlertDismissed] = useState(false);
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000);
@@ -227,9 +232,29 @@ export default function Dashboard() {
     supabase.from("wealth").select("*").limit(1).then(({ data }) => {
       if (data && data.length > 0) setWealth({ ...WEALTH_DEFAULTS, ...data[0] });
     });
+    supabase.from("tasks").select("id,text,completed").order("created_at").then(({ data }) => { if (data) setTasks(data); });
     const cryptoInterval = setInterval(fetchCrypto, 30000);
     return () => clearInterval(cryptoInterval);
   }, []);
+
+  async function addTask() {
+    const text = newTaskText.trim();
+    if (!text) return;
+    setNewTaskText("");
+    setAddingTask(false);
+    const { data } = await supabase.from("tasks").insert({ text, completed: false }).select().single();
+    if (data) setTasks(prev => [...prev, data]);
+  }
+
+  async function toggleTask(id: string, completed: boolean) {
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, completed: !completed } : t));
+    await supabase.from("tasks").update({ completed: !completed }).eq("id", id);
+  }
+
+  async function deleteTask(id: string) {
+    setTasks(prev => prev.filter(t => t.id !== id));
+    await supabase.from("tasks").delete().eq("id", id);
+  }
 
   async function updateWealth(key: keyof typeof WEALTH_DEFAULTS, val: number) {
     const updated = { ...wealth, [key]: val };
@@ -241,6 +266,11 @@ export default function Dashboard() {
 
   const btc = crypto.find(c => c.symbol === "BTC");
   const xrp = crypto.find(c => c.symbol === "XRP");
+
+  const cryptoAlerts = [
+    btc && Math.abs(btc.change24h) >= 5 ? { symbol: "BTC", change: btc.change24h, up: btc.change24h > 0 } : null,
+    xrp && Math.abs(xrp.change24h) >= 5 ? { symbol: "XRP", change: xrp.change24h, up: xrp.change24h > 0 } : null,
+  ].filter(Boolean) as { symbol: string; change: number; up: boolean }[];
 
   const btcVal     = btc ? btc.price * wealth.btc_amount : 0;
   const xrpVal     = xrp ? xrp.price * wealth.xrp_amount : 0;
@@ -274,6 +304,38 @@ export default function Dashboard() {
 
   return (
     <div style={{ padding: "28px 36px", background: "var(--bg)", minHeight: "100vh" }}>
+
+      {/* ── CRYPTO ALERT BANNER ── */}
+      {!alertDismissed && cryptoAlerts.length > 0 && (
+        <div className="afu" style={{
+          display: "flex", alignItems: "center", gap: 12,
+          padding: "10px 16px", marginBottom: 16, borderRadius: 8,
+          background: cryptoAlerts.some(a => !a.up) ? "rgba(239,68,68,0.07)" : "rgba(34,197,94,0.07)",
+          border: `1px solid ${cryptoAlerts.some(a => !a.up) ? "rgba(239,68,68,0.2)" : "rgba(34,197,94,0.2)"}`,
+        }}>
+          <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", color: cryptoAlerts.some(a => !a.up) ? "var(--red)" : "var(--green)", flexShrink: 0 }}>
+            M.A.X. ALERT
+          </span>
+          <p style={{ flex: 1, fontSize: 13, color: "var(--t2)", margin: 0 }}>
+            {cryptoAlerts.map(a => (
+              <span key={a.symbol} style={{ marginRight: 12 }}>
+                <span style={{ fontWeight: 700, color: a.up ? "var(--green)" : "var(--red)" }}>
+                  {a.symbol}
+                </span>{" "}
+                {a.up ? "▲" : "▼"} {a.up ? "+" : ""}{a.change.toFixed(1)}% in 24h
+              </span>
+            ))}
+          </p>
+          <button onClick={() => setAlertDismissed(true)} style={{
+            background: "none", border: "none", cursor: "pointer",
+            color: "var(--t4)", display: "flex", alignItems: "center", padding: 4, flexShrink: 0,
+          }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* ── HEADER ── */}
       <div className="afu" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
@@ -571,6 +633,98 @@ export default function Dashboard() {
           </div>
         </HudCard>
 
+        {/* ── TASKS ── */}
+        <HudCard delay={.13} style={{ padding: "18px 24px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)" }}>Tasks</p>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <a href="/dashboard/calendar" style={{ fontSize: 11, color: "var(--blue)", textDecoration: "none" }}>All →</a>
+              <button onClick={() => setAddingTask(t => !t)} style={{
+                width: 22, height: 22, borderRadius: 5, cursor: "pointer",
+                background: addingTask ? "rgba(69,137,255,0.12)" : "transparent",
+                border: `1px solid ${addingTask ? "rgba(69,137,255,0.3)" : "var(--border2)"}`,
+                color: addingTask ? "var(--blue)" : "var(--t3)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                transition: "all .15s",
+              }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {addingTask && (
+            <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+              <input
+                autoFocus
+                value={newTaskText}
+                onChange={e => setNewTaskText(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter") addTask();
+                  if (e.key === "Escape") { setAddingTask(false); setNewTaskText(""); }
+                }}
+                placeholder="New task…"
+                style={{
+                  flex: 1, background: "var(--surface2)", border: "1px solid var(--border2)",
+                  borderRadius: 6, padding: "6px 10px", fontSize: 12, color: "var(--t1)", outline: "none",
+                }}
+              />
+              <button onClick={addTask} style={{
+                padding: "6px 12px", background: "rgba(69,137,255,0.1)",
+                border: "1px solid rgba(69,137,255,0.2)", borderRadius: 6,
+                fontSize: 12, fontWeight: 600, color: "var(--blue)", cursor: "pointer",
+              }}>Add</button>
+            </div>
+          )}
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 180, overflowY: "auto" }}>
+            {tasks.length === 0 && !addingTask && (
+              <p style={{ fontSize: 12, color: "var(--t4)", textAlign: "center", padding: "14px 0" }}>
+                No open tasks.
+              </p>
+            )}
+            {tasks.filter(t => !t.completed).concat(tasks.filter(t => t.completed)).map(task => (
+              <div key={task.id} style={{
+                display: "flex", alignItems: "center", gap: 8, padding: "7px 10px",
+                borderRadius: 4, background: "var(--surface2)",
+                opacity: task.completed ? 0.45 : 1, transition: "opacity .2s",
+              }}>
+                <button onClick={() => toggleTask(task.id, task.completed)} style={{
+                  width: 15, height: 15, borderRadius: 3, flexShrink: 0, cursor: "pointer",
+                  background: task.completed ? "rgba(34,197,94,0.15)" : "transparent",
+                  border: `1px solid ${task.completed ? "rgba(34,197,94,0.4)" : "var(--border2)"}`,
+                  display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s",
+                }}>
+                  {task.completed && (
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3.5" strokeLinecap="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </button>
+                <span style={{
+                  flex: 1, fontSize: 12, color: "var(--t2)",
+                  textDecoration: task.completed ? "line-through" : "none",
+                }}>
+                  {task.text}
+                </span>
+                <button onClick={() => deleteTask(task.id)} style={{
+                  background: "none", border: "none", cursor: "pointer",
+                  color: "var(--t4)", display: "flex", alignItems: "center", padding: 2,
+                  borderRadius: 3, transition: "color .15s",
+                }}
+                  onMouseEnter={e => (e.currentTarget.style.color = "var(--red)")}
+                  onMouseLeave={e => (e.currentTarget.style.color = "var(--t4)")}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        </HudCard>
+
         </div>{/* end center column */}
 
         {/* ── RIGHT: CRYPTO + M.A.X. BRIEF ── */}
@@ -624,14 +778,14 @@ export default function Dashboard() {
                 <p style={{ fontSize: 12, color: "var(--t3)" }}>Loading insights…</p>
               )}
             </div>
-            <a href="/dashboard/chat" style={{
+            <button onClick={() => window.dispatchEvent(new CustomEvent("max-open-chat"))} style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
               marginTop: 16, padding: "10px 0", borderRadius: 4, fontSize: 12, fontWeight: 700,
               background: "rgba(69,137,255,0.1)", color: "var(--blue)", border: "1px solid rgba(69,137,255,0.2)",
-              textDecoration: "none",
+              cursor: "pointer", width: "100%",
             }}>
               Ask M.A.X. →
-            </a>
+            </button>
           </HudCard>
         </div>
       </div>
