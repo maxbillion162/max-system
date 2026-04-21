@@ -198,6 +198,36 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+// ── Briefing trigger button ────────────────────────────────────────────────────
+function BriefingButton() {
+  const [state, setState] = useState<"idle"|"loading"|"sent"|"error">("idle");
+
+  async function trigger() {
+    setState("loading");
+    try {
+      const res = await fetch("/api/briefing", { method: "POST" });
+      setState(res.ok ? "sent" : "error");
+    } catch {
+      setState("error");
+    }
+    setTimeout(() => setState("idle"), 3000);
+  }
+
+  const labels = { idle: "📧", loading: "...", sent: "✓", error: "!" };
+  const colors = { idle: "var(--t3)", loading: "var(--blue)", sent: "var(--green)", error: "var(--red)" };
+
+  return (
+    <button onClick={trigger} disabled={state === "loading"} title="Send daily briefing now" style={{
+      padding: "10px 12px", borderRadius: 4, fontSize: 12, fontWeight: 700,
+      background: "rgba(255,255,255,0.03)", color: colors[state],
+      border: `1px solid ${state === "idle" ? "var(--border)" : colors[state]}`,
+      cursor: state === "loading" ? "default" : "pointer", transition: "all .15s", flexShrink: 0,
+    }}>
+      {labels[state]}
+    </button>
+  );
+}
+
 // ── Main Dashboard ─────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const [time, setTime]       = useState(new Date());
@@ -778,14 +808,17 @@ export default function Dashboard() {
                 <p style={{ fontSize: 12, color: "var(--t3)" }}>Loading insights…</p>
               )}
             </div>
-            <button onClick={() => window.dispatchEvent(new CustomEvent("max-open-chat"))} style={{
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-              marginTop: 16, padding: "10px 0", borderRadius: 4, fontSize: 12, fontWeight: 700,
-              background: "rgba(69,137,255,0.1)", color: "var(--blue)", border: "1px solid rgba(69,137,255,0.2)",
-              cursor: "pointer", width: "100%",
-            }}>
-              Ask M.A.X. →
-            </button>
+            <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+              <button onClick={() => window.dispatchEvent(new CustomEvent("max-open-chat"))} style={{
+                flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                padding: "10px 0", borderRadius: 4, fontSize: 12, fontWeight: 700,
+                background: "rgba(69,137,255,0.1)", color: "var(--blue)", border: "1px solid rgba(69,137,255,0.2)",
+                cursor: "pointer",
+              }}>
+                Ask M.A.X. →
+              </button>
+              <BriefingButton />
+            </div>
           </HudCard>
         </div>
       </div>
