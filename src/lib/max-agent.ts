@@ -12,6 +12,9 @@ import {
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+const MODEL      = "claude-sonnet-4-6";
+const MAX_TOKENS = 2048;
+
 /* ─── System prompt ─── */
 const SYSTEM = `You are M.A.X. — Maximum Adaptive eXecutive — a personal AI operating system built exclusively for Max.
 
@@ -38,11 +41,35 @@ TOOL USAGE RULES:
 - For memory: proactively store things Max tells you about himself, preferences, decisions, and important events.
 - Chain tools when needed — e.g., read_tasks then add_task, or read_calendar then create_calendar_event.
 - After completing a tool action, confirm what was done in plain language.
+- When asked for a brief/summary/daily overview, use read_habits + read_tasks + read_crypto + read_weather together for a full picture.
 
 RULES:
 - Never claim to have sent email — only drafts are created.
 - Keep financial takes informational, not professional financial advice.
 - If asked something outside your knowledge, say so directly.`;
+
+/* ─── Tool labels for UI transparency ─── */
+const TOOL_LABELS: Record<string, string> = {
+  read_habits:           "Checking your habits…",
+  toggle_habit:          "Updating habit…",
+  read_tasks:            "Loading your tasks…",
+  add_task:              "Adding task…",
+  complete_task:         "Completing task…",
+  delete_task:           "Deleting task…",
+  read_goals:            "Reading your goals…",
+  update_goal:           "Updating goal progress…",
+  read_calendar:         "Checking your calendar…",
+  create_calendar_event: "Creating calendar event…",
+  read_gmail:            "Checking your email…",
+  draft_email:           "Drafting email…",
+  read_crypto:           "Checking crypto prices…",
+  read_weather:          "Checking Orlando weather…",
+  read_news:             "Scanning latest news…",
+  store_memory:          "Storing to memory…",
+  recall_memory:         "Searching memory…",
+  update_wealth:         "Updating financial data…",
+  web_search:            "Searching the web…",
+};
 
 /* ─── Tool definitions ─── */
 const TOOLS: Anthropic.Tool[] = [
@@ -261,13 +288,13 @@ async function executeTool(name: string, input: Record<string, unknown>): Promis
 
 /* ─── Context injection ─── */
 export async function buildContextHeader(): Promise<string> {
-  const now = new Date().toLocaleString("en-US", { timeZone: "America/New_York", weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
+  const now = new Date().toLocaleString("en-US", {
+    timeZone: "America/New_York", weekday: "long", year: "numeric",
+    month: "long", day: "numeric", hour: "numeric", minute: "2-digit", hour12: true,
+  });
 
   const [habits, tasks, crypto, weather] = await Promise.allSettled([
-    readHabits(),
-    readTasks(),
-    readCrypto(),
-    readWeather(),
+    readHabits(), readTasks(), readCrypto(), readWeather(),
   ]);
 
   let ctx = `[CURRENT TIME: ${now} ET]\n`;
@@ -299,7 +326,82 @@ export async function buildContextHeader(): Promise<string> {
   return ctx;
 }
 
-/* ─── Main agentic loop ─── */
+/* ─── Agent stream event type ─── */
+export type AgentEvent =
+  | { t: "tool"; label: string }
+  | { t: "chunk"; text: string }
+  | { t: "done"; full: string };
+
+/* ─── Streaming agentic loop ─── */
+export async function runAgentStream(
+  messages: AgentMessage[],
+  injectContext: boolean,
+  onEvent: (event: AgentEvent) => void,
+): Promise<void> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    onEvent({ t: "chunk", text: "M.A.X. offline — API key missing." });
+    onEvent({ t: "done", full: "M.A.X. offline — API key missing." });
+    return;
+  }
+
+  const apiMessages: Anthropic.MessageParam[] = messages.slice(-14).map(m => ({
+    role: m.role,
+    content: m.content,
+  }));
+
+  if (injectContext && apiMessages.length > 0 && apiMessages[0].role === "user") {
+    const ctx = await buildContextHeader();
+    apiMessages[0] = { role: "user", content: `${ctx}\n${apiMessages[0].content}` };
+  }
+
+  let response = await client.messages.create({
+    model: MODEL, max_tokens: MAX_TOKENS, system: SYSTEM, tools: TOOLS, messages: apiMessages,
+  });
+
+  const MAX_ITERATIONS = 8;
+  let iterations = 0;
+
+  while (response.stop_reason === "tool_use" && iterations < MAX_ITERATIONS) {
+    iterations++;
+
+    const toolUseBlocks = response.content.filter(b => b.type === "tool_use") as Anthropic.ToolUseBlock[];
+
+    // Emit tool labels
+    for (const block of toolUseBlocks) {
+      onEvent({ t: "tool", label: TOOL_LABELS[block.name] ?? `Running ${block.name}…` });
+    }
+
+    const toolResults: Anthropic.ToolResultBlockParam[] = await Promise.all(
+      toolUseBlocks.map(async (block) => ({
+        type: "tool_result" as const,
+        tool_use_id: block.id,
+        content: await executeTool(block.name, block.input as Record<string, unknown>),
+      }))
+    );
+
+    apiMessages.push({ role: "assistant", content: response.content });
+    apiMessages.push({ role: "user", content: toolResults });
+
+    response = await client.messages.create({
+      model: MODEL, max_tokens: MAX_TOKENS, system: SYSTEM, tools: TOOLS, messages: apiMessages,
+    });
+  }
+
+  const textBlock = response.content.find(b => b.type === "text") as Anthropic.TextBlock | undefined;
+  const fullText  = textBlock?.text ?? "No response.";
+
+  // Stream word-by-word with small delay for smooth UX
+  const words = fullText.split(" ");
+  for (let i = 0; i < words.length; i++) {
+    const chunk = i < words.length - 1 ? words[i] + " " : words[i];
+    onEvent({ t: "chunk", text: chunk });
+    // Burst send — no artificial delay needed, SSE flush provides natural pacing
+  }
+
+  onEvent({ t: "done", full: fullText });
+}
+
+/* ─── Non-streaming loop (for internal use) ─── */
 export interface AgentMessage {
   role: "user" | "assistant";
   content: string;
@@ -313,24 +415,15 @@ export async function runAgent(messages: AgentMessage[], injectContext = true): 
     content: m.content,
   }));
 
-  // Inject live context into the first user message if this is a new conversation
   if (injectContext && apiMessages.length > 0 && apiMessages[0].role === "user") {
     const ctx = await buildContextHeader();
-    apiMessages[0] = {
-      role: "user",
-      content: `${ctx}\n${apiMessages[0].content}`,
-    };
+    apiMessages[0] = { role: "user", content: `${ctx}\n${apiMessages[0].content}` };
   }
 
   let response = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 1024,
-    system: SYSTEM,
-    tools: TOOLS,
-    messages: apiMessages,
+    model: MODEL, max_tokens: MAX_TOKENS, system: SYSTEM, tools: TOOLS, messages: apiMessages,
   });
 
-  // Agentic loop — keep running while Claude calls tools
   const MAX_ITERATIONS = 8;
   let iterations = 0;
 
@@ -347,17 +440,26 @@ export async function runAgent(messages: AgentMessage[], injectContext = true): 
     );
 
     apiMessages.push({ role: "assistant", content: response.content });
-    apiMessages.push({ role: "user",      content: toolResults });
+    apiMessages.push({ role: "user", content: toolResults });
 
     response = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 1024,
-      system: SYSTEM,
-      tools: TOOLS,
-      messages: apiMessages,
+      model: MODEL, max_tokens: MAX_TOKENS, system: SYSTEM, tools: TOOLS, messages: apiMessages,
     });
   }
 
   const textBlock = response.content.find(b => b.type === "text") as Anthropic.TextBlock | undefined;
   return textBlock?.text ?? "No response.";
+}
+
+/* ─── Proactive brief for chat load ─── */
+export async function generateBrief(): Promise<string> {
+  const now = new Date().getHours();
+  const greeting =
+    now < 12 ? "morning" :
+    now < 17 ? "afternoon" : "evening";
+
+  return runAgent([{
+    role: "user",
+    content: `Give me a quick ${greeting} brief. Use read_habits, read_tasks, and read_crypto together. Keep it tight — 4-6 bullet points max, each one sentence. Lead with anything urgent. No filler.`,
+  }], true);
 }

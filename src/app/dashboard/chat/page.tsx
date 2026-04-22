@@ -19,7 +19,7 @@ declare global {
 
 const INITIAL: Msg = {
   role: "max",
-  content: "Online. What do you need, Max?",
+  content: "Online. Loading your daily brief…",
   time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
 };
 
@@ -39,7 +39,6 @@ function MarkdownText({ text }: { text: string }) {
   while (i < lines.length) {
     const line = lines[i];
 
-    // Bullet list item
     if (/^[-•*]\s/.test(line)) {
       const bullets: string[] = [];
       while (i < lines.length && /^[-•*]\s/.test(lines[i])) {
@@ -54,7 +53,6 @@ function MarkdownText({ text }: { text: string }) {
       continue;
     }
 
-    // Numbered list
     if (/^\d+\.\s/.test(line)) {
       const items: string[] = [];
       while (i < lines.length && /^\d+\.\s/.test(lines[i])) {
@@ -69,18 +67,13 @@ function MarkdownText({ text }: { text: string }) {
       continue;
     }
 
-    // Header
     if (/^#{1,3}\s/.test(line)) {
-      const text = line.replace(/^#{1,3}\s/, "");
-      elements.push(<p key={i} style={{ fontWeight: 700, color: "var(--teal)", fontSize: 13, margin: "6px 0 2px" }}>{renderInline(text)}</p>);
+      const t = line.replace(/^#{1,3}\s/, "");
+      elements.push(<p key={i} style={{ fontWeight: 700, color: "var(--teal)", fontSize: 13, margin: "6px 0 2px" }}>{renderInline(t)}</p>);
       i++; continue;
     }
 
-    // Empty line → spacer
-    if (line.trim() === "") {
-      elements.push(<br key={i} />);
-      i++; continue;
-    }
+    if (line.trim() === "") { elements.push(<br key={i} />); i++; continue; }
 
     elements.push(<p key={i} style={{ margin: "1px 0" }}>{renderInline(line)}</p>);
     i++;
@@ -104,38 +97,70 @@ function renderInline(text: string): React.ReactNode {
 
 /* ── Main page ────────────────────────────────────────────────────── */
 export default function ChatPage() {
-  const [messages,    setMessages]    = useState<Msg[]>([INITIAL]);
-  const [input,       setInput]       = useState("");
-  const [loading,     setLoading]     = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const [voiceOut,    setVoiceOut]    = useState(false);
+  const [messages,     setMessages]     = useState<Msg[]>([INITIAL]);
+  const [input,        setInput]        = useState("");
+  const [loading,      setLoading]      = useState(false);
+  const [toolActivity, setToolActivity] = useState<string | null>(null);
+  const [streamingId,  setStreamingId]  = useState<number | null>(null);
+  const [isListening,  setIsListening]  = useState(false);
+  const [voiceOut,     setVoiceOut]     = useState(false);
+  const [briefLoaded,  setBriefLoaded]  = useState(false);
   const bottomRef      = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<ISpeechRecognition | null>(null);
   const sessionId      = useMemo(() => crypto.randomUUID(), []);
 
-  // Load from localStorage on mount + check for draft context from email
+  // Load saved messages + draft context + proactive brief
   useEffect(() => {
     try {
       const saved = localStorage.getItem("max-chat-messages");
       if (saved) {
         const parsed = JSON.parse(saved) as Msg[];
-        if (parsed.length > 1) setMessages(parsed.slice(-60));
+        if (parsed.length > 1) {
+          setMessages(parsed.slice(-60));
+          setBriefLoaded(true);
+          return;
+        }
       }
     } catch {}
+
     try {
       const draft = localStorage.getItem("max-draft-context");
       if (draft) { setInput(draft); localStorage.removeItem("max-draft-context"); }
     } catch {}
+
+    // Fetch proactive brief on first load
+    fetchBrief();
   }, []);
 
-  // Persist to localStorage on change
+  async function fetchBrief() {
+    if (briefLoaded) return;
+    setBriefLoaded(true);
+    try {
+      const res  = await fetch("/api/chat/brief");
+      const data = await res.json();
+      if (data.brief) {
+        setMessages([{
+          role: "max",
+          content: data.brief,
+          time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+        }]);
+      }
+    } catch {
+      setMessages([{
+        role: "max",
+        content: "Online. What do you need, Max?",
+        time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+      }]);
+    }
+  }
+
   useEffect(() => {
     if (messages.length > 1) {
       try { localStorage.setItem("max-chat-messages", JSON.stringify(messages.slice(-60))); } catch {}
     }
   }, [messages]);
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, streamingId]);
   useEffect(() => () => { recognitionRef.current?.abort(); }, []);
 
   function speakText(text: string) {
@@ -168,9 +193,16 @@ export default function ChatPage() {
     if (isListening) { recognitionRef.current?.stop(); setIsListening(false); }
 
     const now = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-    const updated: Msg[] = [...messages, { role: "user", content, time: now }];
-    setMessages(updated);
+    const withUser: Msg[] = [...messages, { role: "user", content, time: now }];
+    setMessages(withUser);
     setLoading(true);
+    setToolActivity(null);
+
+    // Add placeholder streaming message
+    const streamingIdx = withUser.length;
+    const streamingMsg: Msg = { role: "max", content: "", time: now };
+    setMessages(prev => [...prev, streamingMsg]);
+    setStreamingId(streamingIdx);
 
     try {
       const res = await fetch("/api/chat", {
@@ -178,22 +210,67 @@ export default function ChatPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           session_id: sessionId,
-          messages: updated.map(m => ({ role: m.role === "max" ? "model" : "user", content: m.content })),
+          messages: withUser.map(m => ({ role: m.role === "max" ? "model" : "user", content: m.content })),
         }),
       });
-      const data  = await res.json();
-      const reply = data.reply ?? data.error ?? "Something went wrong.";
-      setMessages(prev => [...prev, { role: "max", content: reply, time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) }]);
-      speakText(reply);
+
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let   buffer  = "";
+      let   full    = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() ?? "";
+
+        for (const part of parts) {
+          const line = part.trim();
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const event = JSON.parse(line.slice(6)) as { t: string; label?: string; text?: string; full?: string };
+
+            if (event.t === "tool" && event.label) {
+              setToolActivity(event.label);
+            } else if (event.t === "chunk" && event.text) {
+              full += event.text;
+              const snapped = full;
+              setMessages(prev => {
+                const next = [...prev];
+                next[streamingIdx] = { ...next[streamingIdx], content: snapped };
+                return next;
+              });
+              setToolActivity(null);
+            } else if (event.t === "done") {
+              setToolActivity(null);
+              if (event.full) speakText(event.full);
+            }
+          } catch {}
+        }
+      }
     } catch {
-      setMessages(prev => [...prev, { role: "max", content: "Connection error.", time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) }]);
+      setMessages(prev => {
+        const next = [...prev];
+        next[streamingIdx] = { ...next[streamingIdx], content: "Connection error — try again." };
+        return next;
+      });
     }
+
     setLoading(false);
+    setToolActivity(null);
+    setStreamingId(null);
   }
 
   function clearHistory() {
     localStorage.removeItem("max-chat-messages");
+    setBriefLoaded(false);
     setMessages([{ ...INITIAL, time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) }]);
+    fetchBrief();
   }
 
   return (
@@ -219,7 +296,6 @@ export default function ChatPage() {
           </div>
         </div>
         <div className="ml-auto flex items-center gap-3">
-          {/* Voice output toggle */}
           <button onClick={() => { setVoiceOut(v => !v); window.speechSynthesis?.cancel(); }} title={voiceOut ? "Voice on" : "Voice off"} style={{
             display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 600,
             background: voiceOut ? "rgba(6,182,212,0.12)" : "rgba(255,255,255,0.03)",
@@ -237,7 +313,6 @@ export default function ChatPage() {
             )}
             {voiceOut ? "Voice On" : "Voice Off"}
           </button>
-          {/* Clear history */}
           <button onClick={clearHistory} title="Clear conversation" style={{
             display: "flex", alignItems: "center", gap: 5, padding: "6px 10px", borderRadius: 8, cursor: "pointer", fontSize: 11, fontWeight: 600,
             background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", color: "var(--t4)", transition: "all .2s",
@@ -266,32 +341,50 @@ export default function ChatPage() {
             <div className={`max-w-lg flex flex-col gap-1 ${msg.role === "user" ? "items-end" : "items-start"}`}>
               <div className="px-5 py-3.5 rounded-2xl text-sm leading-relaxed"
                 style={msg.role === "max"
-                  ? { background: "linear-gradient(135deg,#07101e,#050d1a)", border: "1px solid rgba(6,182,212,0.1)", color: "var(--t1)" }
+                  ? { background: "linear-gradient(135deg,#07101e,#050d1a)", border: "1px solid rgba(6,182,212,0.1)", color: "var(--t1)", minHeight: 46 }
                   : { background: "linear-gradient(135deg,#0369a1,#0284c7)", color: "#fff", boxShadow: "0 2px 20px rgba(3,105,161,0.3)" }
                 }>
-                {msg.role === "max"
-                  ? <MarkdownText text={msg.content} />
-                  : msg.content}
+                {msg.role === "max" ? (
+                  msg.content ? (
+                    <MarkdownText text={msg.content} />
+                  ) : (
+                    /* Empty streaming bubble — show animated dots */
+                    <div className="flex items-center gap-1.5" style={{ padding: "2px 0" }}>
+                      {[0,1,2].map(j => (
+                        <div key={j} className="w-1.5 h-1.5 rounded-full"
+                          style={{ background: "var(--teal)", opacity: 0.5, animation: `bounce 0.8s ease-in-out ${j*0.18}s infinite` }} />
+                      ))}
+                    </div>
+                  )
+                ) : msg.content}
+                {/* Streaming cursor */}
+                {streamingId === i && msg.content && (
+                  <span style={{ display: "inline-block", width: 2, height: "1em", background: "var(--teal)", marginLeft: 2, verticalAlign: "text-bottom", animation: "pulse-dot 0.8s ease-in-out infinite", opacity: 0.7 }} />
+                )}
               </div>
               <span className="text-xs px-1" style={{ color: "rgba(6,182,212,0.2)" }}>{msg.time}</span>
             </div>
           </div>
         ))}
-        {loading && (
-          <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+
+        {/* Tool activity indicator */}
+        {loading && toolActivity && (
+          <div className="flex gap-3 afu">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-1"
               style={{ background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.2)" }}>
               <span className="text-xs font-black" style={{ color: "var(--teal)" }}>M</span>
             </div>
-            <div className="px-5 py-4 rounded-2xl flex items-center gap-2"
-              style={{ background: "linear-gradient(135deg,#07101e,#050d1a)", border: "1px solid rgba(6,182,212,0.1)" }}>
-              {[0,1,2].map(i => (
-                <div key={i} className="w-2 h-2 rounded-full"
-                  style={{ background: "var(--teal)", opacity: 0.6, animation: `bounce 0.8s ease-in-out ${i*0.18}s infinite` }} />
-              ))}
+            <div className="px-4 py-2.5 rounded-xl flex items-center gap-2.5"
+              style={{ background: "rgba(6,182,212,0.04)", border: "1px solid rgba(6,182,212,0.1)" }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="2" strokeLinecap="round"
+                style={{ animation: "spin-slow 1.5s linear infinite", flexShrink: 0 }}>
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+              </svg>
+              <span style={{ fontSize: 12, color: "var(--teal)", opacity: 0.8 }}>{toolActivity}</span>
             </div>
           </div>
         )}
+
         <div ref={bottomRef} />
       </div>
 
@@ -299,8 +392,13 @@ export default function ChatPage() {
       <div className="flex gap-2 flex-wrap" style={{ padding: "0 40px 12px", flexShrink: 0 }}>
         {SUGGESTIONS.map(s => (
           <button key={s} onClick={() => send(s)}
-            className="text-sm px-3.5 py-1.5 rounded-full transition-all hover:opacity-80"
-            style={{ background: "rgba(6,182,212,0.05)", border: "1px solid rgba(6,182,212,0.12)", color: "var(--t3)" }}>
+            className="transition-all hover:opacity-80"
+            style={{
+              background: "rgba(6,182,212,0.05)", border: "1px solid rgba(6,182,212,0.12)",
+              color: "var(--t3)", fontSize: 12, fontWeight: 500,
+              padding: "6px 14px", borderRadius: 20,
+              whiteSpace: "nowrap", flexShrink: 0,
+            }}>
             {s}
           </button>
         ))}

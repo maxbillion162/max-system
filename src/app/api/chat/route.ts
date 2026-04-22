@@ -1,5 +1,4 @@
-import { NextResponse } from "next/server";
-import { runAgent } from "@/lib/max-agent";
+import { runAgentStream, AgentEvent, AgentMessage } from "@/lib/max-agent";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -9,37 +8,64 @@ const supabase = createClient(
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const body       = await request.json();
     const messages   = body.messages ?? [];
     const session_id = body.session_id as string | undefined;
 
     if (messages.length === 0) {
-      return NextResponse.json({ error: "No messages provided" }, { status: 400 });
+      return new Response(JSON.stringify({ error: "No messages provided" }), { status: 400 });
     }
 
-    // Normalize roles — frontend sends "model", agent expects "assistant"
-    const normalized = messages.map((m: { role: string; content: string }) => ({
-      role: m.role === "model" ? "assistant" : m.role,
+    const normalized: AgentMessage[] = messages.map((m: { role: string; content: string }) => ({
+      role: (m.role === "model" ? "assistant" : m.role) as "user" | "assistant",
       content: m.content,
     }));
 
-    const reply = await runAgent(normalized, true);
+    const encoder  = new TextEncoder();
+    let   fullText = "";
 
-    // Persist the latest exchange to chat_history
-    if (session_id && normalized.length > 0) {
-      const last = normalized[normalized.length - 1];
-      if (last.role === "user") {
-        await supabase.from("chat_history").insert([
-          { session_id, role: "user",      content: last.content },
-          { session_id, role: "assistant", content: reply        },
-        ]);
-      }
-    }
+    const stream = new ReadableStream({
+      async start(controller) {
+        function send(event: AgentEvent) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+        }
 
-    return NextResponse.json({ reply });
+        try {
+          await runAgentStream(normalized, true, (event) => {
+            send(event);
+            if (event.t === "done") fullText = event.full;
+          });
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          send({ t: "chunk", text: `Error: ${msg}` });
+          send({ t: "done", full: `Error: ${msg}` });
+          fullText = `Error: ${msg}`;
+        } finally {
+          // Persist after streaming completes
+          if (session_id && normalized.length > 0) {
+            const last = normalized[normalized.length - 1];
+            if (last.role === "user" && fullText) {
+              await supabase.from("chat_history").insert([
+                { session_id, role: "user",      content: last.content },
+                { session_id, role: "assistant", content: fullText     },
+              ]).then(() => {}, () => {}); // non-fatal
+            }
+          }
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type":  "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection":    "keep-alive",
+      },
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("Chat error:", msg);
-    return NextResponse.json({ error: "Chat failed", detail: msg }, { status: 500 });
+    return new Response(JSON.stringify({ error: "Chat failed", detail: msg }), { status: 500 });
   }
 }

@@ -23,17 +23,11 @@ const NAV_DEFAULT = [
 
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
-  const [emailBadge, setEmailBadge] = useState(0);
-  const [nav, setNav]               = useState(NAV_DEFAULT);
+  const [nav, setNav] = useState(NAV_DEFAULT);
   const [dragIdx, setDragIdx]       = useState<number | null>(null);
   const [dropIdx, setDropIdx]       = useState<number | null>(null);
 
   useEffect(() => {
-    // Email badge
-    try {
-      const n = parseInt(localStorage.getItem("email-unread-count") ?? "0");
-      if (!isNaN(n)) setEmailBadge(n);
-    } catch {}
     // Saved nav order
     try {
       const saved = localStorage.getItem("nav-order");
@@ -198,13 +192,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   </svg>
                   {!collapsed && (
                     <span style={{ fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", flex: 1 }}>{item.label}</span>
-                  )}
-                  {!collapsed && item.href === "/dashboard/email" && emailBadge > 0 && (
-                    <span style={{ fontSize: 10, fontWeight: 800, color: "#fff", background: "var(--red)", padding: "1px 5px", borderRadius: 3, flexShrink: 0 }}>{emailBadge}</span>
-                  )}
-                  {/* Drag handle — only visible when expanded */}
-                  {!collapsed && (
-                    <span style={{ color: "rgba(148,163,184,0.15)", fontSize: 12, cursor: "grab", marginLeft: 2, flexShrink: 0 }}>⠿</span>
                   )}
                 </Link>
               </li>

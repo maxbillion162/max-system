@@ -805,101 +805,9 @@ export default function Dashboard() {
           </div>
         </HudCard>
 
-        {/* ── TASKS ── */}
-        <HudCard delay={.13} style={{ padding: "18px 24px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)" }}>Tasks</p>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <a href="/dashboard/calendar" style={{ fontSize: 11, color: "var(--blue)", textDecoration: "none" }}>All →</a>
-              <button onClick={() => setAddingTask(t => !t)} style={{
-                width: 22, height: 22, borderRadius: 5, cursor: "pointer",
-                background: addingTask ? "rgba(69,137,255,0.12)" : "transparent",
-                border: `1px solid ${addingTask ? "rgba(69,137,255,0.3)" : "var(--border2)"}`,
-                color: addingTask ? "var(--blue)" : "var(--t3)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                transition: "all .15s",
-              }}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round">
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          {addingTask && (
-            <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-              <input
-                autoFocus
-                value={newTaskText}
-                onChange={e => setNewTaskText(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === "Enter") addTask();
-                  if (e.key === "Escape") { setAddingTask(false); setNewTaskText(""); }
-                }}
-                placeholder="New task…"
-                style={{
-                  flex: 1, background: "var(--surface2)", border: "1px solid var(--border2)",
-                  borderRadius: 6, padding: "6px 10px", fontSize: 12, color: "var(--t1)", outline: "none",
-                }}
-              />
-              <button onClick={addTask} style={{
-                padding: "6px 12px", background: "rgba(69,137,255,0.1)",
-                border: "1px solid rgba(69,137,255,0.2)", borderRadius: 6,
-                fontSize: 12, fontWeight: 600, color: "var(--blue)", cursor: "pointer",
-              }}>Add</button>
-            </div>
-          )}
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 180, overflowY: "auto" }}>
-            {tasks.length === 0 && !addingTask && (
-              <p style={{ fontSize: 12, color: "var(--t4)", textAlign: "center", padding: "14px 0" }}>
-                No open tasks.
-              </p>
-            )}
-            {tasks.filter(t => !t.completed).concat(tasks.filter(t => t.completed)).map(task => (
-              <div key={task.id} style={{
-                display: "flex", alignItems: "center", gap: 8, padding: "7px 10px",
-                borderRadius: 4, background: "var(--surface2)",
-                opacity: task.completed ? 0.45 : 1, transition: "opacity .2s",
-              }}>
-                <button onClick={() => toggleTask(task.id, task.completed)} style={{
-                  width: 15, height: 15, borderRadius: 3, flexShrink: 0, cursor: "pointer",
-                  background: task.completed ? "rgba(34,197,94,0.15)" : "transparent",
-                  border: `1px solid ${task.completed ? "rgba(34,197,94,0.4)" : "var(--border2)"}`,
-                  display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s",
-                }}>
-                  {task.completed && (
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3.5" strokeLinecap="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  )}
-                </button>
-                <span style={{
-                  flex: 1, fontSize: 12, color: "var(--t2)",
-                  textDecoration: task.completed ? "line-through" : "none",
-                }}>
-                  {task.text}
-                </span>
-                <button onClick={() => deleteTask(task.id)} style={{
-                  background: "none", border: "none", cursor: "pointer",
-                  color: "var(--t4)", display: "flex", alignItems: "center", padding: 2,
-                  borderRadius: 3, transition: "color .15s",
-                }}
-                  onMouseEnter={e => (e.currentTarget.style.color = "var(--red)")}
-                  onMouseLeave={e => (e.currentTarget.style.color = "var(--t4)")}
-                >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                    <path d="M18 6L6 18M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            ))}
-          </div>
-        </HudCard>
-
         </div>{/* end center column */}
 
-        {/* ── RIGHT: CRYPTO + M.A.X. BRIEF ── */}
+        {/* ── RIGHT: CRYPTO + TASKS + M.A.X. BRIEF ── */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
           {/* Crypto */}
@@ -932,6 +840,92 @@ export default function Dashboard() {
                 <Sparkline data={a.data} color={a.change >= 0 ? "var(--green)" : "var(--red)"} height={32} id={`d-${a.symbol}`} />
               </div>
             ))}
+          </HudCard>
+
+          {/* Tasks */}
+          <HudCard delay={.13} style={{ padding: "18px 20px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)" }}>Tasks</p>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button onClick={() => setAddingTask(t => !t)} style={{
+                  width: 22, height: 22, borderRadius: 5, cursor: "pointer",
+                  background: addingTask ? "rgba(69,137,255,0.12)" : "transparent",
+                  border: `1px solid ${addingTask ? "rgba(69,137,255,0.3)" : "var(--border2)"}`,
+                  color: addingTask ? "var(--blue)" : "var(--t3)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "all .15s",
+                }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {addingTask && (
+              <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+                <input
+                  autoFocus
+                  value={newTaskText}
+                  onChange={e => setNewTaskText(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") addTask();
+                    if (e.key === "Escape") { setAddingTask(false); setNewTaskText(""); }
+                  }}
+                  placeholder="New task…"
+                  style={{
+                    flex: 1, background: "var(--surface2)", border: "1px solid var(--border2)",
+                    borderRadius: 6, padding: "6px 10px", fontSize: 12, color: "var(--t1)", outline: "none",
+                  }}
+                />
+                <button onClick={addTask} style={{
+                  padding: "6px 12px", background: "rgba(69,137,255,0.1)",
+                  border: "1px solid rgba(69,137,255,0.2)", borderRadius: 6,
+                  fontSize: 12, fontWeight: 600, color: "var(--blue)", cursor: "pointer",
+                }}>Add</button>
+              </div>
+            )}
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 200, overflowY: "auto" }}>
+              {tasks.length === 0 && !addingTask && (
+                <p style={{ fontSize: 12, color: "var(--t4)", textAlign: "center", padding: "14px 0" }}>No open tasks.</p>
+              )}
+              {tasks.filter(t => !t.completed).concat(tasks.filter(t => t.completed)).map(task => (
+                <div key={task.id} style={{
+                  display: "flex", alignItems: "center", gap: 8, padding: "7px 10px",
+                  borderRadius: 4, background: "var(--surface2)",
+                  opacity: task.completed ? 0.45 : 1, transition: "opacity .2s",
+                }}>
+                  <button onClick={() => toggleTask(task.id, task.completed)} style={{
+                    width: 15, height: 15, borderRadius: 3, flexShrink: 0, cursor: "pointer",
+                    background: task.completed ? "rgba(34,197,94,0.15)" : "transparent",
+                    border: `1px solid ${task.completed ? "rgba(34,197,94,0.4)" : "var(--border2)"}`,
+                    display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s",
+                  }}>
+                    {task.completed && (
+                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3.5" strokeLinecap="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </button>
+                  <span style={{ flex: 1, fontSize: 12, color: "var(--t2)", textDecoration: task.completed ? "line-through" : "none" }}>
+                    {task.text}
+                  </span>
+                  <button onClick={() => deleteTask(task.id)} style={{
+                    background: "none", border: "none", cursor: "pointer",
+                    color: "var(--t4)", display: "flex", alignItems: "center", padding: 2,
+                    borderRadius: 3, transition: "color .15s",
+                  }}
+                    onMouseEnter={e => (e.currentTarget.style.color = "var(--red)")}
+                    onMouseLeave={e => (e.currentTarget.style.color = "var(--t4)")}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                      <path d="M18 6L6 18M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
           </HudCard>
 
           {/* M.A.X. Brief */}
