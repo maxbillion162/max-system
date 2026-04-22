@@ -29,7 +29,7 @@ export default function LoginPage() {
     return () => window.removeEventListener("mousemove", onMove);
   }, []);
 
-  /* ── Compute glow intensity + direction from mouse → title ── */
+  /* ── Compute glow intensity from mouse → title (no direction, just proximity) ── */
   useEffect(() => {
     const el = titleRef.current;
     if (!el) return;
@@ -37,7 +37,7 @@ export default function LoginPage() {
     const cx = r.left + r.width  / 2;
     const cy = r.top  + r.height / 2;
     const dist = Math.hypot(mouse.x - cx, mouse.y - cy);
-    setGlow(Math.max(0.12, 1 - dist / 640));
+    setGlow(Math.max(0, Math.min(0.3, 0.3 - dist / 780)));
   }, [mouse]);
 
   /* ── Loading dots animation ── */
@@ -72,30 +72,23 @@ export default function LoginPage() {
     }
   }, [password, status, router]);
 
-  /* ── Derived glow values ── */
-  const el  = titleRef.current?.getBoundingClientRect();
-  const cx  = el ? el.left + el.width  / 2 : (typeof window !== "undefined" ? window.innerWidth  / 2 : 760);
-  const cy  = el ? el.top  + el.height / 2 : (typeof window !== "undefined" ? window.innerHeight / 2 : 300);
-  const ang = Math.atan2(mouse.y - cy, mouse.x - cx);
-  const sdx = Math.cos(ang) * glow * 6;
-  const sdy = Math.sin(ang) * glow * 6;
-
+  /* ── Derived glow values — deep navy, low opacity, no directional jitter ── */
   const titleShadow = [
-    `${sdx}px ${sdy}px ${Math.round(8  + glow * 24)}px rgba(69,137,255,${(0.5  + glow * 0.5).toFixed(2)})`,
-    `0 0 ${Math.round(30 + glow * 70)}px rgba(69,137,255,${(0.25 + glow * 0.55).toFixed(2)})`,
-    `0 0 ${Math.round(60 + glow * 120)}px rgba(69,137,255,${(0.1  + glow * 0.3 ).toFixed(2)})`,
+    `0 0 ${Math.round(24 + glow * 36)}px rgba(18,50,120,${(glow * 0.65).toFixed(2)})`,
+    `0 0 ${Math.round(55 + glow * 60)}px rgba(10,30,80,${(glow * 0.4).toFixed(2)})`,
+    `0 0 90px rgba(6,18,55,0.07)`,
   ].join(", ");
 
   const borderGlow = status === "error"
-    ? "rgba(239,68,68,0.6)"
+    ? "rgba(239,68,68,0.35)"
     : status === "ok"
-    ? "rgba(34,197,94,0.6)"
-    : `rgba(69,137,255,${(0.2 + glow * 0.55).toFixed(2)})`;
+    ? "rgba(34,197,94,0.35)"
+    : `rgba(30,60,130,${(0.18 + glow * 0.32).toFixed(2)})`;
 
   return (
     <div style={{
       minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
-      background: "linear-gradient(160deg, #07080f 0%, #080b15 40%, #06080e 100%)",
+      background: "linear-gradient(180deg, #040507 0%, #05060a 50%, #040507 100%)",
       position: "relative", overflow: "hidden", fontFamily: "'Inter', 'SF Pro Display', sans-serif",
     }}>
 
@@ -106,17 +99,9 @@ export default function LoginPage() {
           50%  { opacity: 1; }
           100% { transform: translateY(100vh); opacity: 0; }
         }
-        @keyframes flicker {
-          0%,100% { opacity: 1; }
-          92%     { opacity: 1; }
-          93%     { opacity: 0.85; }
-          94%     { opacity: 1; }
-          96%     { opacity: 0.9; }
-          97%     { opacity: 1; }
-        }
         @keyframes corner-pulse {
-          0%,100% { opacity: 0.4; }
-          50%     { opacity: 0.9; }
+          0%,100% { opacity: 0.18; }
+          50%     { opacity: 0.35; }
         }
         @keyframes boot-in {
           0%   { opacity: 0; transform: translateY(18px) scale(0.98); }
@@ -139,8 +124,8 @@ export default function LoginPage() {
       <div style={{
         position: "absolute", inset: 0, pointerEvents: "none",
         backgroundImage: [
-          "linear-gradient(rgba(69,137,255,0.018) 1px, transparent 1px)",
-          "linear-gradient(90deg, rgba(69,137,255,0.018) 1px, transparent 1px)",
+          "linear-gradient(rgba(30,50,100,0.008) 1px, transparent 1px)",
+          "linear-gradient(90deg, rgba(30,50,100,0.008) 1px, transparent 1px)",
         ].join(","),
         backgroundSize: "44px 44px",
       }} />
@@ -148,27 +133,26 @@ export default function LoginPage() {
       {/* ── Scan line ── */}
       <div style={{
         position: "absolute", left: 0, right: 0, height: 1, pointerEvents: "none",
-        background: "linear-gradient(90deg, transparent 0%, rgba(69,137,255,0.12) 30%, rgba(69,137,255,0.25) 50%, rgba(69,137,255,0.12) 70%, transparent 100%)",
-        animation: "scanline 7s linear infinite",
+        background: "linear-gradient(90deg, transparent 0%, rgba(20,45,100,0.06) 30%, rgba(20,45,100,0.1) 50%, rgba(20,45,100,0.06) 70%, transparent 100%)",
+        animation: "scanline 14s linear infinite",
         zIndex: 2,
       }} />
 
-      {/* ── Mouse-following glow behind title ── */}
+      {/* ── Subtle static ambient glow behind center ── */}
       <div style={{
-        position: "fixed",
-        left: mouse.x, top: mouse.y,
+        position: "absolute", top: "38%", left: "50%",
         transform: "translate(-50%, -50%)",
-        width: 500, height: 500, borderRadius: "50%",
-        background: `radial-gradient(circle, rgba(69,137,255,${(glow * 0.06).toFixed(3)}) 0%, transparent 65%)`,
-        pointerEvents: "none", transition: "background .15s ease", zIndex: 1,
+        width: 700, height: 400, borderRadius: "50%",
+        background: "radial-gradient(ellipse, rgba(8,22,65,0.18) 0%, transparent 68%)",
+        pointerEvents: "none", zIndex: 1,
       }} />
 
       {/* ── Corner HUD decorations ── */}
       {([
-        { pos: { top: 20, left: 20 } as React.CSSProperties,     border: { borderLeft: "1px solid rgba(69,137,255,0.3)", borderTop: "1px solid rgba(69,137,255,0.3)" } },
-        { pos: { top: 20, right: 20 } as React.CSSProperties,    border: { borderRight:"1px solid rgba(69,137,255,0.3)", borderTop: "1px solid rgba(69,137,255,0.3)" } },
-        { pos: { bottom:20,left: 20 } as React.CSSProperties,    border: { borderLeft: "1px solid rgba(69,137,255,0.3)", borderBottom:"1px solid rgba(69,137,255,0.3)" } },
-        { pos: { bottom:20,right: 20 } as React.CSSProperties,   border: { borderRight:"1px solid rgba(69,137,255,0.3)", borderBottom:"1px solid rgba(69,137,255,0.3)" } },
+        { pos: { top: 20, left: 20 } as React.CSSProperties,     border: { borderLeft: "1px solid rgba(20,45,100,0.25)", borderTop: "1px solid rgba(20,45,100,0.25)" } },
+        { pos: { top: 20, right: 20 } as React.CSSProperties,    border: { borderRight:"1px solid rgba(20,45,100,0.25)", borderTop: "1px solid rgba(20,45,100,0.25)" } },
+        { pos: { bottom:20,left: 20 } as React.CSSProperties,    border: { borderLeft: "1px solid rgba(20,45,100,0.25)", borderBottom:"1px solid rgba(20,45,100,0.25)" } },
+        { pos: { bottom:20,right: 20 } as React.CSSProperties,   border: { borderRight:"1px solid rgba(20,45,100,0.25)", borderBottom:"1px solid rgba(20,45,100,0.25)" } },
       ] as { pos: React.CSSProperties; border: React.CSSProperties }[]).map(({ pos, border }, i) => (
         <div key={i} style={{
           position: "absolute", width: 20, height: 20,
@@ -181,7 +165,7 @@ export default function LoginPage() {
       {/* ── System metadata top-left ── */}
       <div style={{
         position: "absolute", top: 32, left: 40,
-        fontFamily: "monospace", fontSize: 10, color: "rgba(69,137,255,0.3)",
+        fontFamily: "monospace", fontSize: 10, color: "rgba(40,60,100,0.45)",
         letterSpacing: "0.12em", lineHeight: 1.8, zIndex: 5,
         animation: "boot-in .6s ease .2s both",
       }}>
@@ -193,12 +177,12 @@ export default function LoginPage() {
       {/* ── Timestamp top-right ── */}
       <div style={{
         position: "absolute", top: 32, right: 40,
-        fontFamily: "monospace", fontSize: 10, color: "rgba(69,137,255,0.3)",
+        fontFamily: "monospace", fontSize: 10, color: "rgba(40,60,100,0.45)",
         letterSpacing: "0.12em", textAlign: "right", zIndex: 5,
         animation: "boot-in .6s ease .2s both",
       }}>
         <div>{new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}</div>
-        <div style={{ color: "rgba(34,197,94,0.4)" }}>● SYSTEM NOMINAL</div>
+        <div style={{ color: "rgba(30,70,50,0.5)" }}>● SYSTEM NOMINAL</div>
       </div>
 
       {/* ── MAIN CARD ── */}
@@ -227,13 +211,12 @@ export default function LoginPage() {
             fontSize: "clamp(64px, 12vw, 112px)",
             fontWeight: 900,
             letterSpacing: "-0.01em",
-            color: "#e8f0ff",
+            color: "#4a5c78",
             lineHeight: 1,
             marginBottom: 14,
             userSelect: "none",
-            animation: "flicker 8s ease-in-out infinite",
             textShadow: titleShadow,
-            transition: "text-shadow .08s ease",
+            transition: "text-shadow .55s cubic-bezier(0.4,0,0.2,1)",
           }}
         >
           M.A.X.
@@ -242,7 +225,7 @@ export default function LoginPage() {
         {/* Subtitle */}
         <p style={{
           fontSize: 11, fontWeight: 700, letterSpacing: "0.28em",
-          textTransform: "uppercase", color: "rgba(69,137,255,0.45)",
+          textTransform: "uppercase", color: "rgba(40,65,110,0.55)",
           marginBottom: 6, fontFamily: "monospace",
         }}>
           Maximum Adaptive eXecutive
@@ -263,7 +246,7 @@ export default function LoginPage() {
           borderRadius: 4,
           padding: "28px 32px",
           backdropFilter: "blur(12px)",
-          boxShadow: `0 0 40px rgba(69,137,255,${(glow * 0.1).toFixed(3)}), 0 24px 60px rgba(0,0,0,0.6)`,
+          boxShadow: `0 0 60px rgba(8,20,60,${(glow * 0.5).toFixed(2)}), 0 24px 60px rgba(0,0,0,0.7)`,
           transition: "border-color .2s ease, box-shadow .2s ease",
           animation: shake ? "shake 0.35s ease" : "none",
         }}>
@@ -388,9 +371,9 @@ export default function LoginPage() {
         zIndex: 5,
       }}>
         {[
-          { dot: "rgba(34,197,94,0.6)",    label: "NEURAL CORE ACTIVE" },
-          { dot: "rgba(69,137,255,0.6)",   label: "256-BIT ENCRYPTED" },
-          { dot: "rgba(245,158,11,0.6)",   label: "REAL-TIME DATA FEEDS" },
+          { dot: "rgba(30,80,60,0.5)",    label: "NEURAL CORE ACTIVE" },
+          { dot: "rgba(20,50,110,0.5)",   label: "256-BIT ENCRYPTED" },
+          { dot: "rgba(80,60,20,0.5)",    label: "REAL-TIME DATA FEEDS" },
         ].map(s => (
           <div key={s.label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ width: 4, height: 4, borderRadius: "50%", background: s.dot, display: "inline-block", boxShadow: `0 0 4px ${s.dot}` }} />
