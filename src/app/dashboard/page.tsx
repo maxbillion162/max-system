@@ -199,6 +199,23 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+// ── Weather condition emoji ────────────────────────────────────────────────────
+function conditionEmoji(condition: string): string {
+  const c = condition.toLowerCase();
+  if (c.includes("thunder") || c.includes("storm"))           return "⛈";
+  if (c.includes("snow") || c.includes("blizzard") || c.includes("sleet")) return "❄️";
+  if (c.includes("heavy rain") || c.includes("shower"))       return "🌧";
+  if (c.includes("light rain") || c.includes("drizzle"))      return "🌦";
+  if (c.includes("rain"))                                      return "🌧";
+  if (c.includes("fog") || c.includes("mist") || c.includes("haze")) return "🌫";
+  if (c.includes("overcast"))                                  return "☁️";
+  if (c.includes("partly") || c.includes("mostly cloudy"))    return "⛅";
+  if (c.includes("cloud"))                                     return "☁️";
+  if (c.includes("wind") || c.includes("breezy"))             return "💨";
+  if (c.includes("clear") || c.includes("fair") || c.includes("sunny") || c.includes("sun")) return "☀️";
+  return "🌤";
+}
+
 // ── Briefing trigger button ────────────────────────────────────────────────────
 function BriefingButton() {
   const [state, setState] = useState<"idle"|"loading"|"sent"|"error">("idle");
@@ -246,7 +263,7 @@ export default function Dashboard() {
   const [alertDismissed, setAlertDismissed] = useState(false);
   const [calEvents, setCalEvents]           = useState<CalEvent[]>([]);
   const [calConnected, setCalConnected]     = useState<boolean | null>(null);
-  const [priv, setPriv]                     = useState(false);
+  const [priv, setPriv]                     = useState(true);
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000);
@@ -300,6 +317,11 @@ export default function Dashboard() {
   async function deleteTask(id: string) {
     setTasks(prev => prev.filter(t => t.id !== id));
     await supabase.from("tasks").delete().eq("id", id);
+  }
+
+  async function toggleHabit(id: string, completed: boolean) {
+    setHabits(prev => prev.map(h => h.id === id ? { ...h, completed: !completed } : h));
+    await supabase.from("habits").update({ completed: !completed }).eq("id", id);
   }
 
   async function updateWealth(key: keyof typeof WEALTH_DEFAULTS, val: number) {
@@ -431,24 +453,6 @@ export default function Dashboard() {
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {/* Privacy toggle */}
-            <button onClick={() => setPriv(p => !p)} title={priv ? "Show financial data" : "Hide financial data"} style={{
-              display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 6, cursor: "pointer",
-              background: priv ? "rgba(245,158,11,0.1)" : "rgba(255,255,255,0.03)",
-              border: `1px solid ${priv ? "rgba(245,158,11,0.3)" : "rgba(255,255,255,0.06)"}`,
-              color: priv ? "var(--amber)" : "var(--t4)", fontSize: 11, fontWeight: 600, transition: "all .2s",
-            }}>
-              {priv ? (
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>
-                </svg>
-              ) : (
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-                </svg>
-              )}
-              {priv ? "Hidden" : "Visible"}
-            </button>
             <div style={{ fontFamily: "monospace", fontSize: 34, fontWeight: 800, color: "var(--t1)", letterSpacing: "-0.02em" }}>{timeStr}</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -463,6 +467,25 @@ export default function Dashboard() {
         {/* Header row */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
           <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--t3)" }}>Tracked Net Worth</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {/* Privacy toggle */}
+            <button onClick={() => setPriv(p => !p)} title={priv ? "Show financial data" : "Hide financial data"} style={{
+              display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 4, cursor: "pointer",
+              background: priv ? "rgba(245,158,11,0.08)" : "rgba(255,255,255,0.03)",
+              border: `1px solid ${priv ? "rgba(245,158,11,0.25)" : "rgba(255,255,255,0.06)"}`,
+              color: priv ? "var(--amber)" : "var(--t4)", fontSize: 11, fontWeight: 600, transition: "all .2s",
+            }}>
+              {priv ? (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>
+                </svg>
+              ) : (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                </svg>
+              )}
+              {priv ? "Private" : "Visible"}
+            </button>
           <a href="/dashboard/finance" style={{
             display: "flex", alignItems: "center", gap: 5,
             fontSize: 11, fontWeight: 600, color: "var(--t3)",
@@ -479,6 +502,7 @@ export default function Dashboard() {
             </svg>
             Edit Portfolio
           </a>
+          </div>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -528,34 +552,59 @@ export default function Dashboard() {
             <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 14 }}>Orlando Weather</p>
             {weather ? (
               <>
-                <div style={{ display: "flex", alignItems: "flex-end", gap: 10, marginBottom: 6 }}>
-                  <span style={{ fontSize: 48, fontWeight: 800, color: "var(--t1)", lineHeight: 1, fontFamily: "monospace" }}>{weather.tempF}°</span>
-                  <div style={{ marginBottom: 4 }}>
-                    <div style={{ fontSize: 13, color: "var(--t2)", fontWeight: 500 }}>{weather.condition}</div>
-                    <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 2 }}>Feels {weather.feelsLikeF}° · Wind {weather.windMph}mph</div>
+                {/* Main temp + icon row */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                  <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
+                    <span style={{ fontSize: 48, fontWeight: 800, color: "var(--t1)", lineHeight: 1, fontFamily: "monospace" }}>{weather.tempF}°</span>
+                    <span style={{ fontSize: 13, color: "var(--t3)", marginBottom: 6 }}>F</span>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 36, lineHeight: 1, marginBottom: 4 }}>{conditionEmoji(weather.condition)}</div>
+                    <div style={{ fontSize: 11, color: "var(--t2)", fontWeight: 600 }}>{weather.condition}</div>
                   </div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14 }}>
-                  <div style={{ flex: 1, height: 3, borderRadius: 2, background: "var(--border2)" }}>
-                    <div style={{ height: 3, borderRadius: 2, width: `${weather.precipChance}%`, background: weather.precipChance > 50 ? "var(--blue)" : "var(--t4)", transition: "width 1s ease" }} />
+
+                {/* Feels like + wind */}
+                <div style={{ display: "flex", gap: 12, marginBottom: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 5, background: "var(--surface2)", border: "1px solid var(--border)" }}>
+                    <span style={{ fontSize: 12 }}>🌡</span>
+                    <span style={{ fontSize: 11, color: "var(--t3)" }}>Feels <span style={{ color: "var(--t2)", fontWeight: 600 }}>{weather.feelsLikeF}°</span></span>
                   </div>
-                  <span style={{ fontSize: 11, color: weather.precipChance > 50 ? "var(--blue)" : "var(--t3)", fontWeight: 600, flexShrink: 0 }}>Rain {weather.precipChance}%</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 5, background: "var(--surface2)", border: "1px solid var(--border)" }}>
+                    <span style={{ fontSize: 12 }}>💨</span>
+                    <span style={{ fontSize: 11, color: "var(--t3)" }}><span style={{ color: "var(--t2)", fontWeight: 600 }}>{weather.windMph}</span> mph</span>
+                  </div>
                 </div>
+
+                {/* Rain chance bar */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                  <span style={{ fontSize: 12 }}>🌧</span>
+                  <div style={{ flex: 1, height: 4, borderRadius: 2, background: "var(--border2)" }}>
+                    <div style={{ height: 4, borderRadius: 2, width: `${weather.precipChance}%`, background: weather.precipChance > 50 ? "var(--blue)" : "var(--t4)", transition: "width 1s ease" }} />
+                  </div>
+                  <span style={{ fontSize: 11, color: weather.precipChance > 50 ? "var(--blue)" : "var(--t3)", fontWeight: 700, flexShrink: 0, width: 30, textAlign: "right" }}>{weather.precipChance}%</span>
+                </div>
+
+                {/* 5-day forecast */}
                 {weather.forecast && (
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 4 }}>
                     {weather.forecast.slice(0, 5).map((f, i) => (
-                      <div key={i} style={{ textAlign: "center", padding: "8px 4px", borderRadius: 4, background: "var(--surface2)", border: "1px solid var(--border)" }}>
-                        <div style={{ fontSize: 10, color: "var(--t3)", fontWeight: 600, marginBottom: 4 }}>{f.day}</div>
+                      <div key={i} style={{ textAlign: "center", padding: "8px 4px", borderRadius: 6, background: "var(--surface2)", border: "1px solid var(--border)" }}>
+                        <div style={{ fontSize: 9, color: "var(--t4)", fontWeight: 700, marginBottom: 4, letterSpacing: "0.06em" }}>{f.day.toUpperCase()}</div>
+                        <div style={{ fontSize: 16, marginBottom: 3 }}>{conditionEmoji(f.day.includes("Rain") || (f.precipChance ?? 0) > 50 ? "Rain" : "sunny")}</div>
                         <div style={{ fontSize: 12, fontWeight: 700, color: "var(--t1)", fontFamily: "monospace" }}>{f.high}°</div>
-                        <div style={{ fontSize: 10, color: "var(--t3)" }}>{f.low}°</div>
-                        {(f.precipChance ?? 0) > 30 && <div style={{ fontSize: 9, color: "var(--blue)", marginTop: 2 }}>{f.precipChance}%</div>}
+                        <div style={{ fontSize: 10, color: "var(--t4)" }}>{f.low}°</div>
+                        {(f.precipChance ?? 0) > 20 && <div style={{ fontSize: 9, color: "var(--blue)", marginTop: 2 }}>{f.precipChance}%</div>}
                       </div>
                     ))}
                   </div>
                 )}
               </>
             ) : (
-              <div style={{ fontSize: 32, fontWeight: 800, color: "var(--t3)" }}>—</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ fontSize: 40 }}>🌤</span>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--t3)" }}>Loading…</div>
+              </div>
             )}
           </HudCard>
 
@@ -582,16 +631,24 @@ export default function Dashboard() {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               {habits.slice(0, 5).map((hb, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", borderRadius: 4, background: "var(--surface2)" }}>
+                <button key={i} onClick={() => toggleHabit(hb.id, hb.completed)} style={{
+                  display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", borderRadius: 4,
+                  background: "var(--surface2)", border: "1px solid transparent", cursor: "pointer",
+                  textAlign: "left", width: "100%", transition: "border-color .15s",
+                }}
+                  onMouseEnter={e => (e.currentTarget.style.borderColor = hb.completed ? "rgba(34,197,94,0.25)" : "var(--border)")}
+                  onMouseLeave={e => (e.currentTarget.style.borderColor = "transparent")}
+                >
                   <div style={{
                     width: 14, height: 14, borderRadius: 3, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
                     background: hb.completed ? "rgba(34,197,94,0.15)" : "transparent",
                     border: `1px solid ${hb.completed ? "rgba(34,197,94,0.5)" : "var(--border2)"}`,
+                    transition: "all .15s",
                   }}>
                     {hb.completed && <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3.5"><polyline points="20 6 9 17 4 12" /></svg>}
                   </div>
-                  <span style={{ fontSize: 12, flex: 1, color: hb.completed ? "var(--t1)" : "var(--t3)", fontWeight: hb.completed ? 500 : 400 }}>{hb.name}</span>
-                </div>
+                  <span style={{ fontSize: 12, flex: 1, color: hb.completed ? "var(--t1)" : "var(--t3)", fontWeight: hb.completed ? 500 : 400, textDecoration: hb.completed ? "line-through" : "none" }}>{hb.name}</span>
+                </button>
               ))}
               {habits.length === 0 && <p style={{ fontSize: 12, color: "var(--t3)" }}>Loading habits…</p>}
             </div>
@@ -883,17 +940,16 @@ export default function Dashboard() {
               <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)" }}>M.A.X. Brief</p>
               <span style={{ fontSize: 10, color: "var(--blue)", fontWeight: 600 }}>Live data</span>
             </div>
-            <div style={{ fontSize: 13, color: "var(--t2)", lineHeight: 1.8 }}>
+            <div style={{ fontSize: 13, color: "var(--t2)", lineHeight: 1.7 }}>
               {insights.length > 0 ? (
-                <>
+                <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 9 }}>
                   {insights.map((ins, i) => (
-                    <span key={i}>
-                      <span style={{ color: ins.color, fontWeight: 700 }}>{ins.icon} </span>
-                      {ins.text}
-                      {i < insights.length - 1 ? " " : ""}
-                    </span>
+                    <li key={i} style={{ display: "flex", gap: 9, alignItems: "flex-start" }}>
+                      <span style={{ color: ins.color, fontWeight: 800, fontSize: 14, flexShrink: 0, lineHeight: 1.6 }}>{ins.icon}</span>
+                      <span>{ins.text}</span>
+                    </li>
                   ))}
-                </>
+                </ul>
               ) : (
                 <span style={{ color: "var(--t4)" }}>Loading intel…</span>
               )}

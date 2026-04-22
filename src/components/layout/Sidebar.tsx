@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -9,7 +9,7 @@ interface SidebarProps {
   onToggle: () => void;
 }
 
-const nav = [
+const NAV_DEFAULT = [
   { label: "Command Center", href: "/dashboard",          icon: "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" },
   { label: "M.A.X. Chat",    href: "/dashboard/chat",     icon: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" },
   { label: "Goals HQ",       href: "/dashboard/goals",    icon: "M12 22c5.52 0 10-4.48 10-10S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10zm0-6a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" },
@@ -24,14 +24,50 @@ const nav = [
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const [emailBadge, setEmailBadge] = useState(0);
+  const [nav, setNav]               = useState(NAV_DEFAULT);
+  const [dragIdx, setDragIdx]       = useState<number | null>(null);
+  const [dropIdx, setDropIdx]       = useState<number | null>(null);
 
-  // Read unread count written by email page
-  useState(() => {
+  useEffect(() => {
+    // Email badge
     try {
       const n = parseInt(localStorage.getItem("email-unread-count") ?? "0");
       if (!isNaN(n)) setEmailBadge(n);
     } catch {}
-  });
+    // Saved nav order
+    try {
+      const saved = localStorage.getItem("nav-order");
+      if (saved) {
+        const order = JSON.parse(saved) as string[];
+        const sorted = order
+          .map(href => NAV_DEFAULT.find(n => n.href === href))
+          .filter(Boolean) as typeof NAV_DEFAULT;
+        const missing = NAV_DEFAULT.filter(n => !order.includes(n.href));
+        setNav([...sorted, ...missing]);
+      }
+    } catch {}
+  }, []);
+
+  function handleDragStart(i: number) { setDragIdx(i); }
+
+  function handleDragOver(e: React.DragEvent, i: number) {
+    e.preventDefault();
+    setDropIdx(i);
+  }
+
+  function handleDrop(e: React.DragEvent, i: number) {
+    e.preventDefault();
+    if (dragIdx === null || dragIdx === i) { setDragIdx(null); setDropIdx(null); return; }
+    const next = [...nav];
+    const [moved] = next.splice(dragIdx, 1);
+    next.splice(i, 0, moved);
+    setNav(next);
+    try { localStorage.setItem("nav-order", JSON.stringify(next.map(n => n.href))); } catch {}
+    setDragIdx(null);
+    setDropIdx(null);
+  }
+
+  function handleDragEnd() { setDragIdx(null); setDropIdx(null); }
 
   return (
     <aside
@@ -55,7 +91,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           transition: "padding 0.25s ease",
         }}
       >
-        {/* Logo mark */}
         <div className="flex items-center gap-0 flex-shrink-0" style={{ gap: collapsed ? 0 : 10 }}>
           <div
             className="flex-shrink-0 rounded-lg flex items-center justify-center"
@@ -85,7 +120,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           )}
         </div>
 
-        {/* Toggle button — sits cleanly inside header */}
         {!collapsed && (
           <button
             onClick={onToggle}
@@ -104,7 +138,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           </button>
         )}
 
-        {/* When collapsed: clicking the logo expands */}
         {collapsed && (
           <button
             onClick={onToggle}
@@ -122,10 +155,24 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           </div>
         )}
         <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: 2 }}>
-          {nav.map((item) => {
+          {nav.map((item, idx) => {
             const active = pathname === item.href;
+            const isDragging = dragIdx === idx;
+            const isDropTarget = dropIdx === idx && dragIdx !== null && dragIdx !== idx;
             return (
-              <li key={item.href}>
+              <li
+                key={item.href}
+                draggable
+                onDragStart={() => handleDragStart(idx)}
+                onDragOver={e => handleDragOver(e, idx)}
+                onDrop={e => handleDrop(e, idx)}
+                onDragEnd={handleDragEnd}
+                style={{
+                  opacity: isDragging ? 0.35 : 1,
+                  transition: "opacity .15s",
+                  borderTop: isDropTarget ? "2px solid rgba(6,182,212,0.5)" : "2px solid transparent",
+                }}
+              >
                 <Link
                   href={item.href}
                   title={collapsed ? item.label : undefined}
@@ -155,24 +202,16 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   {!collapsed && item.href === "/dashboard/email" && emailBadge > 0 && (
                     <span style={{ fontSize: 10, fontWeight: 800, color: "#fff", background: "var(--red)", padding: "1px 5px", borderRadius: 3, flexShrink: 0 }}>{emailBadge}</span>
                   )}
+                  {/* Drag handle — only visible when expanded */}
+                  {!collapsed && (
+                    <span style={{ color: "rgba(148,163,184,0.15)", fontSize: 12, cursor: "grab", marginLeft: 2, flexShrink: 0 }}>⠿</span>
+                  )}
                 </Link>
               </li>
             );
           })}
         </ul>
       </nav>
-
-      {/* ── System status ── */}
-      {!collapsed && (
-        <div style={{ margin: "0 10px 8px", padding: "10px 12px", borderRadius: 10, background: "rgba(6,182,212,0.04)", border: "1px solid rgba(6,182,212,0.07)", flexShrink: 0 }}>
-          {[{ l: "AI Core", s: "Active" }, { l: "Data Feeds", s: "Live" }].map(x => (
-            <div key={x.l} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-              <span style={{ fontSize: 12, color: "rgba(148,163,184,0.4)" }}>{x.l}</span>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--green)" }}>{x.s}</span>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* ── User ── */}
       <div style={{
