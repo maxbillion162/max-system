@@ -65,7 +65,7 @@ The agent is the product. All three surfaces are interfaces to the same underlyi
 | Web search | Tavily API |
 | Web browsing | Firecrawl API |
 | Calculations | Wolfram Alpha Short Answers API |
-| Music | Spotify Web API (OAuth connected) |
+| Music | Spotify Web API (OAuth connected — tokens in settings table) |
 | SMS | Twilio (trial mode — upgrade when ready) |
 | Reddit | Public JSON API (no key needed) |
 | Bank data | Plaid (sandbox — upgrade to Development for real bank) |
@@ -158,7 +158,7 @@ src/
     utils.ts        # Shared utilities
   components/
     layout/Sidebar.tsx          # Dashboard navigation sidebar
-    ui/HudCard.tsx              # Primary card component (dark glass style)
+    ui/HudCard.tsx              # Primary card component — gradient glass, blue border, optional accent prop
     ui/MaxChatBubble.tsx        # Floating chat widget (all dashboard pages)
     ui/Sparkline.tsx            # SVG sparkline chart component
     ui/NotificationBell.tsx     # Real-time notification bell + drawer + toast stack
@@ -192,7 +192,7 @@ src/
 | `merchant_rules` | Learned merchant→category rules (merchant_pattern, category) |
 | `budget_allocations` | Zero-based budget per category (category, budgeted, period_start) |
 | `accounts` | Connected bank accounts (plaid_account_id, institution, balances) |
-| `settings` | Key-value preference store (key, value JSONB) — stores prefs, spotify_tokens, health data |
+| `settings` | Key-value preference store (key, value JSONB) — stores prefs, spotify_tokens, notification_prefs, feed interests |
 | `writing_style` | Max's analyzed email voice profile |
 
 ---
@@ -234,23 +234,34 @@ This is the core of M.A.X. Understand it before touching anything AI-related.
 
 ## DESIGN SYSTEM
 
-**Theme:** Dark HUD. Think Iron Man / Jarvis interface. Not consumer SaaS, not a dark-mode website — a mission control panel.
+**Theme:** Dark futuristic HUD. Deep blue-black backgrounds, gradient glass cards, single blue accent. Think high-end AI tool — not a toy, not a consumer app. Every element should feel intentional.
 
 **CSS Variables (defined in `globals.css`):**
-- `--bg`: main background (near-black)
-- `--surface`, `--surface2`, `--surface3`: card backgrounds (slightly lighter)
-- `--border`, `--border2`: subtle borders
-- `--t1`, `--t2`, `--t3`, `--t4`: text hierarchy (white → gray)
-- `--blue`: primary accent (#4589FF or similar)
-- `--green`, `--red`, `--amber`: status colors
+- `--bg: #06080f` — main background (deep space black)
+- `--surface / --surface2 / --surface3` — layered card backgrounds
+- `--border / --border2` — blue-tinted subtle borders
+- `--blue: #4d90ff` — THE ONLY accent color. Use this for everything interactive.
+- `--blue-dim: rgba(77,144,255,0.08)` — hover/active backgrounds
+- `--blue-border: rgba(77,144,255,0.18)` — highlighted borders
+- `--blue-glow: rgba(77,144,255,0.05)` — ambient glow effects
+- `--green / --red / --amber` — muted status colors (data/notifications only, not decoration)
+- `--t1 / --t2 / --t3 / --t4` — text hierarchy (near-white → invisible)
+- Legacy aliases (`--teal`, `--cyan`, `--orange`) all resolve to `--blue` or `--amber` — do NOT use them directly in new code, use the primary variables.
+
+**Card style (`<HudCard>`):**
+- Gradient background: `linear-gradient(145deg, #111826, #0b0e1a)`
+- Border: `1px solid rgba(77,144,255,0.13)`
+- Inner top glow: `inset 0 1px 0 rgba(77,144,255,0.07)`
+- Use `accent` prop for cards that should feel more prominent (slightly stronger glow)
+- Border radius: 10px
 
 **Component patterns:**
-- Cards: always use `<HudCard>` — check `src/components/ui/HudCard.tsx` for current props
-- Charts: use `<Sparkline>` — check `src/components/ui/Sparkline.tsx` for current props
-- All inline styles (no Tailwind, no CSS modules) — this is intentional
-- Before using any shared component, read its source file — don't assume props from memory
+- Cards: always use `<HudCard>` — read source before assuming props
+- Charts: use `<Sparkline>` — read source before assuming props
+- All inline styles (no Tailwind classes for visual styling) — this is intentional
+- Sidebar accent color is blue throughout — do NOT introduce cyan or teal
 
-**Design bar is HIGH.** If it looks like a prototype, it doesn't ship. Every card, modal, button, and layout must look intentional and polished. Hover states, transitions, loading states — all required. No placeholder UI.
+**Design bar is HIGH.** If it looks like a prototype, it doesn't ship. Hover states, transitions, loading states — all required. No placeholder UI. No rainbow of colors — if you're adding color, ask whether blue + opacity handles it first.
 
 ---
 
