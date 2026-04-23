@@ -10,13 +10,27 @@ const supabase = createClient(
 
 /* ────────────────────────────────── HABITS ── */
 export async function readHabits() {
-  const { data } = await supabase.from("habits").select("*").order("created_at");
-  return data ?? [];
+  const today = new Date().toISOString().slice(0, 10);
+  const [habitsRes, logsRes] = await Promise.allSettled([
+    supabase.from("habits").select("*").order("created_at"),
+    supabase.from("habit_logs").select("habit_id").eq("date", today).eq("completed", true),
+  ]);
+  const habits = habitsRes.status === "fulfilled" ? (habitsRes.value.data ?? []) : [];
+  const logs   = logsRes.status   === "fulfilled" ? (logsRes.value.data   ?? []) : [];
+  const doneIds = new Set(logs.map((l: { habit_id: string }) => l.habit_id));
+  return habits.map((h: Record<string, unknown>) => ({ ...h, completed: doneIds.has(String(h.id)) })) as (Record<string, unknown> & { id: string; name: string; cat: string; streak: number; completed: boolean })[];
 }
 
 export async function toggleHabit(id: string, completed: boolean) {
-  const { data } = await supabase.from("habits").update({ completed }).eq("id", id).select().single();
-  return data;
+  const today = new Date().toISOString().slice(0, 10);
+  if (completed) {
+    await supabase.from("habit_logs").upsert({ habit_id: id, date: today, completed: true }, { onConflict: "habit_id,date" });
+  } else {
+    await supabase.from("habit_logs").delete().eq("habit_id", id).eq("date", today);
+  }
+  await supabase.from("habits").update({ completed }).eq("id", id);
+  const { data } = await supabase.from("habits").select("id,name,cat,streak,color,completed").eq("id", id).single();
+  return { ...data, completed };
 }
 
 /* ────────────────────────────────── TASKS ── */

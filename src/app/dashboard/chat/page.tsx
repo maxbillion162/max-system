@@ -45,6 +45,39 @@ function MarkdownText({ text }: { text: string }) {
   let i = 0;
   while (i < lines.length) {
     const line = lines[i];
+
+    // Table: detect header row followed by separator row
+    if (/^\|.+\|$/.test(line.trim()) && /^\|[\s\-|:]+\|$/.test((lines[i+1] ?? "").trim())) {
+      const headerCells = line.trim().slice(1,-1).split("|").map(c => c.trim());
+      i += 2; // skip separator
+      const rows: string[][] = [];
+      while (i < lines.length && /^\|.+\|$/.test(lines[i].trim())) {
+        rows.push(lines[i].trim().slice(1,-1).split("|").map(c => c.trim()));
+        i++;
+      }
+      elements.push(
+        <div key={i} style={{ overflowX:"auto", margin:"8px 0" }}>
+          <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
+            <thead>
+              <tr>{headerCells.map((h,ci) => (
+                <th key={ci} style={{ padding:"6px 12px", textAlign:"left", background:"rgba(6,182,212,0.08)", borderBottom:"1px solid rgba(6,182,212,0.2)", color:"var(--teal)", fontWeight:700, whiteSpace:"nowrap" }}>{renderInline(h)}</th>
+              ))}</tr>
+            </thead>
+            <tbody>
+              {rows.map((row,ri) => (
+                <tr key={ri} style={{ borderBottom:"1px solid rgba(255,255,255,0.04)" }}>
+                  {row.map((cell,ci) => (
+                    <td key={ci} style={{ padding:"6px 12px", color:"var(--t2)", verticalAlign:"top" }}>{renderInline(cell)}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+      continue;
+    }
+
     if (/^[-•*]\s/.test(line)) {
       const bullets: string[] = [];
       while (i < lines.length && /^[-•*]\s/.test(lines[i])) { bullets.push(lines[i].replace(/^[-•*]\s/, "")); i++; }
