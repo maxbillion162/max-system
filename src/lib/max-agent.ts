@@ -11,6 +11,10 @@ import {
   createNotification, logActivity,
   getBudgetStatus, getRecentTransactions,
   readBills, setIncome,
+  browseUrl, searchPlaces, searchYelp, searchReddit, wolframQuery,
+  spotifyNowPlaying, spotifyPlayback, spotifySearch, spotifyVolume,
+  getStockQuote, getFearGreedIndex, sendSms,
+  findFreeTime, projectSavings, readHealthData,
 } from "@/lib/max-tools";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -101,6 +105,19 @@ const TOOL_LABELS: Record<string, string> = {
   get_transactions:      "Loading transactions…",
   read_bills:            "Checking upcoming bills…",
   set_income:            "Updating income…",
+  browse_url:            "Browsing the web…",
+  search_places:         "Finding places nearby…",
+  search_yelp:           "Searching Yelp…",
+  search_reddit:         "Checking Reddit…",
+  wolfram_query:         "Running calculation…",
+  spotify_control:       "Controlling Spotify…",
+  spotify_search:        "Searching Spotify…",
+  get_stock_quote:       "Pulling stock price…",
+  get_fear_greed:        "Checking market sentiment…",
+  send_sms:              "Sending SMS…",
+  find_free_time:        "Checking your schedule…",
+  project_savings:       "Running savings projection…",
+  read_health:           "Reading health data…",
 };
 
 /* ─── Tool definitions ─── */
@@ -411,6 +428,140 @@ const TOOLS: Anthropic.Tool[] = [
       required: ["type", "description"],
     },
   },
+  {
+    name: "browse_url",
+    description: "Fetch and read the content of any web page or URL. Use when Max asks about a specific website, article, or page.",
+    input_schema: {
+      type: "object" as const,
+      properties: { url: { type: "string", description: "Full URL to browse (must include https://)" } },
+      required: ["url"],
+    },
+  },
+  {
+    name: "search_places",
+    description: "Search for local businesses, restaurants, gyms, or any place near Orlando (or a specified location).",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        query:    { type: "string", description: "What to search for (e.g. 'Italian restaurants', 'Planet Fitness')" },
+        location: { type: "string", description: "Location override (default: Orlando, FL)" },
+      },
+      required: ["query"],
+    },
+  },
+  {
+    name: "search_yelp",
+    description: "Search Yelp for restaurants, bars, services, or businesses with ratings and reviews.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        term:       { type: "string", description: "What to search for (e.g. 'sushi', 'coffee shops')" },
+        location:   { type: "string", description: "Location (default: Orlando, FL)" },
+        categories: { type: "string", description: "Optional Yelp category filter (e.g. 'restaurants', 'gyms')" },
+      },
+      required: ["term"],
+    },
+  },
+  {
+    name: "search_reddit",
+    description: "Search Reddit for posts, opinions, community discussion, or research on any topic.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        query:     { type: "string", description: "Search terms" },
+        subreddit: { type: "string", description: "Optional subreddit to search within (no r/ prefix)" },
+        limit:     { type: "number", description: "Number of posts (default 5)" },
+      },
+      required: ["query"],
+    },
+  },
+  {
+    name: "wolfram_query",
+    description: "Compute math, conversions, statistics, science facts, or any calculation using Wolfram Alpha. Better than searching for precise answers.",
+    input_schema: {
+      type: "object" as const,
+      properties: { query: { type: "string", description: "Natural language math or factual question (e.g. '15% tip on $67', '180 lbs to kg')" } },
+      required: ["query"],
+    },
+  },
+  {
+    name: "spotify_control",
+    description: "Control Spotify playback — play, pause, skip to next track, or go back. Requires Spotify connected in Settings.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        action: { type: "string", enum: ["play", "pause", "next", "previous", "now_playing", "volume"], description: "Playback action" },
+        volume: { type: "number", description: "Volume 0-100 (only for action=volume)" },
+      },
+      required: ["action"],
+    },
+  },
+  {
+    name: "spotify_search",
+    description: "Search Spotify for tracks, artists, or playlists.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        query: { type: "string", description: "What to search for" },
+        type:  { type: "string", enum: ["track", "artist", "playlist"], description: "Search type (default: track)" },
+      },
+      required: ["query"],
+    },
+  },
+  {
+    name: "get_stock_quote",
+    description: "Get the current stock price, daily change, and percentage change for any ticker symbol.",
+    input_schema: {
+      type: "object" as const,
+      properties: { ticker: { type: "string", description: "Stock ticker symbol (e.g. 'AAPL', 'SPY', 'TSLA')" } },
+      required: ["ticker"],
+    },
+  },
+  {
+    name: "get_fear_greed",
+    description: "Get the current Crypto Fear & Greed Index — useful for market sentiment context when discussing crypto.",
+    input_schema: { type: "object" as const, properties: {}, required: [] },
+  },
+  {
+    name: "send_sms",
+    description: "Send a text message (SMS) to Max's phone via Twilio. Use sparingly — only for urgent or time-sensitive information.",
+    input_schema: {
+      type: "object" as const,
+      properties: { message: { type: "string", description: "SMS message content (keep under 160 chars)" } },
+      required: ["message"],
+    },
+  },
+  {
+    name: "find_free_time",
+    description: "Find gaps in Max's calendar for a specific date — returns time slots he's free with duration in minutes.",
+    input_schema: {
+      type: "object" as const,
+      properties: { date: { type: "string", description: "Date to check YYYY-MM-DD" } },
+      required: ["date"],
+    },
+  },
+  {
+    name: "project_savings",
+    description: "Project how Max's savings will grow over time with a monthly contribution. Uses his current savings balance as starting point.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        monthly_contribution: { type: "number", description: "Amount added to savings per month" },
+        months:               { type: "number", description: "Number of months to project" },
+        annual_return_pct:    { type: "number", description: "Annual return percentage (e.g. 4.5 for HYSA). Default 0." },
+      },
+      required: ["monthly_contribution", "months"],
+    },
+  },
+  {
+    name: "read_health",
+    description: "Read Apple Health data sent from Max's phone — steps, calories, sleep, workouts (requires iOS Shortcut setup).",
+    input_schema: {
+      type: "object" as const,
+      properties: { days: { type: "number", description: "How many days of history to pull (default 7)" } },
+      required: [],
+    },
+  },
 ];
 
 /* ─── Tool executor ─── */
@@ -449,6 +600,24 @@ async function executeTool(name: string, input: Record<string, unknown>): Promis
       case "set_income":           return JSON.stringify(await setIncome(input.amount as number));
       case "create_notification":  return JSON.stringify(await createNotification(input.type as string, input.title as string, input.body as string, input.action_url as string | undefined));
       case "log_activity":         return JSON.stringify(await logActivity(input.type as string, input.description as string));
+      case "browse_url":           return JSON.stringify(await browseUrl(input.url as string));
+      case "search_places":        return JSON.stringify(await searchPlaces(input.query as string, input.location as string | undefined));
+      case "search_yelp":          return JSON.stringify(await searchYelp(input.term as string, input.location as string | undefined, input.categories as string | undefined));
+      case "search_reddit":        return JSON.stringify(await searchReddit(input.query as string, input.subreddit as string | undefined, input.limit as number | undefined));
+      case "wolfram_query":        return JSON.stringify(await wolframQuery(input.query as string));
+      case "spotify_control": {
+        const action = input.action as string;
+        if (action === "now_playing") return JSON.stringify(await spotifyNowPlaying());
+        if (action === "volume") return JSON.stringify(await spotifyVolume(input.volume as number));
+        return JSON.stringify(await spotifyPlayback(action as "play" | "pause" | "next" | "previous"));
+      }
+      case "spotify_search":       return JSON.stringify(await spotifySearch(input.query as string, (input.type as "track" | "playlist" | "artist") ?? "track"));
+      case "get_stock_quote":      return JSON.stringify(await getStockQuote(input.ticker as string));
+      case "get_fear_greed":       return JSON.stringify(await getFearGreedIndex());
+      case "send_sms":             return JSON.stringify(await sendSms(input.message as string));
+      case "find_free_time":       return JSON.stringify(await findFreeTime(input.date as string));
+      case "project_savings":      return JSON.stringify(await projectSavings(input.monthly_contribution as number, input.months as number, input.annual_return_pct as number | undefined));
+      case "read_health":          return JSON.stringify(await readHealthData(input.days as number | undefined));
       default:                     return JSON.stringify({ error: `Unknown tool: ${name}` });
     }
   } catch (err) {

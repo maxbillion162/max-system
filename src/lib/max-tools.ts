@@ -2,6 +2,12 @@ import { createClient } from "@supabase/supabase-js";
 import { fetchCryptoPrices } from "@/lib/crypto";
 import { getAuthenticatedClient } from "@/lib/google";
 import { google } from "googleapis";
+import { browseUrl as _browseUrl } from "@/lib/firecrawl";
+import { searchPlaces as _searchPlaces } from "@/lib/places";
+import { searchYelp as _searchYelp } from "@/lib/yelp";
+import { searchReddit as _searchReddit } from "@/lib/reddit";
+import { wolframQuery as _wolframQuery } from "@/lib/wolfram";
+import { getCurrentTrack, playback, searchSpotify, setVolume } from "@/lib/spotify";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -354,6 +360,214 @@ export async function setIncome(amount: number) {
   const { error } = await supabase.from("settings").upsert({ key: "monthly_income", value: amount }, { onConflict: "key" });
   if (error) return { error: error.message };
   return { success: true, income: amount };
+}
+
+/* ────────────────────────────────── TELEGRAM SEND ── */
+export async function sendTelegramMessage(text: string): Promise<{ sent: boolean; error?: string }> {
+  const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+  const CHAT_ID   = process.env.TELEGRAM_CHAT_ID;
+  if (!BOT_TOKEN || !CHAT_ID) return { sent: false, error: "Telegram not configured" };
+  try {
+    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: CHAT_ID, text, parse_mode: "Markdown" }),
+    });
+    return { sent: true };
+  } catch (err) {
+    return { sent: false, error: String(err) };
+  }
+}
+
+/* ────────────────────────────────── WEB BROWSING ── */
+export async function browseUrl(url: string) {
+  return _browseUrl(url);
+}
+
+/* ────────────────────────────────── LOCAL SEARCH ── */
+export async function searchPlaces(query: string, location?: string) {
+  return _searchPlaces(query, location);
+}
+
+export async function searchYelp(term: string, location?: string, categories?: string) {
+  return _searchYelp(term, location, categories);
+}
+
+/* ────────────────────────────────── REDDIT ── */
+export async function searchReddit(query: string, subreddit?: string, limit?: number) {
+  return _searchReddit(query, subreddit, limit);
+}
+
+/* ────────────────────────────────── WOLFRAM ── */
+export async function wolframQuery(query: string) {
+  return _wolframQuery(query);
+}
+
+/* ────────────────────────────────── SPOTIFY ── */
+export async function spotifyNowPlaying() {
+  return getCurrentTrack();
+}
+
+export async function spotifyPlayback(action: "play" | "pause" | "next" | "previous") {
+  return playback(action);
+}
+
+export async function spotifySearch(query: string, type: "track" | "playlist" | "artist" = "track") {
+  return searchSpotify(query, type);
+}
+
+export async function spotifyVolume(percent: number) {
+  return setVolume(percent);
+}
+
+/* ────────────────────────────────── STOCK QUOTE ── */
+export async function getStockQuote(ticker: string): Promise<{ symbol: string; price: number; change: number; changePercent: string; error?: string }> {
+  const apiKey = process.env.ALPHA_VANTAGE_KEY;
+  if (!apiKey) return { symbol: ticker, price: 0, change: 0, changePercent: "0%", error: "Alpha Vantage not configured" };
+
+  try {
+    const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${ticker.toUpperCase()}&apikey=${apiKey}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const q = data["Global Quote"];
+    if (!q || !q["05. price"]) return { symbol: ticker, price: 0, change: 0, changePercent: "0%", error: "Symbol not found" };
+    return {
+      symbol: q["01. symbol"],
+      price: parseFloat(q["05. price"]),
+      change: parseFloat(q["09. change"]),
+      changePercent: q["10. change percent"],
+    };
+  } catch (err) {
+    return { symbol: ticker, price: 0, change: 0, changePercent: "0%", error: String(err) };
+  }
+}
+
+/* ────────────────────────────────── CRYPTO FEAR & GREED ── */
+export async function getFearGreedIndex(): Promise<{ value: number; label: string; timestamp: string; error?: string }> {
+  try {
+    const res = await fetch("https://api.alternative.me/fng/?limit=1");
+    const data = await res.json();
+    const item = data.data?.[0];
+    if (!item) return { value: 0, label: "Unknown", timestamp: "", error: "No data" };
+    return {
+      value: parseInt(item.value),
+      label: item.value_classification,
+      timestamp: new Date(parseInt(item.timestamp) * 1000).toLocaleDateString(),
+    };
+  } catch (err) {
+    return { value: 0, label: "Unknown", timestamp: "", error: String(err) };
+  }
+}
+
+/* ────────────────────────────────── SMS ── */
+export async function sendSms(message: string, to?: string): Promise<{ sent: boolean; error?: string }> {
+  const SID   = process.env.TWILIO_ACCOUNT_SID;
+  const TOKEN = process.env.TWILIO_AUTH_TOKEN;
+  const FROM  = process.env.TWILIO_PHONE_NUMBER;
+  const TO    = to ?? process.env.MAX_PHONE_NUMBER;
+
+  if (!SID || !TOKEN || !FROM || !TO) {
+    return { sent: false, error: "Twilio not configured — add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER, MAX_PHONE_NUMBER" };
+  }
+
+  try {
+    const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${SID}/Messages.json`, {
+      method: "POST",
+      headers: {
+        "Authorization": "Basic " + Buffer.from(`${SID}:${TOKEN}`).toString("base64"),
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({ From: FROM, To: TO, Body: message }),
+    });
+    if (!res.ok) {
+      const err = await res.text().catch(() => "");
+      return { sent: false, error: `Twilio ${res.status}: ${err.slice(0, 200)}` };
+    }
+    return { sent: true };
+  } catch (err) {
+    return { sent: false, error: String(err) };
+  }
+}
+
+/* ────────────────────────────────── FIND FREE TIME ── */
+export async function findFreeTime(date: string): Promise<{ slots: { start: string; end: string; duration: number }[]; error?: string }> {
+  const result = await readCalendar(7);
+  if (!result.connected) return { slots: [], error: "Google Calendar not connected" };
+
+  const dayEvents = (result.events as { start: string; end: string; allDay: boolean }[])
+    .filter(e => !e.allDay && e.start.startsWith(date))
+    .sort((a, b) => a.start.localeCompare(b.start));
+
+  const workStart = new Date(`${date}T08:00:00`);
+  const workEnd   = new Date(`${date}T22:00:00`);
+
+  const slots: { start: string; end: string; duration: number }[] = [];
+  let cursor = workStart;
+
+  for (const event of dayEvents) {
+    const evStart = new Date(event.start);
+    const evEnd   = new Date(event.end);
+    if (evStart > cursor) {
+      const gapMinutes = (evStart.getTime() - cursor.getTime()) / 60000;
+      if (gapMinutes >= 30) {
+        slots.push({ start: cursor.toTimeString().slice(0, 5), end: evStart.toTimeString().slice(0, 5), duration: gapMinutes });
+      }
+    }
+    if (evEnd > cursor) cursor = evEnd;
+  }
+
+  if (cursor < workEnd) {
+    const gapMinutes = (workEnd.getTime() - cursor.getTime()) / 60000;
+    if (gapMinutes >= 30) {
+      slots.push({ start: cursor.toTimeString().slice(0, 5), end: workEnd.toTimeString().slice(0, 5), duration: gapMinutes });
+    }
+  }
+
+  return { slots };
+}
+
+/* ────────────────────────────────── PROJECT SAVINGS ── */
+export async function projectSavings(
+  monthlyContribution: number,
+  months: number,
+  annualReturnPct = 0,
+): Promise<{ finalBalance: number; totalContributed: number; interestEarned: number; monthlyBreakdown: { month: number; balance: number }[] }> {
+  const wealth = await readWealth();
+  const startingBalance = (wealth as { savings?: number }).savings ?? 0;
+  const monthlyRate = annualReturnPct / 100 / 12;
+
+  let balance = startingBalance;
+  const monthlyBreakdown: { month: number; balance: number }[] = [];
+
+  for (let m = 1; m <= months; m++) {
+    balance = balance * (1 + monthlyRate) + monthlyContribution;
+    if (m <= 12 || m % 3 === 0 || m === months) {
+      monthlyBreakdown.push({ month: m, balance: Math.round(balance) });
+    }
+  }
+
+  const totalContributed = monthlyContribution * months;
+  const finalBalance = Math.round(balance);
+  return {
+    finalBalance,
+    totalContributed,
+    interestEarned: finalBalance - startingBalance - totalContributed,
+    monthlyBreakdown: monthlyBreakdown.slice(-6),
+  };
+}
+
+/* ────────────────────────────────── APPLE HEALTH ── */
+export async function readHealthData(daysBack = 7): Promise<unknown[]> {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  );
+  const { data } = await supabase.from("settings")
+    .select("key,value")
+    .like("key", "health_%")
+    .order("key", { ascending: false })
+    .limit(daysBack);
+  return (data ?? []).map((d: { key: string; value: unknown }) => ({ date: d.key.replace("health_", ""), ...d.value as object }));
 }
 
 /* ────────────────────────────────── TELEGRAM HISTORY ── */
