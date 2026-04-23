@@ -286,6 +286,17 @@ A feature is done when:
 
 ---
 
+## API KEY HANDLING
+
+When a new API key is needed:
+1. Open `.env.local` in the native Mac text editor automatically: `open -e .env.local`
+2. Max will type the key in himself — never ask him to paste it in chat
+3. After he's done, always remind him to add it to Vercel too, and show the exact format:
+   - Vercel dashboard → Project → Settings → Environment Variables
+   - Show: `KEY_NAME` = `value` (one line per variable)
+
+---
+
 ## HOW TO WORK WITH MAX
 
 - Explain what you're doing and why in 1-2 plain English sentences before doing it
