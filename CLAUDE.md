@@ -248,7 +248,7 @@ This is the core of M.A.X. Understand it before touching anything AI-related.
 
 **Active plan: 14-week full revamp.** See `ROADMAP.md` in this directory for the build order and week-by-week specs. See Claude's memory file `build_plan_revamp.md` for the complete detailed plan.
 
-**Current status: Weeks 1–7 complete. Week 8 is next.**
+**Current status: Weeks 1–8 complete. Week 9 is next.**
 
 ### Week 1 — DONE:
 New tables: `notifications`, `activity_log`, `transactions`, `merchant_rules`, `budget_allocations`, `accounts`, `task_lists`, `habit_logs`, `goal_notes`, `settings`, `writing_style`. Expanded `tasks`, `habits`, `goals`. Built `NotificationBell` component. Settings page shell. Added `create_notification`, `log_activity`, `get_budget_status`, `get_transactions` agent tools.
@@ -274,9 +274,12 @@ Tasks merged into Calendar page (now "Schedule"). Task list management, subtasks
 ### Week 7 — DONE:
 Calendar revamp. Day/week views: absolute-positioned event blocks proportional to time, overlap detection, current-time red line. Click empty slot → EventModal pre-filled. Natural language bar: plain-English → Claude Haiku parse → preview → confirm → creates Google Calendar event (/api/calendar/nl). Event detail panel in right sidebar on click. Month view: +X more chip, task chips.
 
+### Week 8 — DONE:
+Email full revamp. 3-column layout: smart folder nav | email list | reading pane. Smart folders (All/Needs Action/FYI/Newsletters/Noise). AI summary line per email (/api/email/summaries batch). Priority pills (URGENT/REPLY NEEDED/FYI). Keyboard shortcuts: J/K navigate, R reply, D draft, E archive, / search, ? toggle. Eye icon (👁) button in list header opens shortcuts modal.
+
 ### Upcoming:
-- Week 8: Email Full Revamp (Superhuman-quality layout, AI summaries, draft with M.A.X.)
-- Week 9+: Habits gamification, Goals, Feed, Settings, Chat, Agent tools
+- Week 9: Habits gamification (XP, streaks, shields, heatmap, achievements)
+- Week 10+: Goals, Feed, Settings, Chat, Agent tools
 
 ### Key API upgrades planned:
 - CoinGecko → **CoinMarketCap** for crypto
