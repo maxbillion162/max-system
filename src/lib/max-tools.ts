@@ -556,20 +556,6 @@ export async function projectSavings(
   };
 }
 
-/* ────────────────────────────────── APPLE HEALTH ── */
-export async function readHealthData(daysBack = 7): Promise<unknown[]> {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
-  const { data } = await supabase.from("settings")
-    .select("key,value")
-    .like("key", "health_%")
-    .order("key", { ascending: false })
-    .limit(daysBack);
-  return (data ?? []).map((d: { key: string; value: unknown }) => ({ date: d.key.replace("health_", ""), ...d.value as object }));
-}
-
 /* ────────────────────────────────── TELEGRAM HISTORY ── */
 export async function saveTelegramMessage(role: "user" | "assistant", content: string) {
   await supabase.from("telegram_history").insert({ role, content });

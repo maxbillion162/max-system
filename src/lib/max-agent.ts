@@ -14,7 +14,7 @@ import {
   browseUrl, searchPlaces, searchYelp, searchReddit, wolframQuery,
   spotifyNowPlaying, spotifyPlayback, spotifySearch, spotifyVolume,
   getStockQuote, getFearGreedIndex, sendSms,
-  findFreeTime, projectSavings, readHealthData,
+  findFreeTime, projectSavings,
 } from "@/lib/max-tools";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -117,7 +117,6 @@ const TOOL_LABELS: Record<string, string> = {
   send_sms:              "Sending SMS…",
   find_free_time:        "Checking your schedule…",
   project_savings:       "Running savings projection…",
-  read_health:           "Reading health data…",
 };
 
 /* ─── Tool definitions ─── */
@@ -553,15 +552,6 @@ const TOOLS: Anthropic.Tool[] = [
       required: ["monthly_contribution", "months"],
     },
   },
-  {
-    name: "read_health",
-    description: "Read Apple Health data sent from Max's phone — steps, calories, sleep, workouts (requires iOS Shortcut setup).",
-    input_schema: {
-      type: "object" as const,
-      properties: { days: { type: "number", description: "How many days of history to pull (default 7)" } },
-      required: [],
-    },
-  },
 ];
 
 /* ─── Tool executor ─── */
@@ -617,7 +607,6 @@ async function executeTool(name: string, input: Record<string, unknown>): Promis
       case "send_sms":             return JSON.stringify(await sendSms(input.message as string));
       case "find_free_time":       return JSON.stringify(await findFreeTime(input.date as string));
       case "project_savings":      return JSON.stringify(await projectSavings(input.monthly_contribution as number, input.months as number, input.annual_return_pct as number | undefined));
-      case "read_health":          return JSON.stringify(await readHealthData(input.days as number | undefined));
       default:                     return JSON.stringify({ error: `Unknown tool: ${name}` });
     }
   } catch (err) {
