@@ -14,6 +14,9 @@ interface IRAFund        { symbol: string; name: string; nav: number; chg: numbe
 interface Bill           { name: string; amt: number; due: number }
 interface LiveCrypto     { symbol: string; name: string; price: number; c24: number; c7: number; data: number[] }
 interface WealthHistory  { recorded_at: string; net_worth: number }
+interface MarketIndex   { symbol: string; name: string; price: number; change: number; changePct: number }
+interface MarketSnapshot{ SPY: MarketIndex|null; QQQ: MarketIndex|null; DIA: MarketIndex|null; updated: string }
+interface NewsArticle   { title: string; url: string; snippet: string; published: string|null }
 interface BudgetAlloc    { id: string; category: string; budgeted: number; period_start: string }
 interface Transaction    { id: string; date: string; amount: number; merchant: string; merchant_normalized: string; category: string; budget_category: string | null; pending: boolean }
 
@@ -184,12 +187,14 @@ export default function FinancePage() {
   const [reviewQueue,  setReviewQueue]  = useState<ReviewTransaction[]>([]);
   const [reviewing,    setReviewing]    = useState(false);
   const [saving,       setSaving]       = useState(false);
+  const [market,       setMarket]       = useState<MarketSnapshot|null>(null);
+  const [news,         setNews]         = useState<NewsArticle[]>([]);
 
   /* ── Load all data ── */
   useEffect(() => { loadAll(); }, [period]);
 
   async function loadAll() {
-    const [accountsRes, wealthRes, iraRes, billsRes, histRes, cryptoRes, allocRes, txRes, incomeRes] = await Promise.allSettled([
+    const [accountsRes, wealthRes, iraRes, billsRes, histRes, cryptoRes, allocRes, txRes, incomeRes, marketRes, newsRes] = await Promise.allSettled([
       supabase.from("accounts").select("*").eq("active", true).order("institution"),
       supabase.from("wealth").select("*").eq("id","max").single(),
       supabase.from("ira_funds").select("*"),
@@ -199,6 +204,8 @@ export default function FinancePage() {
       supabase.from("budget_allocations").select("*").eq("period_start",period).order("category"),
       supabase.from("transactions").select("*").gte("date",period).lt("date",nextPeriod(period)).order("date",{ascending:false}).limit(500),
       supabase.from("settings").select("value").eq("key","monthly_income").single(),
+      fetch("/api/market").then(r=>r.json()).catch(()=>null),
+      fetch("/api/finance-news").then(r=>r.json()).catch(()=>null),
     ]);
 
     if (accountsRes.status==="fulfilled"&&accountsRes.value.data) {
@@ -222,6 +229,10 @@ export default function FinancePage() {
     if (allocRes.status==="fulfilled"&&allocRes.value.data) setAllocations(allocRes.value.data as BudgetAlloc[]);
     if (txRes.status==="fulfilled"&&txRes.value.data) setTransactions(txRes.value.data as Transaction[]);
     if (incomeRes.status==="fulfilled"&&incomeRes.value.data) setIncome(Number(incomeRes.value.data.value)||0);
+    if (marketRes.status==="fulfilled"&&marketRes.value?.snapshot) setMarket(marketRes.value.snapshot as MarketSnapshot);
+    if (iraRes.status==="fulfilled"&&iraRes.value.data?.length) setIra(iraRes.value.data as IRAFund[]);
+    else if (marketRes.status==="fulfilled"&&marketRes.value?.ira?.length) setIra(marketRes.value.ira as IRAFund[]);
+    if (newsRes.status==="fulfilled"&&newsRes.value?.articles?.length) setNews(newsRes.value.articles as NewsArticle[]);
   }
 
   /* ── Real-time wealth updates ── */
@@ -688,6 +699,40 @@ export default function FinancePage() {
         {tab==="investments"&&(
           <div style={{ display:"flex",flexDirection:"column",gap:16 }}>
 
+            {/* Market Overview */}
+            <HudCard style={{ padding:"22px 28px" }} delay={0.04}>
+              <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16 }}>
+                <h2 style={{ fontSize:14,fontWeight:700,color:"var(--t1)" }}>Market Overview</h2>
+                {market?.updated&&<span style={{ fontSize:10,color:"var(--t4)" }}>Updated {new Date(market.updated).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})}</span>}
+              </div>
+              {market ? (
+                <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12 }}>
+                  {([market.SPY,market.QQQ,market.DIA] as (MarketIndex|null)[]).filter(Boolean).map(idx=>{
+                    const m = idx!;
+                    const pos = m.changePct >= 0;
+                    return (
+                      <div key={m.symbol} style={{ padding:"16px",borderRadius:9,background:"var(--surface2)",border:"1px solid var(--border)" }}>
+                        <div style={{ fontSize:10,fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--t4)",marginBottom:6 }}>{m.name}</div>
+                        <div style={{ fontSize:20,fontWeight:800,fontFamily:"monospace",color:"var(--t1)",marginBottom:4 }}>{m.price.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+                        <div style={{ fontSize:12,fontWeight:700,color:pos?"var(--green)":"var(--red)" }}>
+                          {pos?"+":""}{m.change.toFixed(2)} ({pos?"+":""}{m.changePct.toFixed(2)}%)
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12 }}>
+                  {["S&P 500","NASDAQ","Dow Jones"].map(n=>(
+                    <div key={n} style={{ padding:"16px",borderRadius:9,background:"var(--surface2)",border:"1px solid var(--border)" }}>
+                      <div style={{ fontSize:10,color:"var(--t4)",marginBottom:8 }}>{n}</div>
+                      <div style={{ fontSize:14,color:"var(--t4)" }}>Loading…</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </HudCard>
+
             {/* Crypto */}
             <HudCard style={{ padding:"24px 28px" }} delay={0.05}>
               <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20 }}>
@@ -796,6 +841,28 @@ export default function FinancePage() {
                     {history[history.length-1].net_worth>=history[0].net_worth?"+":""}{fmtInt(history[history.length-1].net_worth-history[0].net_worth)} · 30d
                   </span>
                   <span style={{ fontSize:10,color:"var(--t4)" }}>{new Date(history[history.length-1].recorded_at).toLocaleDateString("en-US",{month:"short",day:"numeric"})}</span>
+                </div>
+              </HudCard>
+            )}
+
+            {/* Investment News */}
+            {news.length>0&&(
+              <HudCard style={{ padding:"24px 28px" }} delay={0.14}>
+                <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:16 }}>
+                  <h2 style={{ fontSize:14,fontWeight:700,color:"var(--t1)" }}>Investment News</h2>
+                  <div style={{ fontSize:10,fontWeight:700,color:"var(--blue)",background:"rgba(69,137,255,0.1)",padding:"2px 8px",borderRadius:20,border:"1px solid rgba(69,137,255,0.2)" }}>M.A.X. Curated</div>
+                </div>
+                <div style={{ display:"flex",flexDirection:"column",gap:1 }}>
+                  {news.map((article,i)=>(
+                    <a key={i} href={article.url} target="_blank" rel="noopener noreferrer" style={{ display:"block",padding:"12px 0",borderBottom:i<news.length-1?"1px solid rgba(255,255,255,0.04)":"none",textDecoration:"none",transition:"all 0.12s" }}
+                      onMouseEnter={e=>(e.currentTarget as HTMLElement).style.paddingLeft="6px"}
+                      onMouseLeave={e=>(e.currentTarget as HTMLElement).style.paddingLeft="0px"}
+                    >
+                      <div style={{ fontSize:13,fontWeight:600,color:"var(--t1)",marginBottom:4,lineHeight:1.4 }}>{article.title}</div>
+                      <div style={{ fontSize:11,color:"var(--t3)",lineHeight:1.5,marginBottom:4 }}>{article.snippet}</div>
+                      {article.published&&<div style={{ fontSize:10,color:"var(--t4)" }}>{new Date(article.published).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}</div>}
+                    </a>
+                  ))}
                 </div>
               </HudCard>
             )}
