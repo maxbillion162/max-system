@@ -12,9 +12,11 @@ interface LiveCrypto  { symbol: string; price: number; change24h: number; change
 interface LiveWeather { tempF: number; condition: string; precipChance: number; windMph: number; feelsLikeF: number; forecast?: { day: string; high: number; low: number; precipChance?: number }[] }
 interface NewsItem    { title: string; source: string; tag: string; link: string; snippet: string; pubDate: string; breaking?: boolean }
 interface Habit       { id: string; name: string; completed: boolean }
-interface Goal        { id: string; current: number }
-interface Task        { id: string; text: string; completed: boolean }
+interface FullGoal    { id: string; label?: string; current: number; target?: number; unit?: string; deadline?: string | null; color?: string | null }
+interface Task        { id: string; text: string; completed: boolean; priority?: string; due_date?: string | null }
 interface CalEvent    { id: string; title: string; start: string; end: string; allDay: boolean; location: string }
+interface BriefLine   { icon: string; text: string }
+interface BudgetSnap  { totalSpent: number; totalBudgeted: number; topOver: { category: string; spent: number; budgeted: number }[] }
 
 const WEALTH_DEFAULTS = { ira: 2720, savings: 2800, btc_amount: 0.02, xrp_amount: 200 };
 
@@ -96,7 +98,7 @@ function generateInsights(params: {
   btc: LiveCrypto | undefined; xrp: LiveCrypto | undefined;
   btcAmt: number; xrpAmt: number;
   netWorth: number; cryptoGain: number;
-  habits: Habit[]; goals: Goal[];
+  habits: Habit[]; goals: FullGoal[];
   weather: LiveWeather | null;
   hour: number;
 }): { icon: string; text: string; color: string; priority: number }[] {
@@ -254,7 +256,7 @@ export default function Dashboard() {
   const [news, setNews]       = useState<NewsItem[]>([]);
   const [activeTag, setActiveTag] = useState("All");
   const [habits, setHabits]       = useState<Habit[]>([]);
-  const [goals, setGoals]         = useState<Goal[]>([]);
+  const [goals, setGoals]         = useState<FullGoal[]>([]);
   const [wealth, setWealth]       = useState(WEALTH_DEFAULTS);
   const [savingWealth, setSavingWealth] = useState(false);
   const [tasks, setTasks]         = useState<Task[]>([]);
@@ -264,6 +266,10 @@ export default function Dashboard() {
   const [calEvents, setCalEvents]           = useState<CalEvent[]>([]);
   const [calConnected, setCalConnected]     = useState<boolean | null>(null);
   const [priv, setPriv]                     = useState(true);
+  const [brief,        setBrief]        = useState<BriefLine[]>([]);
+  const [briefGenAt,   setBriefGenAt]   = useState<string | null>(null);
+  const [briefLoading, setBriefLoading] = useState(false);
+  const [budgetSnap,   setBudgetSnap]   = useState<BudgetSnap | null>(null);
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000);
@@ -279,11 +285,11 @@ export default function Dashboard() {
     fetch("/api/weather?location=orlando").then(r => r.json()).then(j => { if (j.data) setWeather(j.data); }).catch(() => {});
     fetch("/api/news?count=30").then(r => r.json()).then(j => { if (j.data) setNews(j.data); }).catch(() => {});
     supabase.from("habits").select("id,name,completed").then(({ data }) => { if (data) setHabits(data); });
-    supabase.from("goals").select("id,current").then(({ data }) => { if (data) setGoals(data); });
+    supabase.from("goals").select("id,label,current,target,unit,deadline,color").then(({ data }) => { if (data) setGoals(data as FullGoal[]); });
     supabase.from("wealth").select("*").limit(1).then(({ data }) => {
       if (data && data.length > 0) setWealth({ ...WEALTH_DEFAULTS, ...data[0] });
     });
-    supabase.from("tasks").select("id,text,completed").order("created_at").then(({ data }) => { if (data) setTasks(data); });
+    supabase.from("tasks").select("id,text,completed,priority,due_date").order("created_at").then(({ data }) => { if (data) setTasks(data as Task[]); });
 
     // Fetch today's calendar events
     const todayStart = new Date(); todayStart.setHours(0,0,0,0);
@@ -295,6 +301,34 @@ export default function Dashboard() {
         if (j.events) setCalEvents(j.events as CalEvent[]);
       })
       .catch(() => setCalConnected(false));
+
+    // Live M.A.X. brief (10-min cache)
+    setBriefLoading(true);
+    fetch("/api/dashboard-brief").then(r => r.json()).then(j => { if (j.lines) setBrief(j.lines); if (j.generatedAt) setBriefGenAt(j.generatedAt); }).catch(() => {}).finally(() => setBriefLoading(false));
+
+    // Budget snapshot
+    const now2 = new Date();
+    const ps = `${now2.getFullYear()}-${String(now2.getMonth()+1).padStart(2,"0")}-01`;
+    Promise.all([
+      supabase.from("budget_allocations").select("category,budgeted").eq("period_start", ps),
+      supabase.from("transactions").select("amount,budget_category").gte("date", ps).gt("amount", 0),
+    ]).then(([allocR, txR]) => {
+      const allocs = allocR.data ?? [];
+      const txs    = txR.data   ?? [];
+      const spendMap: Record<string,number> = {};
+      for (const tx of txs as {amount:number;budget_category:string|null}[]) {
+        const cat = tx.budget_category ?? "Misc";
+        spendMap[cat] = (spendMap[cat]??0) + tx.amount;
+      }
+      const totalBudgeted = allocs.reduce((s:number, a:{budgeted:number}) => s + a.budgeted, 0);
+      const totalSpent    = Object.values(spendMap).reduce((s,v) => s + v, 0);
+      const topOver = allocs
+        .map((a:{category:string;budgeted:number}) => ({ category:a.category, spent:spendMap[a.category]??0, budgeted:a.budgeted }))
+        .filter(a => a.spent > a.budgeted)
+        .sort((a,b) => (b.spent-b.budgeted)-(a.spent-a.budgeted))
+        .slice(0,3);
+      setBudgetSnap({ totalSpent, totalBudgeted, topOver });
+    });
 
     const cryptoInterval = setInterval(fetchCrypto, 30000);
     return () => clearInterval(cryptoInterval);
@@ -661,24 +695,45 @@ export default function Dashboard() {
               <a href="/dashboard/goals" style={{ fontSize: 11, color: "var(--blue)", textDecoration: "none" }}>All goals →</a>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {Object.entries(GOAL_META).slice(0, 4).map(([id, meta]) => {
-                const g = goals.find(x => x.id === id);
-                const cur = g?.current ?? 0;
-                const pct = Math.min(100, Math.round((cur / meta.target) * 100));
-                const disp = meta.unit === "$" ? `$${cur.toLocaleString()}` : `${cur} ${meta.unit}`;
-                return (
-                  <div key={id}>
-                    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 5 }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)" }}>{meta.label}</span>
-                      <span style={{ fontSize: 11, fontFamily: "monospace", color: meta.colorHex, fontWeight: 700 }}>{pct}%</span>
+              {(goals.length > 0 ? goals : Object.entries(GOAL_META).map(([id, m]) => ({ id, label: m.label, current: 0, target: m.target, unit: m.unit, deadline: null, color: m.colorHex } as FullGoal)))
+                .map(g => {
+                  const meta = GOAL_META[g.id] ?? { label: g.label ?? g.id, target: g.target ?? 100, unit: g.unit ?? "", colorHex: g.color ?? "#4589ff" };
+                  const cur    = g.current ?? 0;
+                  const target = g.target ?? meta.target;
+                  const pct    = Math.min(100, Math.round((cur / target) * 100));
+                  const colorHex = g.color ?? meta.colorHex;
+                  const label    = g.label ?? meta.label;
+                  const unit     = g.unit  ?? meta.unit;
+
+                  let status: "done"|"overdue"|"at-risk"|"on-track" = "on-track";
+                  if (pct >= 100) status = "done";
+                  else if (g.deadline && new Date(g.deadline) < new Date()) status = "overdue";
+                  else if (g.deadline) {
+                    const daysLeft = Math.max(0, Math.round((new Date(g.deadline).getTime() - Date.now()) / 86400000));
+                    if (daysLeft < 30 && pct < 50) status = "at-risk";
+                  }
+
+                  const badgeColor = status === "done" ? "var(--green)" : status === "overdue" ? "var(--red)" : status === "at-risk" ? "var(--amber)" : "var(--teal)";
+                  const badgeLabel = status === "done" ? "Done" : status === "overdue" ? "Overdue" : status === "at-risk" ? "At Risk" : "On Track";
+                  const disp = unit === "$" ? `$${cur.toLocaleString()}` : `${cur} ${unit}`;
+                  const dispTarget = unit === "$" ? `$${target.toLocaleString()}` : `${target} ${unit}`;
+
+                  return (
+                    <div key={g.id}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)" }}>{label}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", padding: "2px 6px", borderRadius: 3, background: `${badgeColor}18`, border: `1px solid ${badgeColor}35`, color: badgeColor }}>{badgeLabel}</span>
+                          <span style={{ fontSize: 11, fontFamily: "monospace", color: colorHex, fontWeight: 700 }}>{pct}%</span>
+                        </div>
+                      </div>
+                      <div style={{ height: 3, borderRadius: 2, background: "var(--border2)", marginBottom: 3 }}>
+                        <div style={{ height: 3, borderRadius: 2, width: `${pct || 1}%`, background: colorHex, transition: "width 1s ease" }} />
+                      </div>
+                      <div style={{ fontSize: 10, color: "var(--t3)" }}>{disp} of {dispTarget}</div>
                     </div>
-                    <div style={{ height: 3, borderRadius: 2, background: "var(--border2)", marginBottom: 3 }}>
-                      <div style={{ height: 3, borderRadius: 2, width: `${pct || 1}%`, background: meta.colorHex, transition: "width 1s ease" }} />
-                    </div>
-                    <div style={{ fontSize: 10, color: "var(--t3)" }}>{disp} of {meta.unit === "$" ? `$${meta.target.toLocaleString()}` : `${meta.target} ${meta.unit}`}</div>
-                  </div>
-                );
-              })}
+                  );
+                }).slice(0, 4)}
             </div>
           </HudCard>
         </div>
@@ -886,56 +941,130 @@ export default function Dashboard() {
               </div>
             )}
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 200, overflowY: "auto" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 220, overflowY: "auto" }}>
               {tasks.length === 0 && !addingTask && (
                 <p style={{ fontSize: 12, color: "var(--t4)", textAlign: "center", padding: "14px 0" }}>No open tasks.</p>
               )}
-              {tasks.filter(t => !t.completed).concat(tasks.filter(t => t.completed)).map(task => (
-                <div key={task.id} style={{
-                  display: "flex", alignItems: "center", gap: 8, padding: "7px 10px",
-                  borderRadius: 4, background: "var(--surface2)",
-                  opacity: task.completed ? 0.45 : 1, transition: "opacity .2s",
-                }}>
-                  <button onClick={() => toggleTask(task.id, task.completed)} style={{
-                    width: 15, height: 15, borderRadius: 3, flexShrink: 0, cursor: "pointer",
-                    background: task.completed ? "rgba(34,197,94,0.15)" : "transparent",
-                    border: `1px solid ${task.completed ? "rgba(34,197,94,0.4)" : "var(--border2)"}`,
-                    display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s",
+              {tasks.filter(t => !t.completed).concat(tasks.filter(t => t.completed)).map(task => {
+                const prioColor = task.priority === "high" ? "var(--red)" : task.priority === "low" ? "var(--t4)" : "var(--amber)";
+                const dueDate   = task.due_date ? new Date(task.due_date + "T12:00:00") : null;
+                const today     = new Date(); today.setHours(0,0,0,0);
+                const dueSoon   = dueDate && dueDate <= new Date(today.getTime() + 3 * 86400000);
+                const overdue   = dueDate && dueDate < today;
+                const dueColor  = overdue ? "var(--red)" : dueSoon ? "var(--amber)" : "var(--t4)";
+                return (
+                  <div key={task.id} style={{
+                    display: "flex", alignItems: "center", gap: 8, padding: "7px 10px",
+                    borderRadius: 4, background: "var(--surface2)",
+                    opacity: task.completed ? 0.45 : 1, transition: "opacity .2s",
                   }}>
-                    {task.completed && (
-                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3.5" strokeLinecap="round">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
+                    <button onClick={() => toggleTask(task.id, task.completed)} style={{
+                      width: 15, height: 15, borderRadius: 3, flexShrink: 0, cursor: "pointer",
+                      background: task.completed ? "rgba(34,197,94,0.15)" : "transparent",
+                      border: `1px solid ${task.completed ? "rgba(34,197,94,0.4)" : "var(--border2)"}`,
+                      display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s",
+                    }}>
+                      {task.completed && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>}
+                    </button>
+                    {task.priority && !task.completed && (
+                      <div style={{ width: 5, height: 5, borderRadius: "50%", background: prioColor, flexShrink: 0 }} title={task.priority} />
                     )}
-                  </button>
-                  <span style={{ flex: 1, fontSize: 12, color: "var(--t2)", textDecoration: task.completed ? "line-through" : "none" }}>
-                    {task.text}
-                  </span>
-                  <button onClick={() => deleteTask(task.id)} style={{
-                    background: "none", border: "none", cursor: "pointer",
-                    color: "var(--t4)", display: "flex", alignItems: "center", padding: 2,
-                    borderRadius: 3, transition: "color .15s",
-                  }}
-                    onMouseEnter={e => (e.currentTarget.style.color = "var(--red)")}
-                    onMouseLeave={e => (e.currentTarget.style.color = "var(--t4)")}
-                  >
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                      <path d="M18 6L6 18M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              ))}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, color: "var(--t2)", textDecoration: task.completed ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {task.text}
+                      </div>
+                      {dueDate && !task.completed && (
+                        <div style={{ fontSize: 10, color: dueColor, marginTop: 1 }}>
+                          {overdue ? "Overdue · " : ""}{dueDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                        </div>
+                      )}
+                    </div>
+                    <button onClick={() => deleteTask(task.id)} style={{
+                      background: "none", border: "none", cursor: "pointer",
+                      color: "var(--t4)", display: "flex", alignItems: "center", padding: 2,
+                      borderRadius: 3, transition: "color .15s", flexShrink: 0,
+                    }}
+                      onMouseEnter={e => (e.currentTarget.style.color = "var(--red)")}
+                      onMouseLeave={e => (e.currentTarget.style.color = "var(--t4)")}
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                        <path d="M18 6L6 18M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </HudCard>
+
+          {/* Finance Snapshot */}
+          {budgetSnap && budgetSnap.totalBudgeted > 0 && (
+            <HudCard delay={.16} style={{ padding: "18px 20px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)" }}>Finance Snapshot</p>
+                <a href="/dashboard/finance" style={{ fontSize: 11, color: "var(--blue)", textDecoration: "none" }}>Hub →</a>
+              </div>
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+                  <span style={{ fontSize: 12, color: "var(--t2)" }}>Monthly spend</span>
+                  <span style={{ fontSize: 12, fontFamily: "monospace", fontWeight: 700, color: budgetSnap.totalSpent > budgetSnap.totalBudgeted ? "var(--red)" : "var(--t1)" }}>
+                    ${Math.round(budgetSnap.totalSpent).toLocaleString()} / ${Math.round(budgetSnap.totalBudgeted).toLocaleString()}
+                  </span>
+                </div>
+                <div style={{ height: 4, borderRadius: 2, background: "rgba(255,255,255,0.06)" }}>
+                  <div style={{ height: "100%", borderRadius: 2, width: `${Math.min(100,(budgetSnap.totalSpent/budgetSnap.totalBudgeted)*100)}%`, background: budgetSnap.totalSpent > budgetSnap.totalBudgeted ? "var(--red)" : "var(--blue)", transition: "width 0.8s ease" }} />
+                </div>
+              </div>
+              {budgetSnap.topOver.length > 0 ? (
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--t4)", marginBottom: 6 }}>Over budget</div>
+                  {budgetSnap.topOver.map(c => (
+                    <div key={c.category} style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                      <span style={{ fontSize: 12, color: "var(--t2)" }}>{c.category}</span>
+                      <span style={{ fontSize: 11, fontFamily: "monospace", fontWeight: 700, color: "var(--red)" }}>+${Math.round(c.spent - c.budgeted)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ fontSize: 12, color: "var(--green)", display: "flex", alignItems: "center", gap: 5 }}>
+                  <span>✓</span> All categories on budget
+                </div>
+              )}
+            </HudCard>
+          )}
 
           {/* M.A.X. Brief */}
           <HudCard delay={.18} style={{ padding: "20px 20px", flex: 1 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
               <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)" }}>M.A.X. Brief</p>
-              <span style={{ fontSize: 10, color: "var(--blue)", fontWeight: 600 }}>Live data</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                {briefGenAt && <span style={{ fontSize: 10, color: "var(--t4)" }}>{Math.round((Date.now() - new Date(briefGenAt).getTime()) / 60000)}m ago</span>}
+                <button onClick={() => { setBriefLoading(true); fetch("/api/dashboard-brief",{method:"POST"}).then(r=>r.json()).then(j=>{if(j.lines)setBrief(j.lines);if(j.generatedAt)setBriefGenAt(j.generatedAt);}).finally(()=>setBriefLoading(false)); }}
+                  disabled={briefLoading}
+                  title="Refresh brief"
+                  style={{ background:"none",border:"none",cursor:briefLoading?"default":"pointer",color:"var(--t4)",padding:2,display:"flex",alignItems:"center",transition:"color .15s" }}
+                  onMouseEnter={e=>{if(!briefLoading)(e.currentTarget as HTMLElement).style.color="var(--blue)";}}
+                  onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.color="var(--t4)";}}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{animation:briefLoading?"spin-slow 1s linear infinite":"none"}}>
+                    <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                  </svg>
+                </button>
+              </div>
             </div>
             <div style={{ fontSize: 13, color: "var(--t2)", lineHeight: 1.7 }}>
-              {insights.length > 0 ? (
+              {brief.length > 0 ? (
+                <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 9 }}>
+                  {brief.map((line, i) => (
+                    <li key={i} style={{ display: "flex", gap: 9, alignItems: "flex-start" }}>
+                      <span style={{ color: "var(--blue)", fontWeight: 800, fontSize: 14, flexShrink: 0, lineHeight: 1.6 }}>{line.icon}</span>
+                      <span>{line.text}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : briefLoading ? (
+                <span style={{ color: "var(--t4)" }}>M.A.X. is thinking…</span>
+              ) : insights.length > 0 ? (
                 <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 9 }}>
                   {insights.map((ins, i) => (
                     <li key={i} style={{ display: "flex", gap: 9, alignItems: "flex-start" }}>
