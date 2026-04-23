@@ -1,5 +1,5 @@
 "use client";
-
+// v2
 import { useState, useEffect, useCallback } from "react";
 import { HudCard } from "@/components/ui/HudCard";
 import { supabase } from "@/lib/supabase";
