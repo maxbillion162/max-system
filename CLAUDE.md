@@ -248,7 +248,7 @@ This is the core of M.A.X. Understand it before touching anything AI-related.
 
 **Active plan: 14-week full revamp.** See `ROADMAP.md` in this directory for the build order and week-by-week specs. See Claude's memory file `build_plan_revamp.md` for the complete detailed plan.
 
-**Current status: Weeks 1–12 complete. Week 13 is next.**
+**Current status: Weeks 1–13 complete. Week 14 is next.**
 
 ### Week 1 — DONE:
 New tables: `notifications`, `activity_log`, `transactions`, `merchant_rules`, `budget_allocations`, `accounts`, `task_lists`, `habit_logs`, `goal_notes`, `settings`, `writing_style`. Expanded `tasks`, `habits`, `goals`. Built `NotificationBell` component. Settings page shell. Added `create_notification`, `log_activity`, `get_budget_status`, `get_transactions` agent tools.
@@ -289,9 +289,11 @@ Feed revamp. Topic override bar: set any topic for the day (stored in localStora
 ### Week 12 — DONE:
 Full Settings page. 6 real sections: Feed Interests (add/remove topics, saved to Supabase settings table), Notifications (4 toggles: habit nudge, weekly recap, bill alerts, market update), Integrations (Google OAuth status, Telegram test button → /api/telegram/test, Plaid account count), Preferences (default calendar view selector, tasks in calendar toggle), M.A.X. Intelligence (memory count, writing voice profile from writing_style table), Data (export goals/notes as JSON download, clear web chat history).
 
+### Week 13 — DONE:
+Chat upgrades. Real token streaming via Anthropic messages.stream() API (replaced fake word-split). Tool labels show inline in streaming bubble then collapse to ◎ badges above the response. Chat history loads last 30 messages from Supabase chat_messages table on open (fixed wrong table name). Message hover actions on M.A.X. responses: Copy, Save to Memory (POST /api/memory), Send to Telegram (POST /api/telegram/send). New API routes: /api/chat/history, /api/memory, /api/telegram/send.
+
 ### Upcoming:
-- Week 13: Chat upgrades (real token streaming, conversation memory, suggested prompts)
-- Week 14: Agent tools expansion + voice interface (Vapi.ai)
+- Week 14: Agent intelligence upgrade — expanded context injection, new tools, writing style in drafts, proactive Telegram alerts fully wired
 
 ### Key API upgrades planned:
 - CoinGecko → **CoinMarketCap** for crypto
