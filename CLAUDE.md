@@ -12,7 +12,6 @@ This file must stay accurate. When you make changes that affect what's documente
 - **Agent tools added or removed** → update The Agent System tools list
 - **New API key / service integrated** → update Tech Stack
 - **Coding or design rule changes** → update the relevant section
-- **Roadmap items completed** → move them to completed, update Next Priorities
 
 Do NOT document volatile implementation details (specific prop names, internal function signatures) — those go stale fast. Document stable architecture, patterns, and rules only. Read source files directly for low-level details.
 
@@ -29,7 +28,7 @@ M.A.X. is a fully autonomous personal AI agent built exclusively for Max. M.A.X.
 The agent is the product. All three surfaces are interfaces to the same underlying agent.
 
 **Live URL:** max-system-dusky.vercel.app  
-**Vision:** Jarvis-level autonomous assistant. M.A.X. should proactively plan, remind, warn, and complete tasks — not just answer questions. Think: you tell it "book me a dinner reservation Saturday" and it checks your calendar, finds a good time, searches the restaurant, books it online or calls to make the reservation, then sends you a Telegram confirmation. No follow-up needed.
+**Vision:** Jarvis-level autonomous assistant. M.A.X. should proactively plan, remind, warn, and complete tasks — not just answer questions. Think: you tell it "book me a dinner reservation Saturday" and it checks your calendar, finds a good time, searches the restaurant, books it, then sends a Telegram confirmation. No follow-up needed.
 
 ---
 
@@ -60,16 +59,22 @@ The agent is the product. All three surfaces are interfaces to the same underlyi
 | Auth | Google OAuth 2.0 |
 | Messaging | Telegram Bot API |
 | Email send | Resend |
-| Crypto | CoinGecko API |
-| Weather | Open-Meteo API |
+| Crypto prices | CoinMarketCap API |
+| Market data | Alpha Vantage (IRA NAVs, stock quotes, indices) |
+| Weather | Open-Meteo (free, no key) |
 | Web search | Tavily API |
+| Web browsing | Firecrawl API |
+| Calculations | Wolfram Alpha Short Answers API |
+| Music | Spotify Web API (OAuth connected) |
+| SMS | Twilio (trial mode — upgrade when ready) |
+| Reddit | Public JSON API (no key needed) |
+| Bank data | Plaid (sandbox — upgrade to Development for real bank) |
+| Fear & Greed | Alternative.me (free, no key) |
 | Voice (planned) | Vapi.ai |
 
-All API keys are in `.env.local`. All keys are configured and active.
+All API keys are in `.env.local`. All keys are configured and active unless noted.
 
-**Deployment:** Hosted on Vercel (auto-deploys from the `main` branch). All changes must be pushed to GitHub — this is how they reach production. Always commit and push at the end of a build session. Do not leave working code sitting only on the local machine.
-
-**Live URL:** max-system-dusky.vercel.app
+**Deployment:** Hosted on Vercel (auto-deploys from the `main` branch). All changes must be pushed to GitHub — this is how they reach production. Always commit and push at the end of a build session.
 
 ---
 
@@ -85,50 +90,79 @@ src/
       page.tsx                  # Main dashboard (net worth, habits, tasks, crypto, weather, intel feed)
       layout.tsx                # Dashboard shell with sidebar
       chat/page.tsx             # M.A.X. chat interface
-      calendar/page.tsx         # Google Calendar (day/week/month views)
+      calendar/page.tsx         # Google Calendar (day/week/month views) + tasks
       email/page.tsx            # Gmail (3-panel: folders, list, reader)
       feed/page.tsx             # News feed (breaking ticker, topic filters)
       finance/page.tsx          # Finance Hub — 4-tab layout: Overview, Budget, Investments, Transactions
       budget/page.tsx           # Redirect → /dashboard/finance
-      habits/page.tsx           # Habit tracker
-      goals/page.tsx            # Goals with progress bars
+      habits/page.tsx           # Habit tracker with heatmap + gamification
+      goals/page.tsx            # Goals with progress bars + notes
       archive/page.tsx          # Chat history + action receipts
+      settings/page.tsx         # Settings (feeds, notifications, integrations, preferences)
     api/
-      chat/route.ts             # Main chat SSE endpoint (streams agent events)
-      chat/brief/route.ts       # Generates proactive brief on chat load
-      briefing/route.ts         # Triggers daily briefing email via Resend
+      chat/route.ts             # Main chat SSE endpoint (real token streaming)
+      chat/brief/route.ts       # Proactive brief on chat load
+      chat/history/route.ts     # Load last 30 messages from chat_messages
+      briefing/route.ts         # Daily briefing email via Resend
       telegram/route.ts         # Telegram webhook handler
+      telegram/send/route.ts    # Send message to Telegram from web
+      telegram/test/route.ts    # Test Telegram connection from Settings
       auth/google/route.ts      # Google OAuth initiation
       auth/google/callback/route.ts  # Google OAuth callback + token storage
+      auth/spotify/route.ts     # Spotify OAuth initiation
+      auth/spotify/callback/route.ts # Spotify OAuth callback + token storage
       auth/login/route.ts
       google/calendar/route.ts  # Google Calendar proxy
       google/gmail/route.ts     # Gmail proxy
-      crypto/route.ts           # CoinGecko proxy (BTC, XRP, sparklines)
+      calendar/nl/route.ts      # Natural language → calendar event (Claude parse)
+      crypto/route.ts           # CoinMarketCap proxy (BTC, XRP, sparklines)
       weather/route.ts          # Open-Meteo proxy (Orlando)
-      news/route.ts             # News aggregator
+      news/route.ts             # News aggregator (supports ?topic= param)
+      market/route.ts           # Alpha Vantage market indices
+      finance-news/route.ts     # Finance news via Tavily
+      memory/route.ts           # Save message to memory from chat UI
       email/digest/route.ts
       email/reply/route.ts
+      email/summaries/route.ts  # AI summary line per email (batch)
       feed/summary/route.ts
-      cron/calendar-alerts/route.ts   # Removed (requires Vercel Pro)
-      cron/weekly-recap/route.ts      # Sunday 8am recap (Telegram + email)
+      feed/top3/route.ts        # Claude picks top 3 articles for Max
+      dashboard-brief/route.ts  # M.A.X. Brief for dashboard
+      transactions/ai-categorize/route.ts
+      plaid/create-link-token/route.ts
+      plaid/exchange-token/route.ts
+      plaid/sync/route.ts
+      cron/weekly-recap/route.ts      # Sunday recap (Telegram + email)
+      cron/plaid-sync/route.ts        # Daily bank sync
+      cron/wealth-snapshot/route.ts   # 11pm net worth snapshot
+      cron/market-update/route.ts     # 2pm market update → Telegram
+      cron/bill-alerts/route.ts       # Bill due alerts
+      cron/habit-nudge/route.ts       # 9pm habit nudge → Telegram
+      cron/goal-checkin/route.ts      # Quarterly goal progress → Telegram
+      cron/evening-checkin/route.ts   # 8pm nightly wrap-up → Telegram
   lib/
-    max-agent.ts    # CORE: agentic loop, tool executor, context injection, streaming
-    max-tools.ts    # All tool implementations (Supabase + Google + APIs)
+    max-agent.ts    # CORE: agentic loop, tool executor, context injection, real streaming
+    max-tools.ts    # All tool implementations (Supabase + Google + all APIs)
     supabase.ts     # Supabase client
     google.ts       # Google OAuth client + token refresh
-    crypto.ts       # CoinGecko fetcher
+    spotify.ts      # Spotify OAuth + playback control
+    firecrawl.ts    # Web page scraping → clean markdown
+    places.ts       # Google Places search (requires billing — currently unused)
+    yelp.ts         # Yelp business search (paid — currently unused)
+    reddit.ts       # Reddit search (free, no key)
+    wolfram.ts      # Wolfram Alpha short answers
+    crypto.ts       # CoinMarketCap fetcher
     weather.ts      # Open-Meteo fetcher
     news.ts         # News aggregator
     briefing.ts     # Daily briefing email builder
+    plaid.ts        # Plaid bank integration
     utils.ts        # Shared utilities
-    gemini.ts       # DEAD FILE — ignore, do not use
   components/
     layout/Sidebar.tsx          # Dashboard navigation sidebar
     ui/HudCard.tsx              # Primary card component (dark glass style)
     ui/MaxChatBubble.tsx        # Floating chat widget (all dashboard pages)
     ui/Sparkline.tsx            # SVG sparkline chart component
     ui/NotificationBell.tsx     # Real-time notification bell + drawer + toast stack
-    ui/PlaidLinkButton.tsx      # Plaid Link flow button (create-link-token → exchange)
+    ui/PlaidLinkButton.tsx      # Plaid Link flow button
     ui/TransactionReview.tsx    # Tinder-style swipe UI for training AI categories
 ```
 
@@ -136,36 +170,30 @@ src/
 
 ## SUPABASE TABLES
 
-| Table | Status | Purpose |
-|-------|--------|---------|
-| `habits` | ✅ | Daily habits (id, name, completed, updated_at) |
-| `tasks` | ✅ | Task list (id, text, priority, due_date, completed) |
-| `goals` | ✅ | Goals (id, current) — metadata is hardcoded in dashboard |
-| `google_tokens` | ✅ | Google OAuth tokens (access_token, refresh_token, expiry) |
-| `memories` | ✅ | M.A.X. long-term memory (id, content, tags, created_at) |
-| `wealth` | ✅ | Financial holdings (id:'max', ira, savings, btc_amount, xrp_amount) |
-| `telegram_history` | ✅ | Telegram conversation history (role, content, created_at) |
-| `ira_funds` | ✅ | IRA fund breakdown (symbol, name, nav, chg, value, shares) |
-| `bills` | ✅ | Monthly bills (name, amt, due day) |
-| `chat_messages` | ✅ | Web chat history (role, content, created_at) |
-| `wealth_history` | ✅ | Net worth over time for chart (recorded_at, net_worth, crypto_total, ira_total, savings) |
-| `notifications` | ✅ | Real-time alerts (type, title, body, read, action_url) |
-| `activity_log` | ✅ | M.A.X. action history (type, description, detail JSONB) |
-| `transactions` | ✅ | Plaid + manual transactions (date, amount, merchant, category, source) |
-| `merchant_rules` | ✅ | Learned merchant→category rules (merchant_pattern, category) |
-| `budget_allocations` | ✅ | Zero-based budget per category (category, budgeted, period_start, rollover) |
-| `accounts` | ✅ | Connected bank accounts — Plaid ready (plaid_account_id, institution, balances) |
-| `task_lists` | ✅ | Named task lists (name, color, position). Defaults: Personal, Work, M.A.X. |
-| `habit_logs` | ✅ | Real date-anchored habit completions (habit_id, date, completed) |
-| `goal_notes` | ✅ | Goal journal entries (goal_id, text) |
-| `settings` | ✅ | Key-value preference store (key, value JSONB) |
-| `writing_style` | ✅ | Max's analyzed email voice profile |
-
-**Note:** Web chat history (`chat_messages`) is NOT currently used by the agent — it only uses the last 14 in-memory messages per session. Telegram history IS persisted and loaded.
-
-**tasks table** also has: list_id, description, subtasks (JSONB), position, show_in_calendar — added Week 1.
-**habits table** also has: cat, color, streak, best, history — added Week 1.
-**goals table** also has: label, description, target, unit, deadline, color, category, milestones, subgoals — added Week 1.
+| Table | Purpose |
+|-------|---------|
+| `habits` | Daily habits (name, cat, color, streak, best, history) |
+| `habit_logs` | Real date-anchored completions (habit_id, date, completed) — source of truth |
+| `tasks` | Tasks (text, priority, due_date, completed, list_id, subtasks JSONB, show_in_calendar) |
+| `task_lists` | Named task lists (name, color, position) |
+| `goals` | Goals (label, description, target, current, unit, deadline, color, category, milestones, subgoals) |
+| `goal_notes` | Goal journal entries (goal_id, text) |
+| `google_tokens` | Google OAuth tokens (access_token, refresh_token, expiry) |
+| `memories` | M.A.X. long-term memory (content, tags, created_at) |
+| `wealth` | Financial holdings (id:'max', ira, savings, btc_amount, xrp_amount) |
+| `wealth_history` | Net worth over time (recorded_at, net_worth, crypto_total, ira_total, savings) |
+| `ira_funds` | IRA fund breakdown (symbol, name, nav, chg, value, shares) |
+| `bills` | Monthly bills (name, amt, due_day) |
+| `telegram_history` | Telegram conversation history (role, content, created_at) |
+| `chat_messages` | Web chat history (role, content, created_at) — persisted and loaded on open |
+| `notifications` | Real-time alerts (type, title, body, read, action_url) |
+| `activity_log` | M.A.X. action history (type, description, detail JSONB) |
+| `transactions` | Plaid + manual transactions (date, amount, merchant, category, source) |
+| `merchant_rules` | Learned merchant→category rules (merchant_pattern, category) |
+| `budget_allocations` | Zero-based budget per category (category, budgeted, period_start) |
+| `accounts` | Connected bank accounts (plaid_account_id, institution, balances) |
+| `settings` | Key-value preference store (key, value JSONB) — stores prefs, spotify_tokens, health data |
+| `writing_style` | Max's analyzed email voice profile |
 
 ---
 
@@ -173,25 +201,32 @@ src/
 
 This is the core of M.A.X. Understand it before touching anything AI-related.
 
-**Model:** Claude Haiku 4.5 (fast + cheap — keep this unless a specific feature needs more power) Ultimate goal is to rin this assistant for under $5 a month total
+**Model:** Claude Haiku 4.5 — fast + cheap. Goal: run under $5/month total. Don't upgrade model without good reason.  
 **Max tokens:** 2048 per response  
-**Max tool iterations:** 8 per message
+**Max tool iterations:** 8 per message  
+**History window:** Last 16 messages per session
 
-**Context injection:** On every first message in a session, M.A.X. prepends live data: current time (ET), habits completion, open tasks, BTC/XRP prices, Orlando weather and eventually much much more. This gives M.A.X. situational awareness without being asked.
+**Streaming:** Real token streaming via `client.messages.stream()`. Tool labels emit as `{ t: "tool", label }` events inline during streaming, then collapse to ◎ badges above the final response.
 
-**Streaming:** The agent uses a non-streaming Anthropic call, then simulates streaming by splitting the response word-by-word via SSE. Real token streaming would improve perceived responsiveness.
+**Context injection:** On every message, M.A.X. prepends a live data header into the last user message: current time (ET), habit completion, open tasks, BTC/XRP prices + net worth, weather, top goals with %, budget spend vs allocation, bills due soon, recent memories, writing style.
 
-**Tools (20 total):**
-- Habits: `read_habits`, `toggle_habit`
-- Tasks: `read_tasks`, `add_task`, `complete_task`, `delete_task`
-- Goals: `read_goals`, `update_goal`
+**Tools (35 total):**
+- Habits: `read_habits`, `toggle_habit`, `add_habit`, `delete_habit`
+- Tasks: `read_tasks`, `add_task`, `complete_task`, `delete_task`, `update_task`
+- Goals: `read_goals`, `update_goal`, `create_goal`, `delete_goal`
 - Calendar: `read_calendar`, `create_calendar_event`
 - Gmail: `read_gmail`, `draft_email`
+- Finance: `read_wealth`, `update_wealth`, `get_budget_status`, `get_transactions`, `read_bills`, `set_income`
 - Data: `read_crypto`, `read_weather`, `read_news`
-- Memory: `store_memory`, `recall_memory`
-- Finance: `update_wealth`
-- Search: `web_search` (Tavily)
-- Notifications: `create_notification`, `log_activity`
+- Memory: `store_memory`, `recall_memory`, `read_all_memories`
+- Search: `web_search` (Tavily), `browse_url` (Firecrawl), `search_reddit`
+- Local: `search_places` (Google Places — needs billing), `search_yelp` (paid — unused)
+- Calculations: `wolfram_query`
+- Music: `spotify_control`, `spotify_search`
+- Market: `get_stock_quote` (Alpha Vantage), `get_fear_greed` (Alternative.me)
+- Comms: `send_sms` (Twilio)
+- Scheduling: `find_free_time`, `project_savings`
+- System: `create_notification`, `log_activity`
 
 **System prompt** contains Max's full personal profile. Keep it up to date as Max's life changes.
 
@@ -208,7 +243,6 @@ This is the core of M.A.X. Understand it before touching anything AI-related.
 - `--t1`, `--t2`, `--t3`, `--t4`: text hierarchy (white → gray)
 - `--blue`: primary accent (#4589FF or similar)
 - `--green`, `--red`, `--amber`: status colors
-- `--text-primary` = `var(--t1)`
 
 **Component patterns:**
 - Cards: always use `<HudCard>` — check `src/components/ui/HudCard.tsx` for current props
@@ -216,7 +250,7 @@ This is the core of M.A.X. Understand it before touching anything AI-related.
 - All inline styles (no Tailwind, no CSS modules) — this is intentional
 - Before using any shared component, read its source file — don't assume props from memory
 
-**Design bar is HIGH.** If it looks like a prototype or a "vibe code" project, it doesn't ship. Every card, modal, button, and layout must look intentional and polished. Hover states, transitions, loading states — all required. No placeholder UI.
+**Design bar is HIGH.** If it looks like a prototype, it doesn't ship. Every card, modal, button, and layout must look intentional and polished. Hover states, transitions, loading states — all required. No placeholder UI.
 
 ---
 
@@ -225,7 +259,6 @@ This is the core of M.A.X. Understand it before touching anything AI-related.
 - **TypeScript everywhere.** No `any` types unless absolutely unavoidable — use proper interfaces.
 - **File structure matters.** Logic goes in `src/lib/`. API endpoints in `src/app/api/`. Page components stay in `src/app/dashboard/`. Shared UI in `src/components/ui/`.
 - **No inline business logic in page components.** Pages render data; `src/lib/` does the work.
-- **No unused files.** `src/lib/gemini.ts` is dead — remove it when touching that area.
 - **Error handling at boundaries.** API routes handle errors gracefully. Agent tools return `{ error: string }` on failure — never throw to the user.
 - **Comments only when non-obvious.** Don't narrate code with comments. Good names are enough.
 - **No backwards-compatibility shims.** If something changes, update all the callsites.
@@ -237,74 +270,20 @@ This is the core of M.A.X. Understand it before touching anything AI-related.
 1. **Never auto-send email.** `draft_email` only. Max always reviews before sending.
 2. **Confirm before irreversible actions.** Calendar creates, bookings, anything that can't be undone — M.A.X. confirms intent first.
 3. **Telegram is the primary mobile channel.** Features that notify Max should send to Telegram.
-4. **Plaid integration is planned** — Week 2 of the revamp plan. Read-only, all accounts (checking, savings, credit cards).
-5. **Calendar alerts require Vercel Pro** — don't implement cron-based calendar alerts without flagging this.
-6. **M.A.X. personality:** Jarvis capability + TARS dry wit. Direct, capable, never sycophantic. Never starts with "Certainly!", "Of course!", "Great question!".
-7. **Google OAuth tokens** are environment-specific — localhost and Vercel have separate redirect URIs and may need separate re-auth.
+4. **Plaid is in sandbox mode.** To connect real bank: go to dashboard.plaid.com → switch to Development → get Development Secret → update `PLAID_ENV=development` + new `PLAID_SECRET` in `.env.local` AND Vercel env vars → redeploy.
+5. **Twilio is in trial mode.** SMS only works to verified numbers. Upgrade account to remove restriction when ready.
+6. **Calendar alerts require Vercel Pro** — don't implement cron-based calendar alerts without flagging this.
+7. **M.A.X. personality:** Jarvis capability + TARS dry wit. Direct, capable, never sycophantic. Never starts with "Certainly!", "Of course!", "Great question!".
+8. **Google OAuth tokens** are environment-specific — localhost and Vercel have separate redirect URIs and may need separate re-auth.
 
 ---
 
-## CURRENT STATE & PRIORITIES
+## CURRENT PRIORITIES
 
-**Active plan: 14-week full revamp.** See `ROADMAP.md` in this directory for the build order and week-by-week specs. See Claude's memory file `build_plan_revamp.md` for the complete detailed plan.
-
-**Current status: ALL 14 WEEKS COMPLETE. Full revamp done.**
-
-### Week 1 — DONE:
-New tables: `notifications`, `activity_log`, `transactions`, `merchant_rules`, `budget_allocations`, `accounts`, `task_lists`, `habit_logs`, `goal_notes`, `settings`, `writing_style`. Expanded `tasks`, `habits`, `goals`. Built `NotificationBell` component. Settings page shell. Added `create_notification`, `log_activity`, `get_budget_status`, `get_transactions` agent tools.
-
-### Week 2 — DONE:
-Plaid integration: `src/lib/plaid.ts`, create-link-token + exchange-token + sync API routes. `PlaidLinkButton` component. Daily cron sync. Vercel `vercel.json` updated with cron. PLAID_ENV=sandbox (upgrade to development for real bank — swap PLAID_SECRET + PLAID_ENV env var).
-
-### Week 3 — DONE:
-Finance Hub full rewrite as 4-tab layout (Overview, Budget, Investments, Transactions). AI batch categorization via `/api/transactions/ai-categorize` (Claude Haiku). Tinder-style `TransactionReview` component for training merchant rules. Zero-based budget with Quick Setup. Old `/dashboard/budget` now redirects to Finance Hub. Budget removed from sidebar nav.
-
-### Pending — Plaid real bank access:
-Max needs to: go to dashboard.plaid.com → switch to Development environment → get Development Secret → set `PLAID_ENV=development` + new `PLAID_SECRET` in `.env.local` AND Vercel env vars → redeploy.
-
-### Week 4 — DONE:
-CoinMarketCap for crypto. Alpha Vantage for IRA NAVs + market indices. Finance news feed (Tavily). Wealth snapshot cron (11pm). Market update cron (2pm). Bill alerts cron (7am). New API routes: /api/market, /api/finance-news, /api/cron/wealth-snapshot, /api/cron/market-update, /api/cron/bill-alerts.
-
-### Week 5 — DONE:
-Dashboard revamp. M.A.X. Brief (Claude Haiku, 10-min cache, /api/dashboard-brief). Finance Snapshot tile. Goal Pulse with urgency badges. Tasks tile with priority dots + due dates.
-
-### Week 6 — DONE:
-Tasks merged into Calendar page (now "Schedule"). Task list management, subtasks, inline TaskDetail panel. Stats row (Open/Done/High/Due Soon). Default lists seeded from task_lists table.
-
-### Week 7 — DONE:
-Calendar revamp. Day/week views: absolute-positioned event blocks proportional to time, overlap detection, current-time red line. Click empty slot → EventModal pre-filled. Natural language bar: plain-English → Claude Haiku parse → preview → confirm → creates Google Calendar event (/api/calendar/nl). Event detail panel in right sidebar on click. Month view: +X more chip, task chips.
-
-### Week 8 — DONE:
-Email full revamp. 3-column layout: smart folder nav | email list | reading pane. Smart folders (All/Needs Action/FYI/Newsletters/Noise). AI summary line per email (/api/email/summaries batch). Priority pills (URGENT/REPLY NEEDED/FYI). Keyboard shortcuts: J/K navigate, R reply, D draft, E archive, / search, ? toggle. Eye icon (👁) button in list header opens shortcuts modal.
-
-### Week 9 — DONE:
-Habits gamification. 30-day GitHub-style heatmap per habit. Level system (Recruit/Consistent/Machine/Untouchable) based on best streak. 5 achievements (First Week, Iron Will, Centurion, Perfect Week, Comeback). Streak Shields (max 3, stored in settings). PPL workout split with "TODAY" badge. 9pm Telegram nudge cron (/api/cron/habit-nudge, 01:00 UTC). Real date-anchored tracking via habit_logs table.
-
-### Week 10 — DONE:
-Goals full build. All goal metadata saved to Supabase (label, description, target, unit, deadline, color, category, milestones, subgoals). Seeds 5 default goals on first load. Notes stored in goal_notes table (not localStorage). Subgoals persisted as JSONB. Linked habits shown on each goal card via keyword/category matching. Delete goal + cascade delete notes. Quarterly check-in cron (/api/cron/goal-checkin, 10am UTC Jan 1 / Apr 1 / Jul 1 / Oct 1) sends Telegram progress report.
-
-### Week 11 — DONE:
-Feed revamp. Topic override bar: set any topic for the day (stored in localStorage, auto-clears at midnight). New /api/feed/top3: Claude Haiku picks 3 articles most relevant to Max, shown in right sidebar with reasons. /api/news now supports ?topic= param via Tavily for custom topic news. Base interests shown as reference chips.
-
-### Week 12 — DONE:
-Full Settings page. 6 real sections: Feed Interests (add/remove topics, saved to Supabase settings table), Notifications (4 toggles: habit nudge, weekly recap, bill alerts, market update), Integrations (Google OAuth status, Telegram test button → /api/telegram/test, Plaid account count), Preferences (default calendar view selector, tasks in calendar toggle), M.A.X. Intelligence (memory count, writing voice profile from writing_style table), Data (export goals/notes as JSON download, clear web chat history).
-
-### Week 13 — DONE:
-Chat upgrades. Real token streaming via Anthropic messages.stream() API (replaced fake word-split). Tool labels show inline in streaming bubble then collapse to ◎ badges above the response. Chat history loads last 30 messages from Supabase chat_messages table on open (fixed wrong table name). Message hover actions on M.A.X. responses: Copy, Save to Memory (POST /api/memory), Send to Telegram (POST /api/telegram/send). New API routes: /api/chat/history, /api/memory, /api/telegram/send.
-
-### Week 14 — DONE:
-Agent intelligence upgrade. New create_goal tool: M.A.X. creates full Supabase goal records from chat ("add a goal to save $5K by December"). Expanded context injection: every message now includes active goal progress (top 3 by deadline with %), monthly budget allocation total, and Max's writing voice from writing_style table. Notification prefs fully wired: all 4 cron routes check notification_prefs in Supabase settings before sending — toggle in Settings > Notifications takes effect immediately. Market update cron now sends 2pm Telegram with S&P500/NASDAQ/Dow snapshot (previously only updated DB).
-
-### Ongoing priorities:
 - Connect real bank via Plaid Development (swap PLAID_ENV + PLAID_SECRET in Vercel)
 - Add writing style analysis (analyze Gmail sent folder → populate writing_style table)
-- Voice interface via Vapi.ai when ready
-- Expand M.A.X. tools as new needs arise
-
-### Key API upgrades planned:
-- CoinGecko → **CoinMarketCap** for crypto
-- New: **Alpha Vantage** for IRA fund NAVs + market indices
-- New: **Plaid** for bank/transaction data (all accounts)
+- Voice interface via Vapi.ai
+- Upgrade Twilio from trial to paid when SMS usage warrants it
 
 ---
 
@@ -324,11 +303,11 @@ A feature is done when:
 ## API KEY HANDLING
 
 When a new API key is needed:
-1. Open `.env.local` in the native Mac text editor automatically: `open -e .env.local`
+1. Open `.env.local` in the native Mac text editor: `open -e .env.local`
 2. Max will type the key in himself — never ask him to paste it in chat
-3. After he's done, always remind him to add it to Vercel too, and show the exact format:
+3. After he's done, remind him to add it to Vercel too:
    - Vercel dashboard → Project → Settings → Environment Variables
-   - Show: `KEY_NAME` = `value` (one line per variable)
+   - One line per variable: `KEY_NAME` = `value`
 
 ---
 
