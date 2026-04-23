@@ -248,7 +248,7 @@ This is the core of M.A.X. Understand it before touching anything AI-related.
 
 **Active plan: 14-week full revamp.** See `ROADMAP.md` in this directory for the build order and week-by-week specs. See Claude's memory file `build_plan_revamp.md` for the complete detailed plan.
 
-**Current status: Weeks 1–3 complete. Week 4 is next.**
+**Current status: Weeks 1–7 complete. Week 8 is next.**
 
 ### Week 1 — DONE:
 New tables: `notifications`, `activity_log`, `transactions`, `merchant_rules`, `budget_allocations`, `accounts`, `task_lists`, `habit_logs`, `goal_notes`, `settings`, `writing_style`. Expanded `tasks`, `habits`, `goals`. Built `NotificationBell` component. Settings page shell. Added `create_notification`, `log_activity`, `get_budget_status`, `get_transactions` agent tools.
@@ -262,9 +262,21 @@ Finance Hub full rewrite as 4-tab layout (Overview, Budget, Investments, Transac
 ### Pending — Plaid real bank access:
 Max needs to: go to dashboard.plaid.com → switch to Development environment → get Development Secret → set `PLAID_ENV=development` + new `PLAID_SECRET` in `.env.local` AND Vercel env vars → redeploy.
 
+### Week 4 — DONE:
+CoinMarketCap for crypto. Alpha Vantage for IRA NAVs + market indices. Finance news feed (Tavily). Wealth snapshot cron (11pm). Market update cron (2pm). Bill alerts cron (7am). New API routes: /api/market, /api/finance-news, /api/cron/wealth-snapshot, /api/cron/market-update, /api/cron/bill-alerts.
+
+### Week 5 — DONE:
+Dashboard revamp. M.A.X. Brief (Claude Haiku, 10-min cache, /api/dashboard-brief). Finance Snapshot tile. Goal Pulse with urgency badges. Tasks tile with priority dots + due dates.
+
+### Week 6 — DONE:
+Tasks merged into Calendar page (now "Schedule"). Task list management, subtasks, inline TaskDetail panel. Stats row (Open/Done/High/Due Soon). Default lists seeded from task_lists table.
+
+### Week 7 — DONE:
+Calendar revamp. Day/week views: absolute-positioned event blocks proportional to time, overlap detection, current-time red line. Click empty slot → EventModal pre-filled. Natural language bar: plain-English → Claude Haiku parse → preview → confirm → creates Google Calendar event (/api/calendar/nl). Event detail panel in right sidebar on click. Month view: +X more chip, task chips.
+
 ### Upcoming:
-- Week 4: Finance Hub revamp (CoinMarketCap, Alpha Vantage, investment news)
-- Week 5+: Dashboard, Tasks, Calendar, Email, Habits, Goals, Feed, Settings, Chat, Agent tools
+- Week 8: Email Full Revamp (Superhuman-quality layout, AI summaries, draft with M.A.X.)
+- Week 9+: Habits gamification, Goals, Feed, Settings, Chat, Agent tools
 
 ### Key API upgrades planned:
 - CoinGecko → **CoinMarketCap** for crypto
