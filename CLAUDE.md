@@ -248,7 +248,7 @@ This is the core of M.A.X. Understand it before touching anything AI-related.
 
 **Active plan: 14-week full revamp.** See `ROADMAP.md` in this directory for the build order and week-by-week specs. See Claude's memory file `build_plan_revamp.md` for the complete detailed plan.
 
-**Current status: Weeks 1–13 complete. Week 14 is next.**
+**Current status: ALL 14 WEEKS COMPLETE. Full revamp done.**
 
 ### Week 1 — DONE:
 New tables: `notifications`, `activity_log`, `transactions`, `merchant_rules`, `budget_allocations`, `accounts`, `task_lists`, `habit_logs`, `goal_notes`, `settings`, `writing_style`. Expanded `tasks`, `habits`, `goals`. Built `NotificationBell` component. Settings page shell. Added `create_notification`, `log_activity`, `get_budget_status`, `get_transactions` agent tools.
@@ -292,8 +292,14 @@ Full Settings page. 6 real sections: Feed Interests (add/remove topics, saved to
 ### Week 13 — DONE:
 Chat upgrades. Real token streaming via Anthropic messages.stream() API (replaced fake word-split). Tool labels show inline in streaming bubble then collapse to ◎ badges above the response. Chat history loads last 30 messages from Supabase chat_messages table on open (fixed wrong table name). Message hover actions on M.A.X. responses: Copy, Save to Memory (POST /api/memory), Send to Telegram (POST /api/telegram/send). New API routes: /api/chat/history, /api/memory, /api/telegram/send.
 
-### Upcoming:
-- Week 14: Agent intelligence upgrade — expanded context injection, new tools, writing style in drafts, proactive Telegram alerts fully wired
+### Week 14 — DONE:
+Agent intelligence upgrade. New create_goal tool: M.A.X. creates full Supabase goal records from chat ("add a goal to save $5K by December"). Expanded context injection: every message now includes active goal progress (top 3 by deadline with %), monthly budget allocation total, and Max's writing voice from writing_style table. Notification prefs fully wired: all 4 cron routes check notification_prefs in Supabase settings before sending — toggle in Settings > Notifications takes effect immediately. Market update cron now sends 2pm Telegram with S&P500/NASDAQ/Dow snapshot (previously only updated DB).
+
+### Ongoing priorities:
+- Connect real bank via Plaid Development (swap PLAID_ENV + PLAID_SECRET in Vercel)
+- Add writing style analysis (analyze Gmail sent folder → populate writing_style table)
+- Voice interface via Vapi.ai when ready
+- Expand M.A.X. tools as new needs arise
 
 ### Key API upgrades planned:
 - CoinGecko → **CoinMarketCap** for crypto
