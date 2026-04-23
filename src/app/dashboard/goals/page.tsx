@@ -388,29 +388,36 @@ export default function GoalsPage() {
       supabase.from("goal_notes").select("id,goal_id,text,created_at").order("created_at"),
     ]);
 
-    if (goalsRes.status==="fulfilled" && goalsRes.value.data?.length) {
-      setGoals(goalsRes.value.data.map(r=>({
-        id:       String(r.id),
-        label:    String(r.label ?? ""),
-        desc:     String(r.description ?? ""),
-        current:  Number(r.current ?? 0),
-        target:   Number(r.target ?? 100),
-        unit:     String(r.unit ?? "$"),
-        deadline: String(r.deadline ?? "2027-01-01"),
-        colorHex: String(r.color ?? "#4589ff"),
-        category: String(r.category ?? "Personal"),
-        milestones: Array.isArray(r.milestones) ? (r.milestones as {l:string;v:number}[]) : [],
-        subgoals:   Array.isArray(r.subgoals)   ? (r.subgoals   as {text:string;done:boolean}[]) : [],
-      })));
-    } else {
-      // First run — seed defaults
+    const hasFullData = goalsRes.status==="fulfilled" && goalsRes.value.data?.some(r => r.label);
+
+    if (!hasFullData) {
+      // Seed defaults (handles both empty DB and old partial rows with no label)
       await supabase.from("goals").upsert(GOALS_SEED.map(g=>({
         id:g.id, label:g.label, description:g.desc, current:g.current, target:g.target,
         unit:g.unit, deadline:g.deadline, color:g.colorHex, category:g.category,
         milestones:g.milestones, subgoals:g.subgoals,
       })));
-      setGoals(GOALS_SEED);
     }
+
+    // Always reload fresh after potential seed
+    const { data: freshGoals } = await supabase
+      .from("goals")
+      .select("id,label,description,current,target,unit,deadline,color,category,milestones,subgoals")
+      .order("category");
+
+    setGoals((freshGoals ?? []).map(r=>({
+      id:       String(r.id),
+      label:    String(r.label ?? ""),
+      desc:     String(r.description ?? ""),
+      current:  Number(r.current ?? 0),
+      target:   Number(r.target ?? 100),
+      unit:     String(r.unit ?? "$"),
+      deadline: String(r.deadline ?? "2027-01-01"),
+      colorHex: String(r.color ?? "#4589ff"),
+      category: String(r.category ?? "Personal"),
+      milestones: Array.isArray(r.milestones) ? (r.milestones as {l:string;v:number}[]) : [],
+      subgoals:   Array.isArray(r.subgoals)   ? (r.subgoals   as {text:string;done:boolean}[]) : [],
+    })));
 
     if (habitsRes.status==="fulfilled" && habitsRes.value.data) {
       setHabits(habitsRes.value.data.map(r=>({
