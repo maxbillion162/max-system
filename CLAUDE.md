@@ -248,7 +248,7 @@ This is the core of M.A.X. Understand it before touching anything AI-related.
 
 **Active plan: 14-week full revamp.** See `ROADMAP.md` in this directory for the build order and week-by-week specs. See Claude's memory file `build_plan_revamp.md` for the complete detailed plan.
 
-**Current status: Weeks 1–8 complete. Week 9 is next.**
+**Current status: Weeks 1–9 complete. Week 10 is next.**
 
 ### Week 1 — DONE:
 New tables: `notifications`, `activity_log`, `transactions`, `merchant_rules`, `budget_allocations`, `accounts`, `task_lists`, `habit_logs`, `goal_notes`, `settings`, `writing_style`. Expanded `tasks`, `habits`, `goals`. Built `NotificationBell` component. Settings page shell. Added `create_notification`, `log_activity`, `get_budget_status`, `get_transactions` agent tools.
@@ -277,9 +277,12 @@ Calendar revamp. Day/week views: absolute-positioned event blocks proportional t
 ### Week 8 — DONE:
 Email full revamp. 3-column layout: smart folder nav | email list | reading pane. Smart folders (All/Needs Action/FYI/Newsletters/Noise). AI summary line per email (/api/email/summaries batch). Priority pills (URGENT/REPLY NEEDED/FYI). Keyboard shortcuts: J/K navigate, R reply, D draft, E archive, / search, ? toggle. Eye icon (👁) button in list header opens shortcuts modal.
 
+### Week 9 — DONE:
+Habits gamification. 30-day GitHub-style heatmap per habit. Level system (Recruit/Consistent/Machine/Untouchable) based on best streak. 5 achievements (First Week, Iron Will, Centurion, Perfect Week, Comeback). Streak Shields (max 3, stored in settings). PPL workout split with "TODAY" badge. 9pm Telegram nudge cron (/api/cron/habit-nudge, 01:00 UTC). Real date-anchored tracking via habit_logs table.
+
 ### Upcoming:
-- Week 9: Habits gamification (XP, streaks, shields, heatmap, achievements)
-- Week 10+: Goals, Feed, Settings, Chat, Agent tools
+- Week 10: Goals Full Build (metadata to Supabase, create from web/chat/Telegram, M.A.X. auto-links to habits, goal notes, quarterly check-in)
+- Week 11+: Feed, Settings, Chat, Agent tools
 
 ### Key API upgrades planned:
 - CoinGecko → **CoinMarketCap** for crypto
