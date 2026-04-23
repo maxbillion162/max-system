@@ -1,36 +1,40 @@
 @import "tailwindcss";
 
 :root {
-  /* Backgrounds */
-  --bg:       #08090e;
-  --surface:  #0f1117;
-  --surface2: #141820;
-  --surface3: #1a2030;
+  /* ── Backgrounds ── */
+  --bg:       #06080f;
+  --surface:  #0b0e1a;
+  --surface2: #0f1220;
+  --surface3: #141828;
 
-  /* Borders */
-  --border:   #1e2530;
-  --border2:  #252f3d;
+  /* ── Borders ── */
+  --border:   #1a2035;
+  --border2:  #202840;
 
-  /* Brand — single accent */
-  --blue:     #4589ff;
+  /* ── Primary accent ── */
+  --blue:        #4d90ff;
+  --blue-dim:    rgba(77,144,255,0.08);
+  --blue-border: rgba(77,144,255,0.18);
+  --blue-glow:   rgba(77,144,255,0.05);
 
-  /* Data semantics only */
-  --green:    #22c55e;
-  --red:      #ef4444;
-  --amber:    #f59e0b;
+  /* ── Semantic status — muted, professional ── */
+  --green:  #2dd48a;
+  --red:    #f06a6a;
+  --amber:  #e8a935;
 
-  /* Typography */
-  --t1:       #e8edf5;
-  --t2:       #8892a4;
-  --t3:       #50596a;
-  --t4:       #2a3344;
+  /* ── Typography ── */
+  --t1: #eef1fb;
+  --t2: #7e8da8;
+  --t3: #445068;
+  --t4: #2a3450;
 
-  /* Legacy aliases so other pages don't break */
-  --teal:     #4589ff;
-  --cyan:     #38bdf8;
-  --orange:   #f59e0b;
-  --purple:   #a78bfa;
-  --s1:       #0f1117;
+  /* ── Legacy aliases → all resolve to blue ── */
+  --teal:        var(--blue);
+  --cyan:        var(--blue);
+  --orange:      var(--amber);
+  --purple:      #9b8afb;
+  --s1:          var(--surface);
+  --text-primary: var(--t1);
 }
 
 * { box-sizing: border-box; padding: 0; margin: 0; }
@@ -43,14 +47,15 @@ html, body {
   min-height: 100vh;
 }
 
-::selection { background: rgba(69,137,255,0.2); }
+::selection { background: rgba(77,144,255,0.2); }
 ::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--t4); }
 
 /* ── Keyframes ── */
 @keyframes fade-up {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 @keyframes fade-in {
@@ -59,7 +64,7 @@ html, body {
 }
 @keyframes pulse-dot {
   0%,100% { opacity: 1; }
-  50%      { opacity: 0.4; }
+  50%      { opacity: 0.35; }
 }
 @keyframes bounce {
   0%,80%,100% { transform: translateY(0); }
@@ -70,10 +75,14 @@ html, body {
   from { stroke-dashoffset: 500; }
   to   { stroke-dashoffset: 0; }
 }
+@keyframes shimmer {
+  from { background-position: -200% center; }
+  to   { background-position: 200% center; }
+}
 
 /* ── Utilities ── */
-.afu { opacity: 0; animation: fade-up .45s ease forwards; }
-.afi { opacity: 0; animation: fade-in .35s ease forwards; }
+.afu { opacity: 0; animation: fade-up .4s ease forwards; }
+.afi { opacity: 0; animation: fade-in .3s ease forwards; }
 
 .d1 { animation-delay: .06s; }
 .d2 { animation-delay: .12s; }
