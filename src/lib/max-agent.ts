@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import {
   readHabits, toggleHabit,
   readTasks, addTask, completeTask, deleteTask,
-  readGoals, updateGoal,
+  readGoals, updateGoal, createGoal,
   readCalendar, createCalendarEvent,
   readGmail, draftEmail,
   readCrypto, readWeather, readNews,
@@ -75,6 +75,7 @@ const TOOL_LABELS: Record<string, string> = {
   log_activity:          "Logging activity…",
   get_budget_status:     "Checking your budget…",
   get_transactions:      "Loading transactions…",
+  create_goal:           "Creating goal…",
 };
 
 /* ─── Tool definitions ─── */
@@ -275,6 +276,23 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "create_goal",
+    description: "Create a new goal for Max and save it to Supabase. Use this when Max asks to add or create a new goal.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        label:       { type: "string",  description: "Short goal name (e.g. 'Emergency Fund', 'Lose 10 lbs')" },
+        target:      { type: "number",  description: "Numeric target value" },
+        unit:        { type: "string",  description: "Unit of measurement (e.g. 'dollars', 'lbs', 'books', 'workouts')" },
+        category:    { type: "string",  description: "Category: Finance, Health, Career, Personal, Learning, or Relationships" },
+        description: { type: "string",  description: "Optional longer description of the goal" },
+        deadline:    { type: "string",  description: "Optional target date in YYYY-MM-DD format" },
+        current:     { type: "number",  description: "Current progress value (default 0)" },
+      },
+      required: ["label", "target", "unit", "category"],
+    },
+  },
+  {
     name: "get_budget_status",
     description: "Get Max's zero-based budget status for the current month — income, total budgeted, total spent, and per-category breakdown.",
     input_schema: { type: "object" as const, properties: {}, required: [] },
@@ -323,6 +341,7 @@ async function executeTool(name: string, input: Record<string, unknown>): Promis
       case "store_memory":         return JSON.stringify(await storeMemory(input.content as string, (input.tags as string[]) ?? []));
       case "recall_memory":        return JSON.stringify(await recallMemory(input.query as string));
       case "update_goal":          return JSON.stringify(await updateGoal(input.id as string, input.current as number));
+      case "create_goal":          return JSON.stringify(await createGoal(input.label as string, input.target as number, input.unit as string, input.category as string, input.description as string | undefined, input.deadline as string | undefined, (input.current as number) ?? 0));
       case "update_wealth":        return JSON.stringify(await updateWealth(input as Parameters<typeof updateWealth>[0]));
       case "web_search":           return JSON.stringify(await webSearch(input.query as string));
       case "get_budget_status":    return JSON.stringify(await getBudgetStatus());
@@ -336,6 +355,13 @@ async function executeTool(name: string, input: Record<string, unknown>): Promis
   }
 }
 
+/* ─── Supabase client for context (server-side only) ─── */
+import { createClient as _createClient } from "@supabase/supabase-js";
+const _sb = () => _createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
 /* ─── Context injection ─── */
 export async function buildContextHeader(): Promise<string> {
   const now = new Date().toLocaleString("en-US", {
@@ -343,8 +369,15 @@ export async function buildContextHeader(): Promise<string> {
     month: "long", day: "numeric", hour: "numeric", minute: "2-digit", hour12: true,
   });
 
-  const [habits, tasks, crypto, weather] = await Promise.allSettled([
-    readHabits(), readTasks(), readCrypto(), readWeather(),
+  const sb = _sb();
+  const [habits, tasks, crypto, weather, goalsRes, budgetRes, styleRes] = await Promise.allSettled([
+    readHabits(),
+    readTasks(),
+    readCrypto(),
+    readWeather(),
+    sb.from("goals").select("label,current,target,unit,deadline,category").order("deadline"),
+    sb.from("budget_allocations").select("category,budgeted").limit(10),
+    sb.from("writing_style").select("*").limit(1),
   ]);
 
   let ctx = `[CURRENT TIME: ${now} ET]\n`;
@@ -371,6 +404,34 @@ export async function buildContextHeader(): Promise<string> {
   if (weather.status === "fulfilled" && weather.value) {
     const w = weather.value;
     ctx += `[WEATHER: ${w.tempF}°F, ${w.condition}, ${w.precipChance}% rain in Orlando]\n`;
+  }
+
+  // Active goals snapshot (top 3 most urgent)
+  if (goalsRes.status === "fulfilled" && goalsRes.value.data?.length) {
+    const goals = (goalsRes.value.data as { label:string; current:number; target:number; unit:string; deadline:string|null; category:string }[])
+      .filter(g => g.target > 0)
+      .slice(0, 3);
+    if (goals.length > 0) {
+      const parts = goals.map(g => {
+        const pct = Math.round((g.current / g.target) * 100);
+        const due = g.deadline ? ` due ${g.deadline}` : "";
+        return `${g.label} ${pct}%${due}`;
+      });
+      ctx += `[ACTIVE GOALS: ${parts.join(" | ")}]\n`;
+    }
+  }
+
+  // Budget snapshot
+  if (budgetRes.status === "fulfilled" && budgetRes.value.data?.length) {
+    const total = (budgetRes.value.data as { budgeted:number }[]).reduce((s, a) => s + a.budgeted, 0);
+    ctx += `[BUDGET: $${total.toLocaleString()} allocated this month]\n`;
+  }
+
+  // Writing style (for drafts)
+  if (styleRes.status === "fulfilled" && styleRes.value.data?.[0]) {
+    const row = styleRes.value.data[0] as Record<string, unknown>;
+    const tone = row.tone ?? row.summary ?? null;
+    if (tone) ctx += `[MAX'S WRITING STYLE: ${String(tone).slice(0, 120)}]\n`;
   }
 
   return ctx;

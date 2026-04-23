@@ -144,9 +144,30 @@ export async function readAllMemories() {
   return data ?? [];
 }
 
-/* ────────────────────────────────── GOALS UPDATE ── */
+/* ────────────────────────────────── GOALS ── */
 export async function updateGoal(id: string, current: number) {
   const { data, error } = await supabase.from("goals").update({ current }).eq("id", id).select().single();
+  if (error) return { error: error.message };
+  return { success: true, goal: data };
+}
+
+const GOAL_COLORS = ["#4589FF","#22c55e","#f59e0b","#a78bfa","#06b6d4","#ec4899","#f97316"];
+
+export async function createGoal(
+  label: string,
+  target: number,
+  unit: string,
+  category: string,
+  description?: string,
+  deadline?: string,
+  current = 0,
+) {
+  const color = GOAL_COLORS[Math.floor(Math.random() * GOAL_COLORS.length)];
+  const { data, error } = await supabase.from("goals").insert({
+    label, description: description ?? "", current, target, unit,
+    deadline: deadline ?? null, color, category,
+    milestones: [], subgoals: [],
+  }).select().single();
   if (error) return { error: error.message };
   return { success: true, goal: data };
 }

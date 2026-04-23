@@ -7,6 +7,11 @@ const supabase = createClient(
 );
 
 export async function GET() {
+  // Check notification prefs
+  const { data: prefRow } = await supabase.from("settings").select("value").eq("key", "notification_prefs").single();
+  const prefs = (prefRow?.value ?? {}) as { habit_nudge?: boolean };
+  if (prefs.habit_nudge === false) return NextResponse.json({ sent: false, reason: "disabled in settings" });
+
   const today = new Date().toISOString().slice(0, 10);
 
   const { data: habits } = await supabase.from("habits").select("id, name");

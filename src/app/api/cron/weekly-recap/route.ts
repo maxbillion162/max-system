@@ -11,6 +11,11 @@ const supabase = createClient(
 
 export async function GET() {
   try {
+    // Check notification prefs
+    const { data: prefRow } = await supabase.from("settings").select("value").eq("key", "notification_prefs").single();
+    const prefs = (prefRow?.value ?? {}) as { weekly_recap?: boolean };
+    if (prefs.weekly_recap === false) return NextResponse.json({ ok: false, reason: "disabled in settings" });
+
     const [habitsRes, tasksRes, goalsRes, cryptoRes] = await Promise.allSettled([
       supabase.from("habits").select("name,completed,streak").order("streak", { ascending: false }),
       supabase.from("tasks").select("text,completed,priority,created_at"),

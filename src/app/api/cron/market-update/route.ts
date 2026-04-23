@@ -27,13 +27,16 @@ async function avQuote(symbol: string): Promise<{ price: number; change: number;
   }
 }
 
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const CHAT_ID   = process.env.TELEGRAM_CHAT_ID;
+
 export async function GET() {
-  // Fetch market indices (ETF proxies)
-  const [spy, qqq, dia] = await Promise.all([
-    avQuote("SPY"),
-    avQuote("QQQ"),
-    avQuote("DIA"),
-  ]);
+  // Check notification prefs
+  const { data: prefRow } = await supabase.from("settings").select("value").eq("key", "notification_prefs").single();
+  const prefs = (prefRow?.value ?? {}) as { market_update?: boolean };
+
+  // Fetch market indices (ETF proxies) + crypto
+  const [spy, qqq, dia] = await Promise.all([avQuote("SPY"), avQuote("QQQ"), avQuote("DIA")]);
 
   const snapshot = {
     SPY: spy ? { symbol: "SPY", name: "S&P 500", ...spy } : null,
@@ -53,6 +56,24 @@ export async function GET() {
       const newValue = quote.price * fund.shares;
       await supabase.from("ira_funds").update({ nav: quote.price, chg: quote.changePct, value: parseFloat(newValue.toFixed(2)) }).eq("symbol", fund.symbol);
     }
+  }
+
+  // Send Telegram update (if enabled)
+  if (prefs.market_update !== false && BOT_TOKEN && CHAT_ID) {
+    const fmt = (n: number) => (n >= 0 ? `+${n.toFixed(2)}%` : `${n.toFixed(2)}%`);
+    const lines = [
+      `📈 *2PM Market Update*`,
+      ``,
+      spy ? `S&P 500 (SPY): $${spy.price.toFixed(2)} ${fmt(spy.changePct)}` : null,
+      qqq ? `NASDAQ (QQQ): $${qqq.price.toFixed(2)} ${fmt(qqq.changePct)}` : null,
+      dia ? `Dow (DIA): $${dia.price.toFixed(2)} ${fmt(dia.changePct)}` : null,
+    ].filter(Boolean).join("\n");
+
+    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: CHAT_ID, text: lines, parse_mode: "Markdown" }),
+    }).catch(() => {});
   }
 
   return NextResponse.json({ ok: true, indices: { SPY: !!spy, QQQ: !!qqq, DIA: !!dia }, updated: new Date().toISOString() });

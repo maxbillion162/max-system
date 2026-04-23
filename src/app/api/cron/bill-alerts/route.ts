@@ -8,6 +8,11 @@ const supabase = createClient(
 );
 
 export async function GET() {
+  // Check notification prefs
+  const { data: prefRow } = await supabase.from("settings").select("value").eq("key", "notification_prefs").single();
+  const prefs = (prefRow?.value ?? {}) as { bill_alerts?: boolean };
+  if (prefs.bill_alerts === false) return NextResponse.json({ alerted: 0, reason: "disabled in settings" });
+
   const { data: bills } = await supabase.from("bills").select("name,amt,due");
   if (!bills || bills.length === 0) return NextResponse.json({ alerted: 0 });
 
