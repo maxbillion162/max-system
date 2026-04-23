@@ -76,6 +76,17 @@ export async function POST() {
       }
     }
 
+    /* Apply saved merchant rules to newly synced transactions */
+    const { data: rules } = await supabase.from("merchant_rules").select("merchant_pattern, category");
+    if (rules && rules.length > 0) {
+      for (const rule of rules) {
+        await supabase.from("transactions")
+          .update({ budget_category: rule.category })
+          .eq("merchant_normalized", rule.merchant_pattern)
+          .is("budget_category", null);
+      }
+    }
+
     return NextResponse.json({ success: true, synced: totalTransactions, at: now });
   } catch (err) {
     console.error("Plaid sync error:", err);

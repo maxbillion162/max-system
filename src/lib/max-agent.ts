@@ -9,6 +9,7 @@ import {
   storeMemory, recallMemory,
   updateWealth, webSearch,
   createNotification, logActivity,
+  getBudgetStatus, getRecentTransactions,
 } from "@/lib/max-tools";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -72,6 +73,8 @@ const TOOL_LABELS: Record<string, string> = {
   web_search:            "Searching the web…",
   create_notification:   "Sending notification…",
   log_activity:          "Logging activity…",
+  get_budget_status:     "Checking your budget…",
+  get_transactions:      "Loading transactions…",
 };
 
 /* ─── Tool definitions ─── */
@@ -272,6 +275,20 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "get_budget_status",
+    description: "Get Max's zero-based budget status for the current month — income, total budgeted, total spent, and per-category breakdown.",
+    input_schema: { type: "object" as const, properties: {}, required: [] },
+  },
+  {
+    name: "get_transactions",
+    description: "Get Max's recent transactions from connected bank accounts.",
+    input_schema: {
+      type: "object" as const,
+      properties: { limit: { type: "number", description: "Number of transactions to return (default 20)" } },
+      required: [],
+    },
+  },
+  {
     name: "log_activity",
     description: "Log an action M.A.X. took to the activity feed. Call this after completing any significant action — creating events, sending drafts, updating goals, etc.",
     input_schema: {
@@ -308,6 +325,8 @@ async function executeTool(name: string, input: Record<string, unknown>): Promis
       case "update_goal":          return JSON.stringify(await updateGoal(input.id as string, input.current as number));
       case "update_wealth":        return JSON.stringify(await updateWealth(input as Parameters<typeof updateWealth>[0]));
       case "web_search":           return JSON.stringify(await webSearch(input.query as string));
+      case "get_budget_status":    return JSON.stringify(await getBudgetStatus());
+      case "get_transactions":     return JSON.stringify(await getRecentTransactions((input.limit as number) ?? 20));
       case "create_notification":  return JSON.stringify(await createNotification(input.type as string, input.title as string, input.body as string, input.action_url as string | undefined));
       case "log_activity":         return JSON.stringify(await logActivity(input.type as string, input.description as string));
       default:                     return JSON.stringify({ error: `Unknown tool: ${name}` });

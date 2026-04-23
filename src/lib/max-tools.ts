@@ -192,6 +192,51 @@ export async function webSearch(query: string) {
   };
 }
 
+/* ────────────────────────────────── BUDGET ── */
+export async function getBudgetStatus() {
+  const now   = new Date();
+  const start = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+  const end   = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString().split("T")[0];
+
+  const [allocRes, txRes, incomeRes] = await Promise.allSettled([
+    supabase.from("budget_allocations").select("*").eq("period_start", start),
+    supabase.from("transactions").select("amount,budget_category,category,pending").gte("date", start).lt("date", end),
+    supabase.from("settings").select("value").eq("key", "monthly_income").single(),
+  ]);
+
+  const allocations = allocRes.status === "fulfilled" ? allocRes.value.data ?? [] : [];
+  const transactions = txRes.status === "fulfilled" ? txRes.value.data ?? [] : [];
+  const income = incomeRes.status === "fulfilled" ? Number(incomeRes.value.data?.value ?? 0) : 0;
+
+  const spendByCategory: Record<string, number> = {};
+  for (const tx of transactions) {
+    if ((tx as { pending: boolean }).pending || (tx as { amount: number }).amount <= 0) continue;
+    const cat = (tx as { budget_category: string | null; category: string }).budget_category ?? (tx as { category: string }).category ?? "Misc";
+    spendByCategory[cat] = (spendByCategory[cat] ?? 0) + (tx as { amount: number }).amount;
+  }
+
+  const categories = allocations.map((a: { category: string; budgeted: number }) => ({
+    category: a.category,
+    budgeted: a.budgeted,
+    spent: spendByCategory[a.category] ?? 0,
+    remaining: a.budgeted - (spendByCategory[a.category] ?? 0),
+  }));
+
+  const totalBudgeted = allocations.reduce((s: number, a: { budgeted: number }) => s + a.budgeted, 0);
+  const totalSpent    = Object.values(spendByCategory).reduce((s, v) => s + v, 0);
+
+  return { income, totalBudgeted, totalSpent, readyToAssign: income - totalBudgeted, categories };
+}
+
+export async function getRecentTransactions(limit = 20) {
+  const { data } = await supabase
+    .from("transactions")
+    .select("date,amount,merchant,budget_category,category,pending")
+    .order("date", { ascending: false })
+    .limit(limit);
+  return data ?? [];
+}
+
 /* ────────────────────────────────── NOTIFICATIONS ── */
 export async function createNotification(
   type: string,
