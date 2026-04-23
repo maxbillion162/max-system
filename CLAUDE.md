@@ -248,7 +248,7 @@ This is the core of M.A.X. Understand it before touching anything AI-related.
 
 **Active plan: 14-week full revamp.** See `ROADMAP.md` in this directory for the build order and week-by-week specs. See Claude's memory file `build_plan_revamp.md` for the complete detailed plan.
 
-**Current status: Weeks 1–10 complete. Week 11 is next.**
+**Current status: Weeks 1–12 complete. Week 13 is next.**
 
 ### Week 1 — DONE:
 New tables: `notifications`, `activity_log`, `transactions`, `merchant_rules`, `budget_allocations`, `accounts`, `task_lists`, `habit_logs`, `goal_notes`, `settings`, `writing_style`. Expanded `tasks`, `habits`, `goals`. Built `NotificationBell` component. Settings page shell. Added `create_notification`, `log_activity`, `get_budget_status`, `get_transactions` agent tools.
@@ -283,9 +283,15 @@ Habits gamification. 30-day GitHub-style heatmap per habit. Level system (Recrui
 ### Week 10 — DONE:
 Goals full build. All goal metadata saved to Supabase (label, description, target, unit, deadline, color, category, milestones, subgoals). Seeds 5 default goals on first load. Notes stored in goal_notes table (not localStorage). Subgoals persisted as JSONB. Linked habits shown on each goal card via keyword/category matching. Delete goal + cascade delete notes. Quarterly check-in cron (/api/cron/goal-checkin, 10am UTC Jan 1 / Apr 1 / Jul 1 / Oct 1) sends Telegram progress report.
 
+### Week 11 — DONE:
+Feed revamp. Topic override bar: set any topic for the day (stored in localStorage, auto-clears at midnight). New /api/feed/top3: Claude Haiku picks 3 articles most relevant to Max, shown in right sidebar with reasons. /api/news now supports ?topic= param via Tavily for custom topic news. Base interests shown as reference chips.
+
+### Week 12 — DONE:
+Full Settings page. 6 real sections: Feed Interests (add/remove topics, saved to Supabase settings table), Notifications (4 toggles: habit nudge, weekly recap, bill alerts, market update), Integrations (Google OAuth status, Telegram test button → /api/telegram/test, Plaid account count), Preferences (default calendar view selector, tasks in calendar toggle), M.A.X. Intelligence (memory count, writing voice profile from writing_style table), Data (export goals/notes as JSON download, clear web chat history).
+
 ### Upcoming:
-- Week 11: Feed Revamp (daily topic override, M.A.X. Top 3, save articles)
-- Week 12+: Settings, Chat upgrades, Agent tools
+- Week 13: Chat upgrades (real token streaming, conversation memory, suggested prompts)
+- Week 14: Agent tools expansion + voice interface (Vapi.ai)
 
 ### Key API upgrades planned:
 - CoinGecko → **CoinMarketCap** for crypto
