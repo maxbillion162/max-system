@@ -60,7 +60,7 @@ function MarkdownText({ text }: { text: string }) {
           <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
             <thead>
               <tr>{headerCells.map((h,ci) => (
-                <th key={ci} style={{ padding:"6px 12px", textAlign:"left", background:"rgba(6,182,212,0.08)", borderBottom:"1px solid rgba(6,182,212,0.2)", color:"var(--teal)", fontWeight:700, whiteSpace:"nowrap" }}>{renderInline(h)}</th>
+                <th key={ci} style={{ padding:"6px 12px", textAlign:"left", background:"rgba(77,144,255,0.08)", borderBottom:"1px solid rgba(77,144,255,0.2)", color:"var(--teal)", fontWeight:700, whiteSpace:"nowrap" }}>{renderInline(h)}</th>
               ))}</tr>
             </thead>
             <tbody>
@@ -92,7 +92,7 @@ function MarkdownText({ text }: { text: string }) {
     }
     if (/^#{1,3}\s/.test(line)) {
       const t = line.replace(/^#{1,3}\s/, "");
-      elements.push(<p key={i} style={{ fontWeight: 700, color: "var(--teal)", fontSize: 13, margin: "6px 0 2px" }}>{renderInline(t)}</p>);
+      elements.push(<p key={i} style={{ fontWeight: 700, color: "var(--blue)", fontSize: 13, margin: "6px 0 2px" }}>{renderInline(t)}</p>);
       i++; continue;
     }
     if (line.trim() === "") { elements.push(<br key={i} />); i++; continue; }
@@ -107,7 +107,7 @@ function renderInline(text: string): React.ReactNode {
   return parts.map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) return <strong key={i}>{part.slice(2, -2)}</strong>;
     if (part.startsWith("*") && part.endsWith("*") && part.length > 2) return <em key={i}>{part.slice(1, -1)}</em>;
-    if (part.startsWith("`") && part.endsWith("`")) return <code key={i} style={{ fontFamily: "monospace", background: "rgba(6,182,212,0.1)", padding: "1px 4px", borderRadius: 3, fontSize: "0.9em" }}>{part.slice(1, -1)}</code>;
+    if (part.startsWith("`") && part.endsWith("`")) return <code key={i} style={{ fontFamily: "monospace", background: "rgba(77,144,255,0.1)", padding: "1px 4px", borderRadius: 3, fontSize: "0.9em" }}>{part.slice(1, -1)}</code>;
     return part;
   });
 }
@@ -168,8 +168,8 @@ function ToolBadges({ tools }: { tools: string[] }) {
         <span key={i} style={{
           fontSize: 9, fontWeight: 700, letterSpacing: "0.06em",
           padding: "2px 7px", borderRadius: 3,
-          background: "rgba(6,182,212,0.06)", border: "1px solid rgba(6,182,212,0.15)",
-          color: "rgba(6,182,212,0.5)",
+          background: "rgba(77,144,255,0.06)", border: "1px solid rgba(77,144,255,0.15)",
+          color: "rgba(77,144,255,0.5)",
         }}>
           ◎ {t.replace("…", "")}
         </span>
@@ -189,6 +189,7 @@ export default function ChatPage() {
   const [voiceOut,     setVoiceOut]     = useState(false);
   const [briefLoaded,  setBriefLoaded]  = useState(false);
   const [hoveredIdx,   setHoveredIdx]   = useState<number | null>(null);
+  const [showCaps,     setShowCaps]     = useState(false);
   const [historyLoaded,setHistoryLoaded]= useState(false);
   const bottomRef      = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<ISpeechRecognition | null>(null);
@@ -385,38 +386,94 @@ export default function ChatPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "var(--bg)" }}>
 
+      {/* Capabilities Panel */}
+      {showCaps && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "flex-start", justifyContent: "flex-end" }}
+          onClick={() => setShowCaps(false)}>
+          <div onClick={e => e.stopPropagation()} style={{
+            width: 360, height: "100vh", overflowY: "auto",
+            background: "linear-gradient(160deg, #111826 0%, #0b0e1a 100%)",
+            borderLeft: "1px solid rgba(77,144,255,0.15)",
+            boxShadow: "-8px 0 40px rgba(0,0,0,0.6)",
+            padding: "28px 24px", display: "flex", flexDirection: "column", gap: 20,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--t1)" }}>What M.A.X. can do</div>
+                <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 2 }}>Say it naturally — no commands needed</div>
+              </div>
+              <button onClick={() => setShowCaps(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--t3)", padding: 4 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            {[
+              { label: "Habits & Tasks", color: "#4d90ff", items: ["Check off my morning habit", "Add a high-priority task for tomorrow", "What habits do I still need to do today?", "Delete the 'Read 30 min' habit", "Mark my workout as done"] },
+              { label: "Goals", color: "#9b8afb", items: ["Update my emergency fund to $3,200", "Create a goal to read 12 books this year", "How am I tracking on my goals?", "Add a milestone to my income goal"] },
+              { label: "Calendar & Email", color: "#4d90ff", items: ["What's on my calendar this week?", "Schedule a gym session tomorrow at 7am", "Check my inbox for urgent emails", "Draft a follow-up email to my recruiter"] },
+              { label: "Finance", color: "#2dd48a", items: ["How's my budget looking this month?", "What are my upcoming bills?", "Project my savings if I add $400/month", "What's AAPL trading at?", "Update my IRA to $2,900"] },
+              { label: "Crypto & Markets", color: "#e8a935", items: ["What's BTC doing right now?", "What's the crypto fear & greed index?", "Show me my net worth", "How much is my XRP worth?"] },
+              { label: "Music", color: "#4d90ff", items: ["Skip this song", "Pause Spotify", "What's playing?", "Search for a lo-fi playlist"] },
+              { label: "Research & Web", color: "#4d90ff", items: ["Search Reddit for sales tips", "Browse apple.com and tell me what's new", "Calculate 18% tip on $84", "Find coffee shops near me"] },
+              { label: "SMS & Notifications", color: "#f06a6a", items: ["Text me a reminder about the meeting", "Send me a budget summary via Telegram"] },
+              { label: "Memory", color: "#9b8afb", items: ["Remember that I prefer morning workouts", "What do you remember about me?", "Forget the note about my old job"] },
+              { label: "Scheduling", color: "#4d90ff", items: ["When am I free tomorrow?", "Find me a 2-hour block this week for deep work"] },
+            ].map(cat => (
+              <div key={cat.label}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: cat.color, opacity: 0.7, marginBottom: 8 }}>{cat.label}</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {cat.items.map(item => (
+                    <button key={item} onClick={() => { setShowCaps(false); setInput(item); }}
+                      style={{ textAlign: "left", padding: "7px 10px", borderRadius: 6, cursor: "pointer", fontSize: 12, color: "var(--t2)", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", transition: "all .15s" }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(77,144,255,0.06)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(77,144,255,0.15)"; (e.currentTarget as HTMLElement).style.color = "var(--t1)"; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.02)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.05)"; (e.currentTarget as HTMLElement).style.color = "var(--t2)"; }}>
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Header */}
-      <div style={{ padding: "20px 40px", borderBottom: "1px solid rgba(6,182,212,0.08)", background: "rgba(5,13,26,0.8)", flexShrink: 0, display: "flex", alignItems: "center", gap: 16 }}>
-        <div style={{ position: "relative", width: 44, height: 44, flexShrink: 0 }}>
-          <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", animation: "spin-slow 12s linear infinite" }} viewBox="0 0 44 44">
-            <circle cx="22" cy="22" r="20" fill="none" stroke="rgba(6,182,212,0.15)" strokeWidth="1" strokeDasharray="4 3" />
+      <div style={{ padding: "16px 40px", borderBottom: "1px solid rgba(77,144,255,0.08)", background: "rgba(6,8,15,0.9)", flexShrink: 0, display: "flex", alignItems: "center", gap: 16 }}>
+        <div style={{ position: "relative", width: 40, height: 40, flexShrink: 0 }}>
+          <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", animation: "spin-slow 14s linear infinite" }} viewBox="0 0 40 40">
+            <circle cx="20" cy="20" r="18" fill="none" stroke="rgba(77,144,255,0.12)" strokeWidth="1" strokeDasharray="4 3" />
           </svg>
-          <div style={{ position: "absolute", inset: 6, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(135deg,#0b2040,#071428)", border: "1px solid rgba(6,182,212,0.35)" }}>
-            <span style={{ fontSize: 14, fontWeight: 900, color: "var(--teal)" }}>M</span>
+          <div style={{ position: "absolute", inset: 5, borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(135deg, rgba(77,144,255,0.15), rgba(77,144,255,0.05))", border: "1px solid rgba(77,144,255,0.3)" }}>
+            <span style={{ fontSize: 13, fontWeight: 900, color: "var(--blue)" }}>M</span>
           </div>
         </div>
         <div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--t1)" }}>M.A.X.</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--green)" }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--green)", display: "inline-block", animation: "pulse-dot 2s ease-in-out infinite" }} />
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--t1)", letterSpacing: "0.05em" }}>M.A.X.</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--t3)" }}>
+            <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--green)", display: "inline-block", animation: "pulse-dot 2.5s ease-in-out infinite" }} />
             Maximum Adaptive eXecutive · Online
           </div>
         </div>
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
-          {historyLoaded && <span style={{ fontSize: 10, color: "var(--t4)", padding: "3px 8px", borderRadius: 4, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>History loaded</span>}
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+          {historyLoaded && <span style={{ fontSize: 10, color: "var(--t4)", padding: "3px 8px", borderRadius: 4, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}>History loaded</span>}
+          <button onClick={() => setShowCaps(v => !v)}
+            title="What can M.A.X. do?"
+            style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 7, cursor: "pointer", fontSize: 12, fontWeight: 600, background: showCaps ? "rgba(77,144,255,0.12)" : "rgba(255,255,255,0.03)", border: `1px solid ${showCaps ? "rgba(77,144,255,0.3)" : "rgba(255,255,255,0.06)"}`, color: showCaps ? "var(--blue)" : "var(--t3)", transition: "all .2s" }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Capabilities
+          </button>
           <button onClick={() => { setVoiceOut(v => !v); window.speechSynthesis?.cancel(); }}
-            style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 600, background: voiceOut ? "rgba(6,182,212,0.12)" : "rgba(255,255,255,0.03)", border: `1px solid ${voiceOut ? "rgba(6,182,212,0.35)" : "rgba(255,255,255,0.06)"}`, color: voiceOut ? "var(--teal)" : "var(--t3)", transition: "all .2s" }}>
+            style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 10px", borderRadius: 7, cursor: "pointer", fontSize: 12, fontWeight: 600, background: voiceOut ? "rgba(77,144,255,0.1)" : "rgba(255,255,255,0.03)", border: `1px solid ${voiceOut ? "rgba(77,144,255,0.3)" : "rgba(255,255,255,0.06)"}`, color: voiceOut ? "var(--blue)" : "var(--t3)", transition: "all .2s" }}>
             {voiceOut
-              ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-              : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>}
-            {voiceOut ? "Voice On" : "Voice Off"}
+              ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+              : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>}
+            {voiceOut ? "Voice On" : "Voice"}
           </button>
           <button onClick={clearHistory}
-            style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 10px", borderRadius: 8, cursor: "pointer", fontSize: 11, fontWeight: 600, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", color: "var(--t4)", transition: "all .2s" }}>
+            style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 10px", borderRadius: 7, cursor: "pointer", fontSize: 11, fontWeight: 600, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", color: "var(--t4)", transition: "all .2s" }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
             Clear
           </button>
-          <span style={{ fontSize: 12, fontFamily: "monospace", color: "rgba(6,182,212,0.2)" }}>
+          <span style={{ fontSize: 11, fontFamily: "monospace", color: "var(--t4)" }}>
             {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
           </span>
         </div>
@@ -432,8 +489,8 @@ export default function ChatPage() {
             onMouseLeave={() => setHoveredIdx(null)}
           >
             {msg.role === "max" && (
-              <div style={{ width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 4, background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.2)" }}>
-                <span style={{ fontSize: 12, fontWeight: 900, color: "var(--teal)" }}>M</span>
+              <div style={{ width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 4, background: "rgba(77,144,255,0.08)", border: "1px solid rgba(77,144,255,0.2)" }}>
+                <span style={{ fontSize: 12, fontWeight: 900, color: "var(--blue)" }}>M</span>
               </div>
             )}
             <div style={{ maxWidth: 520, display: "flex", flexDirection: "column", gap: 4, alignItems: msg.role === "user" ? "flex-end" : "flex-start" }}>
@@ -444,7 +501,7 @@ export default function ChatPage() {
               <div style={{
                 padding: "12px 20px", borderRadius: 16, fontSize: 13, lineHeight: 1.65,
                 ...(msg.role === "max"
-                  ? { background: "linear-gradient(135deg,#07101e,#050d1a)", border: "1px solid rgba(6,182,212,0.1)", color: "var(--t1)", minHeight: 46 }
+                  ? { background: "linear-gradient(135deg,#07101e,#050d1a)", border: "1px solid rgba(77,144,255,0.1)", color: "var(--t1)", minHeight: 46 }
                   : { background: "linear-gradient(135deg,#0369a1,#0284c7)", color: "#fff", boxShadow: "0 2px 20px rgba(3,105,161,0.3)" }
                 ),
               }}>
@@ -464,7 +521,7 @@ export default function ChatPage() {
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" strokeWidth="2" strokeLinecap="round" style={{ animation: "spin-slow 1.5s linear infinite", flexShrink: 0 }}>
                               <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
                             </svg>
-                            <span style={{ fontSize: 12, color: "var(--teal)", opacity: 0.8 }}>{toolActivity}</span>
+                            <span style={{ fontSize: 12, color: "var(--blue)", opacity: 0.8 }}>{toolActivity}</span>
                           </>
                         : [0,1,2].map(j => <div key={j} style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--teal)", opacity: 0.5, animation: `bounce 0.8s ease-in-out ${j*0.18}s infinite` }} />)
                       }
@@ -472,7 +529,7 @@ export default function ChatPage() {
                   )
                 ) : msg.content}
               </div>
-              <span style={{ fontSize: 10, paddingLeft: 4, color: "rgba(6,182,212,0.2)" }}>{msg.time}</span>
+              <span style={{ fontSize: 10, paddingLeft: 4, color: "rgba(77,144,255,0.2)" }}>{msg.time}</span>
               {/* Hover actions — M.A.X. messages only */}
               {msg.role === "max" && msg.content && hoveredIdx === i && streamingIdx !== i && (
                 <MsgActions content={msg.content} />
@@ -488,26 +545,26 @@ export default function ChatPage() {
       <div style={{ padding: "0 40px 10px", flexShrink: 0, display: "flex", gap: 8, flexWrap: "wrap" }}>
         {suggestions.map(s => (
           <button key={s} onClick={() => send(s)}
-            style={{ background: "rgba(6,182,212,0.05)", border: "1px solid rgba(6,182,212,0.12)", color: "var(--t3)", fontSize: 11, fontWeight: 500, padding: "5px 13px", borderRadius: 20, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, transition: "all .15s" }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(6,182,212,0.09)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--t2)"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(6,182,212,0.05)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--t3)"; }}>
+            style={{ background: "rgba(77,144,255,0.05)", border: "1px solid rgba(77,144,255,0.12)", color: "var(--t3)", fontSize: 11, fontWeight: 500, padding: "5px 13px", borderRadius: 20, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, transition: "all .15s" }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(77,144,255,0.09)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--t2)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(77,144,255,0.05)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--t3)"; }}>
             {s}
           </button>
         ))}
       </div>
 
       {/* Input */}
-      <div style={{ padding: "12px 40px 24px", borderTop: "1px solid rgba(6,182,212,0.08)", flexShrink: 0 }}>
+      <div style={{ padding: "12px 40px 24px", borderTop: "1px solid rgba(77,144,255,0.08)", flexShrink: 0 }}>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <button onClick={toggleMic} title={isListening ? "Stop" : "Voice input"}
-            style={{ width: 48, height: 48, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: "pointer", transition: "all .2s", background: isListening ? "rgba(6,182,212,0.15)" : "rgba(255,255,255,0.03)", border: `1px solid ${isListening ? "rgba(6,182,212,0.5)" : "rgba(6,182,212,0.12)"}`, color: isListening ? "var(--teal)" : "var(--t3)", animation: isListening ? "pulse-dot 1s ease-in-out infinite" : "none" }}>
+            style={{ width: 48, height: 48, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: "pointer", transition: "all .2s", background: isListening ? "rgba(77,144,255,0.15)" : "rgba(255,255,255,0.03)", border: `1px solid ${isListening ? "rgba(77,144,255,0.5)" : "rgba(77,144,255,0.12)"}`, color: isListening ? "var(--teal)" : "var(--t3)", animation: isListening ? "pulse-dot 1s ease-in-out infinite" : "none" }}>
             {isListening
               ? <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="2"/><rect x="14" y="4" width="4" height="16" rx="2"/></svg>
               : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
             }
           </button>
 
-          <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 12, padding: "12px 20px", borderRadius: 14, background: "linear-gradient(135deg,#07101e,#050d1a)", border: `1px solid ${isListening ? "rgba(6,182,212,0.3)" : "rgba(6,182,212,0.12)"}`, transition: "border-color .2s" }}>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 12, padding: "12px 20px", borderRadius: 14, background: "linear-gradient(135deg,#07101e,#050d1a)", border: `1px solid ${isListening ? "rgba(77,144,255,0.3)" : "rgba(77,144,255,0.12)"}`, transition: "border-color .2s" }}>
             <input
               value={input}
               onChange={e => setInput(e.target.value)}
@@ -515,15 +572,15 @@ export default function ChatPage() {
               placeholder={isListening ? "Listening…" : "Ask M.A.X. anything…"}
               style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 14, color: isListening ? "var(--teal)" : "var(--t1)" }}
             />
-            <span style={{ fontSize: 11, fontFamily: "monospace", padding: "2px 6px", borderRadius: 4, background: "rgba(6,182,212,0.06)", color: "rgba(6,182,212,0.25)", border: "1px solid rgba(6,182,212,0.08)", flexShrink: 0 }}>↵</span>
+            <span style={{ fontSize: 11, fontFamily: "monospace", padding: "2px 6px", borderRadius: 4, background: "rgba(77,144,255,0.06)", color: "rgba(77,144,255,0.25)", border: "1px solid rgba(77,144,255,0.08)", flexShrink: 0 }}>↵</span>
           </div>
 
           <button onClick={() => send()} disabled={!input.trim() || loading}
-            style={{ width: 48, height: 48, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: "pointer", transition: "all .2s", background: "linear-gradient(135deg,#0369a1,#0ea5e9)", boxShadow: "0 0 20px rgba(6,182,212,0.2)", opacity: (!input.trim() || loading) ? 0.3 : 1 }}>
+            style={{ width: 48, height: 48, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: "pointer", transition: "all .2s", background: "linear-gradient(135deg,#0369a1,#0ea5e9)", boxShadow: "0 0 20px rgba(77,144,255,0.2)", opacity: (!input.trim() || loading) ? 0.3 : 1 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           </button>
         </div>
-        {isListening && <p style={{ fontSize: 11, textAlign: "center", marginTop: 8, color: "var(--teal)", opacity: 0.7 }}>Listening — speak now</p>}
+        {isListening && <p style={{ fontSize: 11, textAlign: "center", marginTop: 8, color: "var(--blue)", opacity: 0.7 }}>Listening — speak now</p>}
       </div>
     </div>
   );
