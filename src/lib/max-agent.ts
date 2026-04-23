@@ -1,15 +1,16 @@
 import Anthropic from "@anthropic-ai/sdk";
 import {
-  readHabits, toggleHabit,
-  readTasks, addTask, completeTask, deleteTask,
-  readGoals, updateGoal, createGoal,
+  readHabits, toggleHabit, addHabit, deleteHabit,
+  readTasks, addTask, completeTask, deleteTask, updateTask,
+  readGoals, updateGoal, createGoal, deleteGoal,
   readCalendar, createCalendarEvent,
   readGmail, draftEmail,
   readCrypto, readWeather, readNews,
-  storeMemory, recallMemory,
-  updateWealth, webSearch,
+  storeMemory, recallMemory, readAllMemories,
+  updateWealth, readWealth, webSearch,
   createNotification, logActivity,
   getBudgetStatus, getRecentTransactions,
+  readBills, setIncome,
 } from "@/lib/max-tools";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -18,67 +19,69 @@ const MODEL      = "claude-haiku-4-5-20251001";
 const MAX_TOKENS = 2048;
 
 /* ─── System prompt ─── */
-const SYSTEM = `You are M.A.X. — Maximum Adaptive eXecutive — a personal AI operating system built exclusively for Max.
+const SYSTEM = `You are M.A.X. — Maximum Adaptive eXecutive. Max's personal AI operating system, built to help him execute on his goals, stay on track, and handle tasks without hand-holding.
 
-ABOUT MAX:
-- 22 years old, just graduated FSU, starting as Account Manager at a staffing/HR firm in July 2026
-- 1-year goal: $100K income. 5-year goal: own business full-time, serial entrepreneur path
-- Gym 3-5x/week (push/pull/legs split), night owl building a morning routine for the new 9-5
-- Holds BTC and XRP on Robinhood. Roth IRA at Schwab: MDDVX, RPEAX, PTTRX
-- Lives in Orlando, FL. FSU ties. Has a girlfriend. Into sales, AI, entrepreneurship, investing
-- Learning: Claude Code, Python, AI workflows, sales techniques
-- Emergency fund goal: $10K (currently ~$2,800)
+WHO MAX IS (use this — make every response personal, not generic):
+- 22, Orlando FL, just graduated FSU. Starting as Account Manager at a staffing/HR firm in July 2026.
+- Year 1 target: $100K income. 5-year plan: own business full-time. Filter every suggestion through this lens.
+- Gym 3-5x/week (push/pull/legs split). Night owl building a morning routine for the new job.
+- Crypto: 0.02 BTC + 200 XRP on Robinhood. Roth IRA at Schwab (MDDVX, RPEAX, PTTRX).
+- Emergency fund: $10K goal — currently ~$2,800. Top financial priority after income.
+- Learning: Claude Code, Python, AI workflows, sales techniques — investing in the entrepreneur path.
+- Lives in Orlando. Has a girlfriend.
 
-YOUR PERSONALITY:
-- Direct. Capable. Dry humor when appropriate. Never sycophantic.
-- Think Jarvis (capability) meets TARS from Interstellar (dry wit, efficiency)
-- Never start with "Certainly!", "Of course!", "Great question!", or "Absolutely!"
-- Short by default. Detailed only when Max actually needs detail.
-- Reference his actual data when relevant. Make it personal, not generic.
-- Push when needed. If he's off track, say so.
+HOW TO COMMUNICATE:
+- Jarvis capability, TARS personality. Direct, dry, efficient. Never sycophantic.
+- Never open with: "Certainly!", "Of course!", "Great question!", "Happy to help!", "Absolutely!"
+- Talk like a sharp colleague who knows his situation cold — not an assistant trying to please him.
+- Short by default. Go detailed only when stakes or complexity warrant it.
+- Reference actual numbers: not "your savings are growing" — "$2,847 saved, $7,153 to the $10K goal."
+- If he's off track (habits sliding, budget blown, tasks stacking) — say so directly. Don't soften it.
+- Connect dots proactively. If he mentions gym plans and has a calendar conflict, flag it before he asks.
+- When the injected context shows something notable, lead with it — don't wait to be asked.
+- Suggest next actions. Don't just report state — point toward what matters next.
 
-FORMATTING RULES (CRITICAL — follow exactly):
-- Never use markdown tables. Use bullet lists or plain sentences instead.
-- Never expose internal tool/function names (like read_habits, toggle_habit, create_calendar_event). Always describe capabilities in plain English.
-- Use **bold** for emphasis and section labels. Use bullet lists for multiple items.
-- Keep responses tight. No filler words. No "As your AI assistant..." or similar padding.
-- When listing things, bullets > numbered lists unless order matters.
+TOOL USAGE:
+- Read before writing: check habits/tasks/goals before toggling/completing/updating.
+- Calendar events: always preview title/time/date in your response FIRST. If Max confirms, create it.
+- Email: ONLY drafts. Never sends automatically. Confirm after: "Draft saved to Gmail — check Drafts folder."
+- Memory: proactively store facts Max tells you — preferences, decisions, plans, key people. Always tag.
+- Recall memories proactively when the topic might match something stored.
+- Budget questions: use get_budget_status AND get_transactions for a real answer.
+- After any write action, confirm exactly what changed — brief and specific.
+- For daily briefs: chain read_habits + read_tasks + read_crypto + read_calendar together.
+- For net worth questions: use read_wealth then read_crypto to calculate live total.
+- Irreversible deletes (habit, goal): confirm what you're deleting in the response before executing.
 
-WHEN ASKED ABOUT YOUR CAPABILITIES:
-Describe them in plain English by category — never list function names. Example format:
-**Habits** — check completion status, mark habits done or undone
-**Tasks** — read, add, complete, delete tasks
-**Goals** — read progress, update current value, create new goals
-**Calendar** — read upcoming events, create new events (confirms before creating)
-**Email** — read inbox, draft replies (never sends without review)
-**Finance** — live crypto prices (BTC/XRP), budget status, recent transactions
-**Intelligence** — Orlando weather, latest news, web search
-**Memory** — store facts about Max, recall stored memories
-**Notifications** — create alerts, log activity
-
-TOOL USAGE RULES:
-- Use tools to get real data before answering data questions — don't guess or make up numbers.
-- For calendar events or email drafts: always confirm what was done after calling the tool.
-- For memory: proactively store things Max tells you about himself, preferences, decisions, important events.
-- Chain tools when needed — check calendar before creating an event, check habits before updating them.
-- After any action, confirm what was done in plain language.
-- For briefs/daily overviews: use habits + tasks + crypto + weather together.
+FORMATTING (follow exactly):
+- No markdown tables — use bullets or short sentences.
+- **Bold** for key numbers, names, and important labels.
+- Never expose tool/function names (read_habits, toggle_habit, etc.) in responses.
+- No filler: no "As your AI assistant...", no restating the question, no unnecessary preamble.
+- Web chat: can use structure and detail when the topic warrants it.
+- Telegram: stay under 150 words, minimal formatting, lead with the most actionable line.
 
 HARD RULES:
-- Never claim to have sent an email — only drafts are created. Max reviews before sending.
-- Keep financial takes informational, not professional advice.
-- If asked something outside your knowledge, say so directly.`;
+- Email: draft only. Never claim to have sent.
+- Finance: informational only — not investment advice. State numbers, don't recommend trades.
+- Deletes: for irreversible actions, confirm what's being deleted. If the target is ambiguous, ask first.
+- Tool failures: tell Max what failed and what info you'd need to try again.`;
 
-/* ─── Tool labels for UI transparency ─── */
+/* ─── Tool labels ─── */
 const TOOL_LABELS: Record<string, string> = {
   read_habits:           "Checking your habits…",
   toggle_habit:          "Updating habit…",
+  add_habit:             "Adding habit…",
+  delete_habit:          "Deleting habit…",
   read_tasks:            "Loading your tasks…",
   add_task:              "Adding task…",
   complete_task:         "Completing task…",
   delete_task:           "Deleting task…",
+  update_task:           "Updating task…",
   read_goals:            "Reading your goals…",
   update_goal:           "Updating goal progress…",
+  create_goal:           "Creating goal…",
+  delete_goal:           "Deleting goal…",
   read_calendar:         "Checking your calendar…",
   create_calendar_event: "Creating calendar event…",
   read_gmail:            "Checking your email…",
@@ -88,13 +91,16 @@ const TOOL_LABELS: Record<string, string> = {
   read_news:             "Scanning latest news…",
   store_memory:          "Storing to memory…",
   recall_memory:         "Searching memory…",
+  read_all_memories:     "Loading memories…",
   update_wealth:         "Updating financial data…",
+  read_wealth:           "Reading portfolio…",
   web_search:            "Searching the web…",
   create_notification:   "Sending notification…",
   log_activity:          "Logging activity…",
   get_budget_status:     "Checking your budget…",
   get_transactions:      "Loading transactions…",
-  create_goal:           "Creating goal…",
+  read_bills:            "Checking upcoming bills…",
+  set_income:            "Updating income…",
 };
 
 /* ─── Tool definitions ─── */
@@ -110,10 +116,32 @@ const TOOLS: Anthropic.Tool[] = [
     input_schema: {
       type: "object" as const,
       properties: {
-        id:        { type: "string", description: "Habit ID from read_habits" },
+        id:        { type: "string",  description: "Habit ID from read_habits" },
         completed: { type: "boolean", description: "true = done, false = not done" },
       },
       required: ["id", "completed"],
+    },
+  },
+  {
+    name: "add_habit",
+    description: "Create a new habit for Max to track daily.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        name:  { type: "string", description: "Habit name (e.g. 'Meditate', 'Read 30 min')" },
+        cat:   { type: "string", description: "Category: health, productivity, mindset, finance, social, learning" },
+        color: { type: "string", description: "Hex color (optional, e.g. '#4589FF')" },
+      },
+      required: ["name", "cat"],
+    },
+  },
+  {
+    name: "delete_habit",
+    description: "Delete a habit permanently. Confirm the habit name in your response before calling this.",
+    input_schema: {
+      type: "object" as const,
+      properties: { id: { type: "string", description: "Habit ID from read_habits" } },
+      required: ["id"],
     },
   },
   {
@@ -127,9 +155,9 @@ const TOOLS: Anthropic.Tool[] = [
     input_schema: {
       type: "object" as const,
       properties: {
-        text:     { type: "string",  description: "Task description" },
-        priority: { type: "string",  enum: ["high", "medium", "low"], description: "Priority level" },
-        due_date: { type: "string",  description: "Due date in YYYY-MM-DD format (optional)" },
+        text:     { type: "string", description: "Task description" },
+        priority: { type: "string", enum: ["high", "medium", "low"], description: "Priority level" },
+        due_date: { type: "string", description: "Due date YYYY-MM-DD (optional)" },
       },
       required: ["text"],
     },
@@ -153,9 +181,62 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "update_task",
+    description: "Edit a task's text, priority, due date, or completion status.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        id:        { type: "string",  description: "Task ID from read_tasks" },
+        text:      { type: "string",  description: "Updated task text (optional)" },
+        priority:  { type: "string",  enum: ["high", "medium", "low"], description: "Updated priority (optional)" },
+        due_date:  { type: "string",  description: "Updated due date YYYY-MM-DD, or null to clear (optional)" },
+        completed: { type: "boolean", description: "Updated completion status (optional)" },
+      },
+      required: ["id"],
+    },
+  },
+  {
     name: "read_goals",
-    description: "Get all of Max's goals with progress percentages.",
+    description: "Get all of Max's goals with current progress, targets, and deadlines.",
     input_schema: { type: "object" as const, properties: {}, required: [] },
+  },
+  {
+    name: "update_goal",
+    description: "Update the current progress value on a goal. Use read_goals first to get the ID.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        id:      { type: "string", description: "Goal ID from read_goals" },
+        current: { type: "number", description: "New current progress value" },
+      },
+      required: ["id", "current"],
+    },
+  },
+  {
+    name: "create_goal",
+    description: "Create a new goal for Max and save it.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        label:       { type: "string",  description: "Short goal name" },
+        target:      { type: "number",  description: "Numeric target" },
+        unit:        { type: "string",  description: "Unit (e.g. '$', 'lbs', 'books', 'workouts')" },
+        category:    { type: "string",  description: "Finance, Health, Career, Personal, Learning, or Relationships" },
+        description: { type: "string",  description: "Optional longer description" },
+        deadline:    { type: "string",  description: "Optional target date YYYY-MM-DD" },
+        current:     { type: "number",  description: "Current progress (default 0)" },
+      },
+      required: ["label", "target", "unit", "category"],
+    },
+  },
+  {
+    name: "delete_goal",
+    description: "Delete a goal permanently. Confirm goal name in your response before calling.",
+    input_schema: {
+      type: "object" as const,
+      properties: { id: { type: "string", description: "Goal ID from read_goals" } },
+      required: ["id"],
+    },
   },
   {
     name: "read_calendar",
@@ -168,15 +249,15 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: "create_calendar_event",
-    description: "Create a new Google Calendar event. Always confirm with Max before calling this.",
+    description: "Create a Google Calendar event. Always preview title/time in your response first and confirm with Max.",
     input_schema: {
       type: "object" as const,
       properties: {
         title:       { type: "string", description: "Event title" },
-        start:       { type: "string", description: "Start datetime in ISO 8601 format (e.g. 2026-04-22T09:00:00)" },
-        end:         { type: "string", description: "End datetime in ISO 8601 format" },
-        description: { type: "string", description: "Event description (optional)" },
-        location:    { type: "string", description: "Event location (optional)" },
+        start:       { type: "string", description: "Start ISO 8601 (e.g. 2026-04-22T09:00:00)" },
+        end:         { type: "string", description: "End ISO 8601" },
+        description: { type: "string", description: "Optional description" },
+        location:    { type: "string", description: "Optional location" },
       },
       required: ["title", "start", "end"],
     },
@@ -192,13 +273,13 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: "draft_email",
-    description: "Create a draft email in Gmail. Max reviews before sending — this never sends automatically.",
+    description: "Create a draft email in Gmail. Always confirms after: never auto-sends.",
     input_schema: {
       type: "object" as const,
       properties: {
-        to:      { type: "string", description: "Recipient email address" },
+        to:      { type: "string", description: "Recipient email" },
         subject: { type: "string", description: "Email subject" },
-        body:    { type: "string", description: "Email body text" },
+        body:    { type: "string", description: "Email body" },
       },
       required: ["to", "subject", "body"],
     },
@@ -207,6 +288,25 @@ const TOOLS: Anthropic.Tool[] = [
     name: "read_crypto",
     description: "Get live BTC and XRP prices with 24h and 7d changes.",
     input_schema: { type: "object" as const, properties: {}, required: [] },
+  },
+  {
+    name: "read_wealth",
+    description: "Get Max's current financial holdings: IRA value, savings balance, BTC amount, XRP amount.",
+    input_schema: { type: "object" as const, properties: {}, required: [] },
+  },
+  {
+    name: "update_wealth",
+    description: "Update Max's financial holdings or savings. Only include the fields that are changing.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        ira:        { type: "number", description: "Roth IRA total value in dollars" },
+        savings:    { type: "number", description: "Savings/emergency fund balance in dollars" },
+        btc_amount: { type: "number", description: "BTC amount held (e.g. 0.02)" },
+        xrp_amount: { type: "number", description: "XRP amount held (e.g. 200)" },
+      },
+      required: [],
+    },
   },
   {
     name: "read_weather",
@@ -218,102 +318,48 @@ const TOOLS: Anthropic.Tool[] = [
     description: "Get the latest news headlines from the Intel Feed.",
     input_schema: {
       type: "object" as const,
-      properties: { count: { type: "number", description: "Number of headlines to fetch (default 10)" } },
+      properties: { count: { type: "number", description: "Number of headlines (default 10)" } },
       required: [],
     },
   },
   {
     name: "store_memory",
-    description: "Save something important to M.A.X.'s long-term memory — preferences, decisions, facts about Max, things to remember.",
+    description: "Save something important to long-term memory — preferences, decisions, facts about Max, things to remember.",
     input_schema: {
       type: "object" as const,
       properties: {
         content: { type: "string", description: "What to remember" },
-        tags:    { type: "array", items: { type: "string" }, description: "Category tags (e.g. ['preference', 'goal', 'person'])" },
+        tags:    { type: "array", items: { type: "string" }, description: "Category tags (e.g. ['preference', 'goal', 'finance'])" },
       },
       required: ["content"],
     },
   },
   {
     name: "recall_memory",
-    description: "Search M.A.X.'s long-term memory for relevant stored information.",
+    description: "Search long-term memory for relevant stored information.",
     input_schema: {
       type: "object" as const,
-      properties: { query: { type: "string", description: "Search term or topic to look up" } },
+      properties: { query: { type: "string", description: "Topic or keyword to search for" } },
       required: ["query"],
     },
   },
   {
-    name: "update_goal",
-    description: "Update the current progress value for one of Max's goals. Use read_goals first to get the goal ID.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        id:      { type: "string", description: "Goal ID from read_goals" },
-        current: { type: "number", description: "New current progress value" },
-      },
-      required: ["id", "current"],
-    },
-  },
-  {
-    name: "update_wealth",
-    description: "Update Max's financial holdings or savings. Only include the fields that are changing.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        ira:        { type: "number", description: "Roth IRA total value in dollars" },
-        savings:    { type: "number", description: "Emergency fund / savings balance in dollars" },
-        btc_amount: { type: "number", description: "BTC holdings (e.g. 0.02)" },
-        xrp_amount: { type: "number", description: "XRP holdings (e.g. 200)" },
-      },
-      required: [],
-    },
+    name: "read_all_memories",
+    description: "Get all recent stored memories. Use when Max asks what M.A.X. remembers or to review memory.",
+    input_schema: { type: "object" as const, properties: {}, required: [] },
   },
   {
     name: "web_search",
-    description: "Search the web for current information — news, prices, events, research, anything requiring live data.",
+    description: "Search the web for live information — news, prices, events, research.",
     input_schema: {
       type: "object" as const,
-      properties: {
-        query: { type: "string", description: "Search query" },
-      },
+      properties: { query: { type: "string", description: "Search query" } },
       required: ["query"],
-    },
-  },
-  {
-    name: "create_notification",
-    description: "Push a notification to Max's dashboard bell and toast system. Use for important alerts, completed actions, reminders, or anything Max should know about.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        type:       { type: "string", enum: ["general", "crypto_alert", "habit_reminder", "bill_due", "calendar_reminder", "max_action", "budget_alert", "goal_milestone"], description: "Notification category" },
-        title:      { type: "string", description: "Short notification title" },
-        body:       { type: "string", description: "Notification body — one or two sentences" },
-        action_url: { type: "string", description: "Optional URL to navigate to when clicked (e.g. /dashboard/finance)" },
-      },
-      required: ["type", "title", "body"],
-    },
-  },
-  {
-    name: "create_goal",
-    description: "Create a new goal for Max and save it to Supabase. Use this when Max asks to add or create a new goal.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        label:       { type: "string",  description: "Short goal name (e.g. 'Emergency Fund', 'Lose 10 lbs')" },
-        target:      { type: "number",  description: "Numeric target value" },
-        unit:        { type: "string",  description: "Unit of measurement (e.g. 'dollars', 'lbs', 'books', 'workouts')" },
-        category:    { type: "string",  description: "Category: Finance, Health, Career, Personal, Learning, or Relationships" },
-        description: { type: "string",  description: "Optional longer description of the goal" },
-        deadline:    { type: "string",  description: "Optional target date in YYYY-MM-DD format" },
-        current:     { type: "number",  description: "Current progress value (default 0)" },
-      },
-      required: ["label", "target", "unit", "category"],
     },
   },
   {
     name: "get_budget_status",
-    description: "Get Max's zero-based budget status for the current month — income, total budgeted, total spent, and per-category breakdown.",
+    description: "Get Max's zero-based budget for the current month — income, total budgeted, total spent, per-category breakdown.",
     input_schema: { type: "object" as const, properties: {}, required: [] },
   },
   {
@@ -321,17 +367,45 @@ const TOOLS: Anthropic.Tool[] = [
     description: "Get Max's recent transactions from connected bank accounts.",
     input_schema: {
       type: "object" as const,
-      properties: { limit: { type: "number", description: "Number of transactions to return (default 20)" } },
+      properties: { limit: { type: "number", description: "Number of transactions (default 20)" } },
       required: [],
     },
   },
   {
-    name: "log_activity",
-    description: "Log an action M.A.X. took to the activity feed. Call this after completing any significant action — creating events, sending drafts, updating goals, etc.",
+    name: "read_bills",
+    description: "Get Max's monthly bills list with amounts and due days.",
+    input_schema: { type: "object" as const, properties: {}, required: [] },
+  },
+  {
+    name: "set_income",
+    description: "Update Max's monthly income setting used for budget calculations.",
+    input_schema: {
+      type: "object" as const,
+      properties: { amount: { type: "number", description: "Monthly income in dollars" } },
+      required: ["amount"],
+    },
+  },
+  {
+    name: "create_notification",
+    description: "Push a notification to Max's dashboard bell. Use for important alerts or completed actions.",
     input_schema: {
       type: "object" as const,
       properties: {
-        type:        { type: "string", description: "Action type (e.g. 'task_created', 'event_created', 'email_drafted', 'goal_updated')" },
+        type:       { type: "string", enum: ["general", "crypto_alert", "habit_reminder", "bill_due", "calendar_reminder", "max_action", "budget_alert", "goal_milestone"], description: "Notification type" },
+        title:      { type: "string", description: "Short notification title" },
+        body:       { type: "string", description: "Notification body — one or two sentences" },
+        action_url: { type: "string", description: "Optional URL to navigate to on click" },
+      },
+      required: ["type", "title", "body"],
+    },
+  },
+  {
+    name: "log_activity",
+    description: "Log an action M.A.X. took to the activity feed. Call after completing significant actions.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        type:        { type: "string", description: "Action type (e.g. 'task_created', 'goal_updated', 'email_drafted')" },
         description: { type: "string", description: "Human-readable description of what was done" },
       },
       required: ["type", "description"],
@@ -345,26 +419,34 @@ async function executeTool(name: string, input: Record<string, unknown>): Promis
     switch (name) {
       case "read_habits":          return JSON.stringify(await readHabits());
       case "toggle_habit":         return JSON.stringify(await toggleHabit(input.id as string, input.completed as boolean));
+      case "add_habit":            return JSON.stringify(await addHabit(input.name as string, input.cat as string, input.color as string | undefined));
+      case "delete_habit":         return JSON.stringify(await deleteHabit(input.id as string));
       case "read_tasks":           return JSON.stringify(await readTasks());
       case "add_task":             return JSON.stringify(await addTask(input.text as string, (input.priority as "high"|"medium"|"low") ?? "medium", input.due_date as string | undefined));
       case "complete_task":        return JSON.stringify(await completeTask(input.id as string));
       case "delete_task":          return JSON.stringify(await deleteTask(input.id as string));
+      case "update_task":          return JSON.stringify(await updateTask(input.id as string, input as Parameters<typeof updateTask>[1]));
       case "read_goals":           return JSON.stringify(await readGoals());
+      case "update_goal":          return JSON.stringify(await updateGoal(input.id as string, input.current as number));
+      case "create_goal":          return JSON.stringify(await createGoal(input.label as string, input.target as number, input.unit as string, input.category as string, input.description as string | undefined, input.deadline as string | undefined, (input.current as number) ?? 0));
+      case "delete_goal":          return JSON.stringify(await deleteGoal(input.id as string));
       case "read_calendar":        return JSON.stringify(await readCalendar((input.days as number) ?? 7));
       case "create_calendar_event":return JSON.stringify(await createCalendarEvent(input.title as string, input.start as string, input.end as string, (input.description as string) ?? "", (input.location as string) ?? ""));
       case "read_gmail":           return JSON.stringify(await readGmail((input.max_results as number) ?? 10));
       case "draft_email":          return JSON.stringify(await draftEmail(input.to as string, input.subject as string, input.body as string));
       case "read_crypto":          return JSON.stringify(await readCrypto());
+      case "read_wealth":          return JSON.stringify(await readWealth());
+      case "update_wealth":        return JSON.stringify(await updateWealth(input as Parameters<typeof updateWealth>[0]));
       case "read_weather":         return JSON.stringify(await readWeather());
       case "read_news":            return JSON.stringify(await readNews((input.count as number) ?? 10));
       case "store_memory":         return JSON.stringify(await storeMemory(input.content as string, (input.tags as string[]) ?? []));
       case "recall_memory":        return JSON.stringify(await recallMemory(input.query as string));
-      case "update_goal":          return JSON.stringify(await updateGoal(input.id as string, input.current as number));
-      case "create_goal":          return JSON.stringify(await createGoal(input.label as string, input.target as number, input.unit as string, input.category as string, input.description as string | undefined, input.deadline as string | undefined, (input.current as number) ?? 0));
-      case "update_wealth":        return JSON.stringify(await updateWealth(input as Parameters<typeof updateWealth>[0]));
+      case "read_all_memories":    return JSON.stringify(await readAllMemories());
       case "web_search":           return JSON.stringify(await webSearch(input.query as string));
       case "get_budget_status":    return JSON.stringify(await getBudgetStatus());
       case "get_transactions":     return JSON.stringify(await getRecentTransactions((input.limit as number) ?? 20));
+      case "read_bills":           return JSON.stringify(await readBills());
+      case "set_income":           return JSON.stringify(await setIncome(input.amount as number));
       case "create_notification":  return JSON.stringify(await createNotification(input.type as string, input.title as string, input.body as string, input.action_url as string | undefined));
       case "log_activity":         return JSON.stringify(await logActivity(input.type as string, input.description as string));
       default:                     return JSON.stringify({ error: `Unknown tool: ${name}` });
@@ -374,7 +456,7 @@ async function executeTool(name: string, input: Record<string, unknown>): Promis
   }
 }
 
-/* ─── Supabase client for context (server-side only) ─── */
+/* ─── Supabase (server-side only) ─── */
 import { createClient as _createClient } from "@supabase/supabase-js";
 const _sb = () => _createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -389,66 +471,124 @@ export async function buildContextHeader(): Promise<string> {
   });
 
   const sb = _sb();
-  const [habits, tasks, crypto, weather, goalsRes, budgetRes, styleRes] = await Promise.allSettled([
+  const today = new Date().toISOString().slice(0, 10);
+  const periodStart = today.slice(0, 7) + "-01";
+
+  const [
+    habitsRes, tasksRes, cryptoRes, weatherRes,
+    goalsRes, wealthRes, memoriesRes, billsRes,
+    txRes, budgetAllocRes, styleRes,
+  ] = await Promise.allSettled([
     readHabits(),
     readTasks(),
     readCrypto(),
     readWeather(),
-    sb.from("goals").select("label,current,target,unit,deadline,category").order("deadline"),
-    sb.from("budget_allocations").select("category,budgeted").limit(10),
+    sb.from("goals").select("label,current,target,unit,deadline").order("deadline").limit(5),
+    readWealth(),
+    sb.from("memories").select("content").order("created_at", { ascending: false }).limit(3),
+    sb.from("bills").select("name,amt,due_day").order("due_day"),
+    sb.from("transactions").select("amount,budget_category,pending").gte("date", periodStart).gt("amount", 0),
+    sb.from("budget_allocations").select("category,budgeted").eq("period_start", periodStart),
     sb.from("writing_style").select("*").limit(1),
   ]);
 
   let ctx = `[CURRENT TIME: ${now} ET]\n`;
 
-  if (habits.status === "fulfilled" && habits.value.length > 0) {
-    const done  = habits.value.filter((h: { completed: boolean }) => h.completed).length;
-    const total = habits.value.length;
-    ctx += `[HABITS TODAY: ${done}/${total} complete]\n`;
+  // Habits
+  if (habitsRes.status === "fulfilled" && habitsRes.value.length > 0) {
+    const done  = habitsRes.value.filter((h: { completed: boolean }) => h.completed).length;
+    const total = habitsRes.value.length;
+    const names = habitsRes.value
+      .filter((h: { completed: boolean }) => !h.completed)
+      .map((h: { name: string }) => h.name)
+      .slice(0, 3);
+    ctx += `[HABITS: ${done}/${total} done today${names.length > 0 ? ` — still open: ${names.join(", ")}` : " — all complete ✓"}]\n`;
   }
 
-  if (tasks.status === "fulfilled") {
-    const open = tasks.value.filter((t: { completed: boolean }) => !t.completed).length;
-    const high = tasks.value.filter((t: { completed: boolean; priority: string }) => !t.completed && t.priority === "high").length;
-    ctx += `[TASKS: ${open} open${high > 0 ? `, ${high} high priority` : ""}]\n`;
+  // Tasks
+  if (tasksRes.status === "fulfilled") {
+    const open = tasksRes.value.filter((t: { completed: boolean }) => !t.completed);
+    const high = open.filter((t: { priority: string }) => t.priority === "high");
+    const overdue = open.filter((t: { due_date?: string }) => t.due_date && t.due_date < today);
+    ctx += `[TASKS: ${open.length} open${high.length > 0 ? `, ${high.length} high-priority` : ""}${overdue.length > 0 ? `, ${overdue.length} overdue` : ""}]\n`;
   }
 
-  if (crypto.status === "fulfilled" && crypto.value.length > 0) {
-    const btc = crypto.value.find((c: { symbol: string }) => c.symbol === "BTC");
-    const xrp = crypto.value.find((c: { symbol: string }) => c.symbol === "XRP");
-    if (btc) ctx += `[BTC: $${Math.round(btc.price).toLocaleString()} (${btc.change24h >= 0 ? "+" : ""}${btc.change24h.toFixed(2)}% 24h)]\n`;
-    if (xrp) ctx += `[XRP: $${xrp.price.toFixed(4)} (${xrp.change24h >= 0 ? "+" : ""}${xrp.change24h.toFixed(2)}% 24h)]\n`;
+  // Crypto + net worth
+  const crypto = cryptoRes.status === "fulfilled" ? cryptoRes.value : [];
+  const wealth = wealthRes.status === "fulfilled" ? wealthRes.value : null;
+  const btc = crypto.find((c: { symbol: string }) => c.symbol === "BTC");
+  const xrp = crypto.find((c: { symbol: string }) => c.symbol === "XRP");
+
+  if (btc) ctx += `[BTC: $${Math.round(btc.price).toLocaleString()} (${btc.change24h >= 0 ? "+" : ""}${btc.change24h.toFixed(2)}% 24h)]\n`;
+  if (xrp) ctx += `[XRP: $${xrp.price.toFixed(4)} (${xrp.change24h >= 0 ? "+" : ""}${xrp.change24h.toFixed(2)}% 24h)]\n`;
+
+  if (wealth && (btc || xrp)) {
+    const btcVal  = btc ? btc.price * (wealth.btc_amount ?? 0) : 0;
+    const xrpVal  = xrp ? xrp.price * (wealth.xrp_amount ?? 0) : 0;
+    const netWorth = btcVal + xrpVal + (wealth.ira ?? 0) + (wealth.savings ?? 0);
+    ctx += `[NET WORTH: $${netWorth.toLocaleString("en-US", { maximumFractionDigits: 0 })} | Savings: $${(wealth.savings ?? 0).toLocaleString()} | IRA: $${(wealth.ira ?? 0).toLocaleString()}]\n`;
   }
 
-  if (weather.status === "fulfilled" && weather.value) {
-    const w = weather.value;
+  // Weather
+  if (weatherRes.status === "fulfilled" && weatherRes.value) {
+    const w = weatherRes.value;
     ctx += `[WEATHER: ${w.tempF}°F, ${w.condition}, ${w.precipChance}% rain in Orlando]\n`;
   }
 
-  // Active goals snapshot (top 3 most urgent)
+  // Goals (top 3 by deadline)
   if (goalsRes.status === "fulfilled" && goalsRes.value.data?.length) {
-    const goals = (goalsRes.value.data as { label:string; current:number; target:number; unit:string; deadline:string|null; category:string }[])
+    const goals = (goalsRes.value.data as { label: string; current: number; target: number; unit: string; deadline: string | null }[])
       .filter(g => g.target > 0)
       .slice(0, 3);
-    if (goals.length > 0) {
-      const parts = goals.map(g => {
-        const pct = Math.round((g.current / g.target) * 100);
-        const due = g.deadline ? ` due ${g.deadline}` : "";
-        return `${g.label} ${pct}%${due}`;
-      });
-      ctx += `[ACTIVE GOALS: ${parts.join(" | ")}]\n`;
+    const parts = goals.map(g => {
+      const pct = Math.round((g.current / g.target) * 100);
+      return `${g.label} ${pct}%${g.deadline ? ` (due ${g.deadline})` : ""}`;
+    });
+    if (parts.length > 0) ctx += `[GOALS: ${parts.join(" | ")}]\n`;
+  }
+
+  // Budget — real spend vs allocation
+  if (txRes.status === "fulfilled" && budgetAllocRes.status === "fulfilled") {
+    const txs   = txRes.value.data ?? [];
+    const allocs = budgetAllocRes.value.data ?? [];
+    const spend: Record<string, number> = {};
+    for (const tx of txs as { amount: number; budget_category: string | null; pending: boolean }[]) {
+      if (tx.pending) continue;
+      const cat = tx.budget_category ?? "Misc";
+      spend[cat] = (spend[cat] ?? 0) + tx.amount;
+    }
+    const totalSpent    = Object.values(spend).reduce((s, v) => s + v, 0);
+    const totalBudgeted = (allocs as { budgeted: number }[]).reduce((s, a) => s + a.budgeted, 0);
+    const overCats      = (allocs as { category: string; budgeted: number }[])
+      .filter(a => (spend[a.category] ?? 0) > a.budgeted)
+      .map(a => a.category);
+    if (totalBudgeted > 0) {
+      ctx += `[BUDGET: $${Math.round(totalSpent).toLocaleString()} spent of $${Math.round(totalBudgeted).toLocaleString()} this month${overCats.length > 0 ? ` | OVER in: ${overCats.join(", ")}` : " | all on track"}]\n`;
     }
   }
 
-  // Budget snapshot
-  if (budgetRes.status === "fulfilled" && budgetRes.value.data?.length) {
-    const total = (budgetRes.value.data as { budgeted:number }[]).reduce((s, a) => s + a.budgeted, 0);
-    ctx += `[BUDGET: $${total.toLocaleString()} allocated this month]\n`;
+  // Upcoming bills (due within 7 days)
+  if (billsRes.status === "fulfilled" && (billsRes.value.data?.length ?? 0) > 0) {
+    const dayOfMonth = new Date().getDate();
+    const upcoming = ((billsRes.value.data ?? []) as { name: string; amt: number; due_day: number }[])
+      .map(b => ({ ...b, daysUntil: b.due_day >= dayOfMonth ? b.due_day - dayOfMonth : 31 - dayOfMonth + b.due_day }))
+      .filter(b => b.daysUntil <= 7)
+      .sort((a, b) => a.daysUntil - b.daysUntil);
+    if (upcoming.length > 0) {
+      const parts = upcoming.map(b => `${b.name} $${b.amt} in ${b.daysUntil}d`);
+      ctx += `[BILLS DUE SOON: ${parts.join(" | ")}]\n`;
+    }
   }
 
-  // Writing style (for drafts)
+  // Recent memories
+  if (memoriesRes.status === "fulfilled" && memoriesRes.value.data?.length) {
+    const mems = (memoriesRes.value.data as { content: string }[]).map(m => m.content.slice(0, 80));
+    ctx += `[RECENT MEMORY: ${mems.join(" | ")}]\n`;
+  }
+
+  // Writing style
   if (styleRes.status === "fulfilled" && styleRes.value.data?.[0]) {
-    const row = styleRes.value.data[0] as Record<string, unknown>;
+    const row  = styleRes.value.data[0] as Record<string, unknown>;
     const tone = row.tone ?? row.summary ?? null;
     if (tone) ctx += `[MAX'S WRITING STYLE: ${String(tone).slice(0, 120)}]\n`;
   }
@@ -456,13 +596,13 @@ export async function buildContextHeader(): Promise<string> {
   return ctx;
 }
 
-/* ─── Agent stream event type ─── */
+/* ─── Agent event type ─── */
 export type AgentEvent =
   | { t: "tool";  label: string }
   | { t: "chunk"; text: string }
   | { t: "done";  full: string; tools: string[] };
 
-/* ─── Streaming agentic loop (real token streaming) ─── */
+/* ─── Streaming agentic loop ─── */
 export async function runAgentStream(
   messages: AgentMessage[],
   injectContext: boolean,
@@ -474,14 +614,21 @@ export async function runAgentStream(
     return;
   }
 
-  const apiMessages: Anthropic.MessageParam[] = messages.slice(-14).map(m => ({
+  const apiMessages: Anthropic.MessageParam[] = messages.slice(-16).map(m => ({
     role: m.role,
     content: m.content,
   }));
 
-  if (injectContext && apiMessages.length > 0 && apiMessages[0].role === "user") {
-    const ctx = await buildContextHeader();
-    apiMessages[0] = { role: "user", content: `${ctx}\n${apiMessages[0].content}` };
+  // Inject context into the LAST user message (the current request)
+  if (injectContext) {
+    const lastUserIdx = apiMessages.reduce((found, m, i) => m.role === "user" ? i : found, -1);
+    if (lastUserIdx >= 0) {
+      const ctx = await buildContextHeader();
+      apiMessages[lastUserIdx] = {
+        role: "user",
+        content: `${ctx}\n${apiMessages[lastUserIdx].content}`,
+      };
+    }
   }
 
   const MAX_ITERATIONS = 8;
@@ -533,7 +680,7 @@ export async function runAgentStream(
   onEvent({ t: "done", full: fullText, tools: allTools });
 }
 
-/* ─── Non-streaming loop (for internal use) ─── */
+/* ─── Non-streaming loop (Telegram + internal) ─── */
 export interface AgentMessage {
   role: "user" | "assistant";
   content: string;
@@ -542,14 +689,21 @@ export interface AgentMessage {
 export async function runAgent(messages: AgentMessage[], injectContext = true): Promise<string> {
   if (!process.env.ANTHROPIC_API_KEY) return "M.A.X. offline — API key missing.";
 
-  const apiMessages: Anthropic.MessageParam[] = messages.slice(-14).map(m => ({
+  const apiMessages: Anthropic.MessageParam[] = messages.slice(-16).map(m => ({
     role: m.role,
     content: m.content,
   }));
 
-  if (injectContext && apiMessages.length > 0 && apiMessages[0].role === "user") {
-    const ctx = await buildContextHeader();
-    apiMessages[0] = { role: "user", content: `${ctx}\n${apiMessages[0].content}` };
+  // Inject context into the last user message
+  if (injectContext) {
+    const lastUserIdx = apiMessages.reduce((found, m, i) => m.role === "user" ? i : found, -1);
+    if (lastUserIdx >= 0) {
+      const ctx = await buildContextHeader();
+      apiMessages[lastUserIdx] = {
+        role: "user",
+        content: `${ctx}\n${apiMessages[lastUserIdx].content}`,
+      };
+    }
   }
 
   let response = await client.messages.create({
@@ -572,7 +726,7 @@ export async function runAgent(messages: AgentMessage[], injectContext = true): 
     );
 
     apiMessages.push({ role: "assistant", content: response.content });
-    apiMessages.push({ role: "user", content: toolResults });
+    apiMessages.push({ role: "user",      content: toolResults });
 
     response = await client.messages.create({
       model: MODEL, max_tokens: MAX_TOKENS, system: SYSTEM, tools: TOOLS, messages: apiMessages,
@@ -583,15 +737,13 @@ export async function runAgent(messages: AgentMessage[], injectContext = true): 
   return textBlock?.text ?? "No response.";
 }
 
-/* ─── Proactive brief for chat load ─── */
+/* ─── Proactive brief (chat load) ─── */
 export async function generateBrief(): Promise<string> {
-  const now = new Date().getHours();
-  const greeting =
-    now < 12 ? "morning" :
-    now < 17 ? "afternoon" : "evening";
+  const h = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" })).getHours();
+  const timeOfDay = h < 12 ? "morning" : h < 17 ? "afternoon" : "evening";
 
   return runAgent([{
     role: "user",
-    content: `Give me a quick ${greeting} brief. Use read_habits, read_tasks, and read_crypto together. Keep it tight — 4-6 bullet points max, each one sentence. Lead with anything urgent. No filler.`,
+    content: `Give me a tight ${timeOfDay} brief. Pull habits, tasks, and crypto together. 4–6 bullets max, one sentence each. Lead with whatever's most urgent or notable right now. No filler.`,
   }], true);
 }

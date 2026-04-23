@@ -54,6 +54,31 @@ export async function deleteTask(id: string) {
   return { deleted: true, id };
 }
 
+export async function addHabit(name: string, cat: string, color = "#4589FF") {
+  const { data, error } = await supabase.from("habits").insert({ name, cat, color, streak: 0, completed: false }).select().single();
+  if (error) return { error: error.message };
+  return { success: true, habit: data };
+}
+
+export async function deleteHabit(id: string) {
+  await supabase.from("habit_logs").delete().eq("habit_id", id);
+  await supabase.from("habits").delete().eq("id", id);
+  return { deleted: true, id };
+}
+
+/* ────────────────────────────────── TASKS ── */
+export async function updateTask(id: string, fields: Partial<{ text: string; priority: string; due_date: string | null; completed: boolean }>) {
+  const { data, error } = await supabase.from("tasks").update(fields).eq("id", id).select().single();
+  if (error) return { error: error.message };
+  return { success: true, task: data };
+}
+
+export async function deleteGoal(id: string) {
+  await supabase.from("goal_notes").delete().eq("goal_id", id);
+  await supabase.from("goals").delete().eq("id", id);
+  return { deleted: true, id };
+}
+
 /* ────────────────────────────────── GOALS ── */
 export async function readGoals() {
   const { data } = await supabase.from("goals").select("*").order("created_at");
@@ -316,6 +341,19 @@ export async function logActivity(
     .single();
   if (error) return { error: error.message };
   return { success: true, entry: data };
+}
+
+/* ────────────────────────────────── BILLS ── */
+export async function readBills() {
+  const { data } = await supabase.from("bills").select("*").order("due_day");
+  return data ?? [];
+}
+
+/* ────────────────────────────────── SETTINGS ── */
+export async function setIncome(amount: number) {
+  const { error } = await supabase.from("settings").upsert({ key: "monthly_income", value: amount }, { onConflict: "key" });
+  if (error) return { error: error.message };
+  return { success: true, income: amount };
 }
 
 /* ────────────────────────────────── TELEGRAM HISTORY ── */
