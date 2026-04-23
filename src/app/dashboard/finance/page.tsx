@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { HudCard } from "@/components/ui/HudCard";
 import { Sparkline } from "@/components/ui/Sparkline";
 import { supabase } from "@/lib/supabase";
+import PlaidLinkButton from "@/components/ui/PlaidLinkButton";
 
 /* ── Types ── */
 interface WealthData    { ira: number; savings: number; btc_amount: number; xrp_amount: number }
@@ -11,6 +12,7 @@ interface IRAFund       { symbol: string; name: string; nav: number; chg: number
 interface Bill          { name: string; amt: number; due: number }
 interface LiveCrypto    { symbol: string; name: string; price: number; c24: number; c7: number; data: number[] }
 interface WealthHistory { recorded_at: string; net_worth: number; crypto_total: number; ira_total: number; savings: number }
+interface PlaidAccount  { id: string; plaid_account_id: string; name: string; type: string; subtype: string; institution: string; mask: string | null; current_balance: number | null; available_balance: number | null; last_synced: string | null }
 
 const WEALTH_DEFAULTS: WealthData = { ira: 2720, savings: 2800, btc_amount: 0.02, xrp_amount: 200 };
 
@@ -302,6 +304,9 @@ export default function FinancePage() {
   const [modal, setModal]         = useState<string | null>(null);
   const [saving, setSaving]       = useState(false);
   const [wealthHistory, setWealthHistory] = useState<WealthHistory[]>([]);
+  const [plaidAccounts, setPlaidAccounts] = useState<PlaidAccount[]>([]);
+  const [syncing, setSyncing]     = useState(false);
+  const [lastSync, setLastSync]   = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/crypto").then(r => r.json()).then(j => {
@@ -329,7 +334,29 @@ export default function FinancePage() {
     supabase.from("wealth_history").select("*").order("recorded_at", { ascending: true }).limit(30).then(({ data }) => {
       if (data && data.length > 0) setWealthHistory(data as WealthHistory[]);
     });
+
+    loadPlaidAccounts();
   }, []);
+
+  function loadPlaidAccounts() {
+    supabase.from("accounts").select("*").eq("active", true).order("institution").then(({ data }) => {
+      if (data) {
+        setPlaidAccounts(data as PlaidAccount[]);
+        const synced = data.map(a => a.last_synced).filter(Boolean).sort().pop();
+        if (synced) setLastSync(synced);
+      }
+    });
+  }
+
+  async function syncNow() {
+    setSyncing(true);
+    try {
+      await fetch("/api/plaid/sync", { method: "POST" });
+      loadPlaidAccounts();
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   // Realtime subscription: update wealth when M.A.X. modifies it
   useEffect(() => {
@@ -522,6 +549,107 @@ export default function FinancePage() {
                 </span>
                 <span style={{ fontSize: 10, color: "var(--t4)" }}>{new Date(wealthHistory[wealthHistory.length-1].recorded_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
               </div>
+            </div>
+          )}
+        </HudCard>
+
+        {/* Connected Bank Accounts */}
+        <HudCard style={{ padding: "28px 32px", marginBottom: 20 }} delay={.08}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: plaidAccounts.length > 0 ? 20 : 0 }}>
+            <div>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: "var(--t1)" }}>Connected Accounts</h2>
+              {lastSync && (
+                <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 3 }}>
+                  Last synced {new Date(lastSync).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                </div>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              {plaidAccounts.length > 0 && (
+                <button
+                  onClick={syncNow}
+                  disabled={syncing}
+                  style={{
+                    padding: "8px 16px", borderRadius: 7, fontSize: 12, fontWeight: 600,
+                    background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)",
+                    color: syncing ? "var(--t4)" : "var(--t2)", cursor: syncing ? "not-allowed" : "pointer",
+                    transition: "all 0.15s", display: "flex", alignItems: "center", gap: 6,
+                  }}
+                  onMouseEnter={e => { if (!syncing) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.08)"; }}
+                  onMouseLeave={e => { if (!syncing) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)"; }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+                    style={{ animation: syncing ? "spin-slow 1s linear infinite" : "none" }}>
+                    <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                  </svg>
+                  {syncing ? "Syncing…" : "Sync Now"}
+                </button>
+              )}
+              <PlaidLinkButton onConnected={loadPlaidAccounts} />
+            </div>
+          </div>
+
+          {plaidAccounts.length === 0 ? (
+            <div style={{
+              display: "flex", alignItems: "center", gap: 20, padding: "24px 0 4px",
+            }}>
+              <div style={{
+                width: 48, height: 48, borderRadius: 12, flexShrink: 0,
+                background: "rgba(69,137,255,0.08)", border: "1px solid rgba(69,137,255,0.15)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(69,137,255,0.6)" strokeWidth="1.8" strokeLinecap="round">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                  <polyline points="9 22 9 12 15 12 15 22" />
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--t2)", marginBottom: 4 }}>No bank accounts connected</div>
+                <div style={{ fontSize: 13, color: "var(--t3)", lineHeight: 1.5 }}>
+                  Connect your bank to auto-import transactions, track balances, and power the budget system.
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {plaidAccounts.map(acct => {
+                const typeColor = acct.type === "credit" ? "var(--amber)" : acct.subtype === "savings" ? "var(--green)" : "var(--blue)";
+                const bal = acct.current_balance;
+                return (
+                  <div key={acct.plaid_account_id} style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    padding: "14px 16px", borderRadius: 8,
+                    background: "var(--surface2)", border: "1px solid var(--border)",
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                      <div style={{
+                        width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+                        background: `${typeColor}14`, border: `1px solid ${typeColor}28`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 11, fontWeight: 800, color: typeColor,
+                      }}>
+                        {acct.institution.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: "var(--t1)" }}>
+                          {acct.name} {acct.mask && <span style={{ color: "var(--t4)", fontWeight: 400 }}>···{acct.mask}</span>}
+                        </div>
+                        <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 2 }}>
+                          {acct.institution} · {acct.subtype}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "monospace", color: acct.type === "credit" && bal && bal > 0 ? "var(--red)" : "var(--t1)" }}>
+                        {bal !== null ? `$${Math.abs(bal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
+                      </div>
+                      <div style={{ fontSize: 11, color: "var(--t4)", marginTop: 2 }}>
+                        {acct.type === "credit" ? "balance owed" : "available"}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </HudCard>

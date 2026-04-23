@@ -4,9 +4,13 @@
       "path": "/api/briefing",
       "schedule": "0 11 * * *"
     },
-{
+    {
       "path": "/api/cron/weekly-recap",
       "schedule": "0 12 * * 0"
+    },
+    {
+      "path": "/api/cron/plaid-sync",
+      "schedule": "0 10 * * *"
     }
   ]
 }
