@@ -88,7 +88,8 @@ src/
       calendar/page.tsx         # Google Calendar (day/week/month views)
       email/page.tsx            # Gmail (3-panel: folders, list, reader)
       feed/page.tsx             # News feed (breaking ticker, topic filters)
-      finance/page.tsx          # Finance hub (crypto, IRA, savings, bills, net worth history)
+      finance/page.tsx          # Finance Hub — 4-tab layout: Overview, Budget, Investments, Transactions
+      budget/page.tsx           # Redirect → /dashboard/finance
       habits/page.tsx           # Habit tracker
       goals/page.tsx            # Goals with progress bars
       archive/page.tsx          # Chat history + action receipts
@@ -126,6 +127,9 @@ src/
     ui/HudCard.tsx              # Primary card component (dark glass style)
     ui/MaxChatBubble.tsx        # Floating chat widget (all dashboard pages)
     ui/Sparkline.tsx            # SVG sparkline chart component
+    ui/NotificationBell.tsx     # Real-time notification bell + drawer + toast stack
+    ui/PlaidLinkButton.tsx      # Plaid Link flow button (create-link-token → exchange)
+    ui/TransactionReview.tsx    # Tinder-style swipe UI for training AI categories
 ```
 
 ---
@@ -244,17 +248,21 @@ This is the core of M.A.X. Understand it before touching anything AI-related.
 
 **Active plan: 14-week full revamp.** See `ROADMAP.md` in this directory for the build order and week-by-week specs. See Claude's memory file `build_plan_revamp.md` for the complete detailed plan.
 
-**Current status: Week 1 complete. Week 2 is next.**
+**Current status: Weeks 1–3 complete. Week 4 is next.**
 
 ### Week 1 — DONE:
-New tables created: `notifications`, `activity_log`, `transactions`, `merchant_rules`, `budget_allocations`, `accounts`, `task_lists`, `habit_logs`, `goal_notes`, `settings`, `writing_style`. Expanded `tasks`, `habits`, `goals`. Built `NotificationBell` component (real-time drawer + toast stack). Added Settings gear to sidebar. Added `create_notification` + `log_activity` agent tools.
+New tables: `notifications`, `activity_log`, `transactions`, `merchant_rules`, `budget_allocations`, `accounts`, `task_lists`, `habit_logs`, `goal_notes`, `settings`, `writing_style`. Expanded `tasks`, `habits`, `goals`. Built `NotificationBell` component. Settings page shell. Added `create_notification`, `log_activity`, `get_budget_status`, `get_transactions` agent tools.
 
-### Week 2 is next — Plaid integration:
-New Supabase tables: `notifications`, `activity_log`, `transactions`, `merchant_rules`, `budget_allocations`, `accounts`, `task_lists`, `habit_logs`, `goal_notes`, `settings`, `writing_style`. Expand `tasks` table. Build notification bell + toast system.
+### Week 2 — DONE:
+Plaid integration: `src/lib/plaid.ts`, create-link-token + exchange-token + sync API routes. `PlaidLinkButton` component. Daily cron sync. Vercel `vercel.json` updated with cron. PLAID_ENV=sandbox (upgrade to development for real bank — swap PLAID_SECRET + PLAID_ENV env var).
 
-### Upcoming after foundation:
-- Week 2: Plaid integration (all bank accounts)
-- Week 3: Transaction categorization + zero-based budget
+### Week 3 — DONE:
+Finance Hub full rewrite as 4-tab layout (Overview, Budget, Investments, Transactions). AI batch categorization via `/api/transactions/ai-categorize` (Claude Haiku). Tinder-style `TransactionReview` component for training merchant rules. Zero-based budget with Quick Setup. Old `/dashboard/budget` now redirects to Finance Hub. Budget removed from sidebar nav.
+
+### Pending — Plaid real bank access:
+Max needs to: go to dashboard.plaid.com → switch to Development environment → get Development Secret → set `PLAID_ENV=development` + new `PLAID_SECRET` in `.env.local` AND Vercel env vars → redeploy.
+
+### Upcoming:
 - Week 4: Finance Hub revamp (CoinMarketCap, Alpha Vantage, investment news)
 - Week 5+: Dashboard, Tasks, Calendar, Email, Habits, Goals, Feed, Settings, Chat, Agent tools
 

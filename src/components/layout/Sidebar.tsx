@@ -18,7 +18,6 @@ const NAV_DEFAULT = [
   { label: "Calendar",       href: "/dashboard/calendar", icon: "M3 4h18c.6 0 1 .4 1 1v16c0 .6-.4 1-1 1H3c-.6 0-1-.4-1-1V5c0-.6.4-1 1-1zM16 2v4M8 2v4M2 10h20" },
   { label: "Email",          href: "/dashboard/email",    icon: "M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zM22 6l-10 7L2 6" },
   { label: "Intel Feed",     href: "/dashboard/feed",     icon: "M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16M5 19a1 1 0 1 0 0-2 1 1 0 0 0 0 2z" },
-  { label: "Budget",         href: "/dashboard/budget",   icon: "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" },
   { label: "Archive",        href: "/dashboard/archive",  icon: "M21 8v13H3V8M1 3h22v5H1zM10 12h4" },
 ];
 
