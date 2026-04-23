@@ -378,11 +378,11 @@ export async function buildContextHeader(): Promise<string> {
 
 /* ─── Agent stream event type ─── */
 export type AgentEvent =
-  | { t: "tool"; label: string }
+  | { t: "tool";  label: string }
   | { t: "chunk"; text: string }
-  | { t: "done"; full: string };
+  | { t: "done";  full: string; tools: string[] };
 
-/* ─── Streaming agentic loop ─── */
+/* ─── Streaming agentic loop (real token streaming) ─── */
 export async function runAgentStream(
   messages: AgentMessage[],
   injectContext: boolean,
@@ -390,7 +390,7 @@ export async function runAgentStream(
 ): Promise<void> {
   if (!process.env.ANTHROPIC_API_KEY) {
     onEvent({ t: "chunk", text: "M.A.X. offline — API key missing." });
-    onEvent({ t: "done", full: "M.A.X. offline — API key missing." });
+    onEvent({ t: "done", full: "M.A.X. offline — API key missing.", tools: [] });
     return;
   }
 
@@ -404,23 +404,40 @@ export async function runAgentStream(
     apiMessages[0] = { role: "user", content: `${ctx}\n${apiMessages[0].content}` };
   }
 
-  let response = await client.messages.create({
-    model: MODEL, max_tokens: MAX_TOKENS, system: SYSTEM, tools: TOOLS, messages: apiMessages,
-  });
-
   const MAX_ITERATIONS = 8;
   let iterations = 0;
+  let fullText   = "";
+  const allTools: string[] = [];
 
-  while (response.stop_reason === "tool_use" && iterations < MAX_ITERATIONS) {
-    iterations++;
+  while (true) {
+    const stream = client.messages.stream({
+      model: MODEL, max_tokens: MAX_TOKENS, system: SYSTEM, tools: TOOLS, messages: apiMessages,
+    });
 
-    const toolUseBlocks = response.content.filter(b => b.type === "tool_use") as Anthropic.ToolUseBlock[];
+    let localText = "";
 
-    // Emit tool labels
-    for (const block of toolUseBlocks) {
-      onEvent({ t: "tool", label: TOOL_LABELS[block.name] ?? `Running ${block.name}…` });
+    for await (const event of stream) {
+      if (event.type === "content_block_start" && event.content_block.type === "tool_use") {
+        const label = TOOL_LABELS[event.content_block.name] ?? `Running ${event.content_block.name}…`;
+        allTools.push(label);
+        onEvent({ t: "tool", label });
+      }
+      if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+        onEvent({ t: "chunk", text: event.delta.text });
+        localText += event.delta.text;
+      }
     }
 
+    const finalMsg = await stream.finalMessage();
+
+    if (finalMsg.stop_reason !== "tool_use" || iterations >= MAX_ITERATIONS) {
+      fullText = localText;
+      break;
+    }
+
+    iterations++;
+
+    const toolUseBlocks = finalMsg.content.filter(b => b.type === "tool_use") as Anthropic.ToolUseBlock[];
     const toolResults: Anthropic.ToolResultBlockParam[] = await Promise.all(
       toolUseBlocks.map(async (block) => ({
         type: "tool_result" as const,
@@ -429,26 +446,11 @@ export async function runAgentStream(
       }))
     );
 
-    apiMessages.push({ role: "assistant", content: response.content });
-    apiMessages.push({ role: "user", content: toolResults });
-
-    response = await client.messages.create({
-      model: MODEL, max_tokens: MAX_TOKENS, system: SYSTEM, tools: TOOLS, messages: apiMessages,
-    });
+    apiMessages.push({ role: "assistant", content: finalMsg.content });
+    apiMessages.push({ role: "user",      content: toolResults });
   }
 
-  const textBlock = response.content.find(b => b.type === "text") as Anthropic.TextBlock | undefined;
-  const fullText  = textBlock?.text ?? "No response.";
-
-  // Stream word-by-word with small delay for smooth UX
-  const words = fullText.split(" ");
-  for (let i = 0; i < words.length; i++) {
-    const chunk = i < words.length - 1 ? words[i] + " " : words[i];
-    onEvent({ t: "chunk", text: chunk });
-    // Burst send — no artificial delay needed, SSE flush provides natural pacing
-  }
-
-  onEvent({ t: "done", full: fullText });
+  onEvent({ t: "done", full: fullText, tools: allTools });
 }
 
 /* ─── Non-streaming loop (for internal use) ─── */

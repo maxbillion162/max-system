@@ -35,19 +35,20 @@ export async function POST(request: Request) {
             send(event);
             if (event.t === "done") fullText = event.full;
           });
+
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           send({ t: "chunk", text: `Error: ${msg}` });
-          send({ t: "done", full: `Error: ${msg}` });
+          send({ t: "done", full: `Error: ${msg}`, tools: [] });
           fullText = `Error: ${msg}`;
         } finally {
           // Persist after streaming completes
-          if (session_id && normalized.length > 0) {
+          if (normalized.length > 0) {
             const last = normalized[normalized.length - 1];
             if (last.role === "user" && fullText) {
-              await supabase.from("chat_history").insert([
-                { session_id, role: "user",      content: last.content },
-                { session_id, role: "assistant", content: fullText     },
+              await supabase.from("chat_messages").insert([
+                { role: "user",      content: last.content },
+                { role: "assistant", content: fullText     },
               ]).then(() => {}, () => {}); // non-fatal
             }
           }
