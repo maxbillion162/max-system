@@ -284,7 +284,15 @@ export default function Dashboard() {
     fetchCrypto();
     fetch("/api/weather?location=orlando").then(r => r.json()).then(j => { if (j.data) setWeather(j.data); }).catch(() => {});
     fetch("/api/news?count=30").then(r => r.json()).then(j => { if (j.data) setNews(j.data); }).catch(() => {});
-    supabase.from("habits").select("id,name,completed").then(({ data }) => { if (data) setHabits(data); });
+    const today = new Date().toISOString().slice(0, 10);
+    Promise.all([
+      supabase.from("habits").select("id,name,completed").order("created_at"),
+      supabase.from("habit_logs").select("habit_id").eq("date", today).eq("completed", true),
+    ]).then(([habitsRes, logsRes]) => {
+      const habitData = habitsRes.data ?? [];
+      const doneIds = new Set((logsRes.data ?? []).map((l: { habit_id: string }) => l.habit_id));
+      setHabits(habitData.map((h: { id: string; name: string; completed: boolean }) => ({ ...h, completed: doneIds.has(h.id) })));
+    });
     supabase.from("goals").select("id,label,current,target,unit,deadline,color").then(({ data }) => { if (data) setGoals(data as FullGoal[]); });
     supabase.from("wealth").select("*").limit(1).then(({ data }) => {
       if (data && data.length > 0) setWealth({ ...WEALTH_DEFAULTS, ...data[0] });
@@ -354,8 +362,15 @@ export default function Dashboard() {
   }
 
   async function toggleHabit(id: string, completed: boolean) {
-    setHabits(prev => prev.map(h => h.id === id ? { ...h, completed: !completed } : h));
-    await supabase.from("habits").update({ completed: !completed }).eq("id", id);
+    const newCompleted = !completed;
+    setHabits(prev => prev.map(h => h.id === id ? { ...h, completed: newCompleted } : h));
+    const today = new Date().toISOString().slice(0, 10);
+    if (newCompleted) {
+      await supabase.from("habit_logs").upsert({ habit_id: id, date: today, completed: true }, { onConflict: "habit_id,date" });
+    } else {
+      await supabase.from("habit_logs").delete().eq("habit_id", id).eq("date", today);
+    }
+    await supabase.from("habits").update({ completed: newCompleted }).eq("id", id);
   }
 
   async function updateWealth(key: keyof typeof WEALTH_DEFAULTS, val: number) {

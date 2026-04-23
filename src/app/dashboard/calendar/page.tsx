@@ -338,12 +338,21 @@ export default function CalendarPage() {
   const [nlLoading,     setNlLoading]    = useState(false);
   const [nlPreview,     setNlPreview]    = useState<NLPreview|null>(null);
   const [nlError,       setNlError]      = useState("");
+  const [showTasks,     setShowTasks]    = useState(true);
 
   const gridRef = useRef<HTMLDivElement>(null);
   const today   = new Date();
 
   /* ── Data loading ── */
   useEffect(() => {
+    supabase.from("settings").select("value").eq("key","preferences").single().then(({data})=>{
+      if (data?.value) {
+        const prefs = data.value as { calendar_default_view?: string; tasks_in_calendar?: boolean };
+        const v = prefs.calendar_default_view;
+        if (v === "day" || v === "week" || v === "month") setView(v);
+        if (prefs.tasks_in_calendar === false) setShowTasks(false);
+      }
+    });
     supabase.from("tasks").select("*").order("created_at").then(({data})=>{ if(data) setTasks(data as Task[]); });
     supabase.from("task_lists").select("*").order("position").then(async ({data})=>{
       if (data && data.length>0) { setLists(data as TaskList[]); return; }
@@ -455,7 +464,7 @@ export default function CalendarPage() {
     const last =new Date(cursor.getFullYear(),cursor.getMonth()+1,0);
     const cells:(Date|null)[]=[]; for(let i=0;i<first.getDay();i++)cells.push(null); for(let d=1;d<=last.getDate();d++)cells.push(new Date(cursor.getFullYear(),cursor.getMonth(),d)); while(cells.length%7!==0)cells.push(null); return cells;
   }
-  function tasksForDay(d: Date)  { return tasks.filter(t=>t.due_date&&isSameDay(new Date(t.due_date+"T00:00:00"),d)&&!t.completed); }
+  function tasksForDay(d: Date)  { return showTasks ? tasks.filter(t=>t.due_date&&isSameDay(new Date(t.due_date+"T00:00:00"),d)&&!t.completed) : []; }
   function eventsForDay(d: Date) { return gcalEvents.filter(e=>{ const s=new Date(e.allDay?e.start+"T00:00:00":e.start); return isSameDay(s,d); }); }
   function allDayForDay(d: Date) { return gcalEvents.filter(e=>e.allDay&&isSameDay(new Date(e.start+"T00:00:00"),d)); }
 

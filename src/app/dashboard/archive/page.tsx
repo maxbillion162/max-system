@@ -99,7 +99,7 @@ export default function ArchivePage() {
     async function load() {
       setLoading(true);
       const [chatRes, tgRes] = await Promise.all([
-        supabase.from("chat_history").select("*").order("created_at", { ascending: false }).limit(400),
+        supabase.from("chat_messages").select("*").order("created_at", { ascending: false }).limit(400),
         supabase.from("telegram_history").select("*").order("created_at", { ascending: false }).limit(200),
       ]);
       if (chatRes.data) {
