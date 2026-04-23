@@ -200,6 +200,30 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </ul>
       </nav>
 
+      {/* ── Settings ── */}
+      <div style={{ padding: collapsed ? "8px 6px" : "8px 10px", borderTop: "1px solid rgba(6,182,212,0.07)", flexShrink: 0 }}>
+        <Link
+          href="/dashboard/settings"
+          title={collapsed ? "Settings" : undefined}
+          style={{
+            display: "flex", alignItems: "center", gap: collapsed ? 0 : 10,
+            padding: collapsed ? "10px 0" : "9px 10px",
+            justifyContent: collapsed ? "center" : "flex-start",
+            borderRadius: 8, textDecoration: "none",
+            color: "rgba(148,163,184,0.4)",
+            transition: "all 0.15s ease",
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "rgba(148,163,184,0.75)"; (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "rgba(148,163,184,0.4)"; (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+          {!collapsed && <span style={{ fontSize: 13, fontWeight: 500, whiteSpace: "nowrap" }}>Settings</span>}
+        </Link>
+      </div>
+
       {/* ── User ── */}
       <div style={{
         display: "flex", alignItems: "center", gap: 10,

@@ -192,6 +192,52 @@ export async function webSearch(query: string) {
   };
 }
 
+/* ────────────────────────────────── NOTIFICATIONS ── */
+export async function createNotification(
+  type: string,
+  title: string,
+  body: string,
+  action_url?: string
+) {
+  const { data, error } = await supabase
+    .from("notifications")
+    .insert({ type, title, body, action_url: action_url ?? null, read: false })
+    .select()
+    .single();
+  if (error) return { error: error.message };
+  return { success: true, notification: data };
+}
+
+export async function getNotifications(limit = 20) {
+  const { data } = await supabase
+    .from("notifications")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return data ?? [];
+}
+
+export async function markNotificationRead(id: string) {
+  const { error } = await supabase.from("notifications").update({ read: true }).eq("id", id);
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
+/* ────────────────────────────────── ACTIVITY LOG ── */
+export async function logActivity(
+  type: string,
+  description: string,
+  detail?: Record<string, unknown>
+) {
+  const { data, error } = await supabase
+    .from("activity_log")
+    .insert({ type, description, detail: detail ?? null })
+    .select()
+    .single();
+  if (error) return { error: error.message };
+  return { success: true, entry: data };
+}
+
 /* ────────────────────────────────── TELEGRAM HISTORY ── */
 export async function saveTelegramMessage(role: "user" | "assistant", content: string) {
   await supabase.from("telegram_history").insert({ role, content });

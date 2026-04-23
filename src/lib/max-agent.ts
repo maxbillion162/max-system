@@ -8,6 +8,7 @@ import {
   readCrypto, readWeather, readNews,
   storeMemory, recallMemory,
   updateWealth, webSearch,
+  createNotification, logActivity,
 } from "@/lib/max-tools";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -69,6 +70,8 @@ const TOOL_LABELS: Record<string, string> = {
   recall_memory:         "Searching memory…",
   update_wealth:         "Updating financial data…",
   web_search:            "Searching the web…",
+  create_notification:   "Sending notification…",
+  log_activity:          "Logging activity…",
 };
 
 /* ─── Tool definitions ─── */
@@ -254,6 +257,32 @@ const TOOLS: Anthropic.Tool[] = [
       required: ["query"],
     },
   },
+  {
+    name: "create_notification",
+    description: "Push a notification to Max's dashboard bell and toast system. Use for important alerts, completed actions, reminders, or anything Max should know about.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        type:       { type: "string", enum: ["general", "crypto_alert", "habit_reminder", "bill_due", "calendar_reminder", "max_action", "budget_alert", "goal_milestone"], description: "Notification category" },
+        title:      { type: "string", description: "Short notification title" },
+        body:       { type: "string", description: "Notification body — one or two sentences" },
+        action_url: { type: "string", description: "Optional URL to navigate to when clicked (e.g. /dashboard/finance)" },
+      },
+      required: ["type", "title", "body"],
+    },
+  },
+  {
+    name: "log_activity",
+    description: "Log an action M.A.X. took to the activity feed. Call this after completing any significant action — creating events, sending drafts, updating goals, etc.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        type:        { type: "string", description: "Action type (e.g. 'task_created', 'event_created', 'email_drafted', 'goal_updated')" },
+        description: { type: "string", description: "Human-readable description of what was done" },
+      },
+      required: ["type", "description"],
+    },
+  },
 ];
 
 /* ─── Tool executor ─── */
@@ -279,6 +308,8 @@ async function executeTool(name: string, input: Record<string, unknown>): Promis
       case "update_goal":          return JSON.stringify(await updateGoal(input.id as string, input.current as number));
       case "update_wealth":        return JSON.stringify(await updateWealth(input as Parameters<typeof updateWealth>[0]));
       case "web_search":           return JSON.stringify(await webSearch(input.query as string));
+      case "create_notification":  return JSON.stringify(await createNotification(input.type as string, input.title as string, input.body as string, input.action_url as string | undefined));
+      case "log_activity":         return JSON.stringify(await logActivity(input.type as string, input.description as string));
       default:                     return JSON.stringify({ error: `Unknown tool: ${name}` });
     }
   } catch (err) {

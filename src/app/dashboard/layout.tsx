@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import MaxChatBubble from "@/components/ui/MaxChatBubble";
+import NotificationBell from "@/components/ui/NotificationBell";
 
 function AccessDenied() {
   const router = useRouter();
@@ -131,6 +132,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       >
         {children}
       </main>
+      <NotificationBell />
       <MaxChatBubble />
     </div>
   );
