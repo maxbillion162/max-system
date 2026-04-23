@@ -248,7 +248,7 @@ This is the core of M.A.X. Understand it before touching anything AI-related.
 
 **Active plan: 14-week full revamp.** See `ROADMAP.md` in this directory for the build order and week-by-week specs. See Claude's memory file `build_plan_revamp.md` for the complete detailed plan.
 
-**Current status: Weeks 1–9 complete. Week 10 is next.**
+**Current status: Weeks 1–10 complete. Week 11 is next.**
 
 ### Week 1 — DONE:
 New tables: `notifications`, `activity_log`, `transactions`, `merchant_rules`, `budget_allocations`, `accounts`, `task_lists`, `habit_logs`, `goal_notes`, `settings`, `writing_style`. Expanded `tasks`, `habits`, `goals`. Built `NotificationBell` component. Settings page shell. Added `create_notification`, `log_activity`, `get_budget_status`, `get_transactions` agent tools.
@@ -280,9 +280,12 @@ Email full revamp. 3-column layout: smart folder nav | email list | reading pane
 ### Week 9 — DONE:
 Habits gamification. 30-day GitHub-style heatmap per habit. Level system (Recruit/Consistent/Machine/Untouchable) based on best streak. 5 achievements (First Week, Iron Will, Centurion, Perfect Week, Comeback). Streak Shields (max 3, stored in settings). PPL workout split with "TODAY" badge. 9pm Telegram nudge cron (/api/cron/habit-nudge, 01:00 UTC). Real date-anchored tracking via habit_logs table.
 
+### Week 10 — DONE:
+Goals full build. All goal metadata saved to Supabase (label, description, target, unit, deadline, color, category, milestones, subgoals). Seeds 5 default goals on first load. Notes stored in goal_notes table (not localStorage). Subgoals persisted as JSONB. Linked habits shown on each goal card via keyword/category matching. Delete goal + cascade delete notes. Quarterly check-in cron (/api/cron/goal-checkin, 10am UTC Jan 1 / Apr 1 / Jul 1 / Oct 1) sends Telegram progress report.
+
 ### Upcoming:
-- Week 10: Goals Full Build (metadata to Supabase, create from web/chat/Telegram, M.A.X. auto-links to habits, goal notes, quarterly check-in)
-- Week 11+: Feed, Settings, Chat, Agent tools
+- Week 11: Feed Revamp (daily topic override, M.A.X. Top 3, save articles)
+- Week 12+: Settings, Chat upgrades, Agent tools
 
 ### Key API upgrades planned:
 - CoinGecko → **CoinMarketCap** for crypto
