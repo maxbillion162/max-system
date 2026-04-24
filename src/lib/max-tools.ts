@@ -556,14 +556,22 @@ export async function projectSavings(
   };
 }
 
-/* ────────────────────────────────── TELEGRAM HISTORY ── */
+/* ────────────────────────────────── TELEGRAM HISTORY ──
+   Dual-write model: every Telegram message also lands in chat_messages
+   so the bubble, web chat, and Telegram share one unified conversation.
+   telegram_history is kept for backwards compatibility with the Archive
+   page until that page migrates to read from chat_messages directly. */
 export async function saveTelegramMessage(role: "user" | "assistant", content: string) {
-  await supabase.from("telegram_history").insert({ role, content });
+  await Promise.all([
+    supabase.from("telegram_history").insert({ role, content }).then(() => {}, () => {}),
+    supabase.from("chat_messages").insert({ role, content }).then(() => {}, () => {}),
+  ]);
 }
 
 export async function loadTelegramHistory(limit = 12) {
+  // Read from the unified chat_messages table so Telegram picks up web + bubble context too
   const { data } = await supabase
-    .from("telegram_history")
+    .from("chat_messages")
     .select("role, content")
     .order("created_at", { ascending: false })
     .limit(limit);
