@@ -25,6 +25,14 @@ const MONO = `ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace`;
 
 const WORD = ["M", ".", "A", ".", "X", "."];
 
+/* Mix two hex colors by ratio (0..1) */
+function mixHex(a: string, b: string, r: number): string {
+  const pa = [parseInt(a.slice(1, 3), 16), parseInt(a.slice(3, 5), 16), parseInt(a.slice(5, 7), 16)];
+  const pb = [parseInt(b.slice(1, 3), 16), parseInt(b.slice(3, 5), 16), parseInt(b.slice(5, 7), 16)];
+  const out = pa.map((v, i) => Math.round(v + (pb[i] - v) * r));
+  return `rgb(${out[0]}, ${out[1]}, ${out[2]})`;
+}
+
 export default function AccessPage() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -129,22 +137,13 @@ export default function AccessPage() {
         input::placeholder { color: ${C.t3}; }
       `}</style>
 
-      {/* Rock-surface marbling — large organic variation */}
+      {/* Smooth stone — very low-freq, single-octave turbulence. Barely there. */}
       <div style={{
         position: "absolute", inset: 0, pointerEvents: "none",
-        backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1400' height='1400'><filter id='r'><feTurbulence type='fractalNoise' baseFrequency='0.006 0.011' numOctaves='4' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.42  0 0 0 0 0.58  0 0 0 0 0.78  0 0 0 0.9 0'/></filter><rect width='100%25' height='100%25' filter='url(%23r)'/></svg>")`,
+        backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1800' height='1800'><filter id='s'><feTurbulence type='fractalNoise' baseFrequency='0.0025 0.004' numOctaves='1' seed='4' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.3  0 0 0 0 0.42  0 0 0 0 0.6  0 0 0 0.55 0'/></filter><rect width='100%25' height='100%25' filter='url(%23s)'/></svg>")`,
         backgroundSize: "cover",
-        opacity: 0.18,
-        mixBlendMode: "screen",
-        zIndex: 1,
-      }} />
-
-      {/* Fine micro-grain on top for surface texture */}
-      <div style={{
-        position: "absolute", inset: 0, pointerEvents: "none",
-        backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.55  0 0 0 0 0.7  0 0 0 0 0.9  0 0 0 0.5 0'/></filter><rect width='100%25' height='100%25' filter='url(%23g)'/></svg>")`,
         opacity: 0.08,
-        mixBlendMode: "overlay",
+        mixBlendMode: "screen",
         zIndex: 1,
       }} />
 
@@ -210,10 +209,19 @@ export default function AccessPage() {
         >
           {WORD.map((ch, i) => {
             const p = proximity[i] ?? 0;
-            /* Polished-metal gradient fill — cool platinum at top to deeper
-               steel at bottom. Under cursor, shifts toward ice-blue. */
-            const baseGrad = "linear-gradient(180deg, #F4F7FB 0%, #D9E0EB 40%, #A8B4C6 80%, #8C9AAF 100%)";
-            const hotGrad = "linear-gradient(180deg, #D8ECFF 0%, #A3CDF2 45%, #7DB8E8 80%, #5A9AD0 100%)";
+            /* Polished-metal fill. Hover shifts only the lower stops toward
+               ice-blue — top stays near-white. Whisper, not a wash. */
+            const topHex = "#F4F7FB";
+            const midHex = p > 0
+              ? mixHex("#D9E0EB", "#BDD6EF", p * 0.6)
+              : "#D9E0EB";
+            const lowHex = p > 0
+              ? mixHex("#A8B4C6", "#7DB8E8", p * 0.7)
+              : "#A8B4C6";
+            const botHex = p > 0
+              ? mixHex("#8C9AAF", "#5A9AD0", p * 0.7)
+              : "#8C9AAF";
+            const grad = `linear-gradient(180deg, ${topHex} 0%, ${midHex} 40%, ${lowHex} 80%, ${botHex} 100%)`;
             return (
               <span
                 key={i}
@@ -221,17 +229,16 @@ export default function AccessPage() {
                 style={{
                   display: "inline-block",
                   fontWeight: 800,
-                  backgroundImage: p > 0.02 ? hotGrad : baseGrad,
+                  backgroundImage: grad,
                   WebkitBackgroundClip: "text",
                   backgroundClip: "text",
                   WebkitTextFillColor: "transparent",
                   color: "transparent",
-                  filter: p > 0.05
-                    ? `drop-shadow(0 0 ${4 + p * 16}px rgba(125,184,232,${0.35 + p * 0.45})) drop-shadow(0 2px 10px rgba(0,0,0,0.6))`
+                  filter: p > 0.1
+                    ? `drop-shadow(0 0 ${4 + p * 8}px rgba(125,184,232,${0.15 + p * 0.18})) drop-shadow(0 2px 14px rgba(0,0,0,0.55))`
                     : "drop-shadow(0 2px 14px rgba(0,0,0,0.55))",
-                  opacity: !proximity.some(v => v > 0.02) || p > 0.02 ? 1 : 0.6,
-                  transition: "background-image .35s ease, filter .35s ease, opacity .35s ease",
-                  animation: `letter-in .9s cubic-bezier(.2,.6,.2,1) ${0.15 + i * 0.08}s both`,
+                  transition: "background-image .5s ease, filter .5s ease",
+                  animation: `letter-in .8s cubic-bezier(.2,.6,.2,1) ${0.1 + i * 0.06}s both`,
                   padding: "0 0.01em",
                 }}
               >
