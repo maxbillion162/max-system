@@ -11,15 +11,14 @@ interface SidebarProps {
 }
 
 const NAV_DEFAULT = [
-  { label: "Command Center", href: "/dashboard",          icon: "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" },
-  { label: "M.A.X. Chat",    href: "/dashboard/chat",     icon: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" },
-  { label: "Goals HQ",       href: "/dashboard/goals",    icon: "M12 22c5.52 0 10-4.48 10-10S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10zm0-6a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" },
-  { label: "Finance Hub",    href: "/dashboard/finance",  icon: "M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" },
-  { label: "Habits",         href: "/dashboard/habits",   icon: "M22 12h-4l-3 9L9 3l-3 9H2" },
-  { label: "Schedule",       href: "/dashboard/calendar", icon: "M3 4h18c.6 0 1 .4 1 1v16c0 .6-.4 1-1 1H3c-.6 0-1-.4-1-1V5c0-.6.4-1 1-1zM16 2v4M8 2v4M2 10h20" },
-  { label: "Email",          href: "/dashboard/email",    icon: "M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zM22 6l-10 7L2 6" },
-  { label: "Intel Feed",     href: "/dashboard/feed",     icon: "M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16M5 19a1 1 0 1 0 0-2 1 1 0 0 0 0 2z" },
-  { label: "Archive",        href: "/dashboard/archive",  icon: "M21 8v13H3V8M1 3h22v5H1zM10 12h4" },
+  { label: "Command Center", href: "/dashboard",             icon: "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" },
+  { label: "M.A.X. Chat",    href: "/dashboard/chat",        icon: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" },
+  { label: "Discipline",     href: "/dashboard/discipline",  icon: "M12 2l3 7h7l-5.5 4.5 2 7.5L12 17l-6.5 4 2-7.5L2 9h7z" },
+  { label: "Finance Hub",    href: "/dashboard/finance",     icon: "M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" },
+  { label: "Schedule",       href: "/dashboard/calendar",    icon: "M3 4h18c.6 0 1 .4 1 1v16c0 .6-.4 1-1 1H3c-.6 0-1-.4-1-1V5c0-.6.4-1 1-1zM16 2v4M8 2v4M2 10h20" },
+  { label: "Email",          href: "/dashboard/email",       icon: "M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zM22 6l-10 7L2 6" },
+  { label: "Intel Feed",     href: "/dashboard/feed",        icon: "M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16M5 19a1 1 0 1 0 0-2 1 1 0 0 0 0 2z" },
+  { label: "Archive",        href: "/dashboard/archive",     icon: "M21 8v13H3V8M1 3h22v5H1zM10 12h4" },
 ];
 
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
