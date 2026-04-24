@@ -68,6 +68,7 @@ export default function MaxChatBubble() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput]       = useState("");
   const [loading, setLoading]   = useState(false);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const pathname                = usePathname();
   const bottomRef               = useRef<HTMLDivElement>(null);
   const inputRef                = useRef<HTMLInputElement>(null);
@@ -77,6 +78,28 @@ export default function MaxChatBubble() {
     const handler = () => { setOpen(true); setTimeout(() => inputRef.current?.focus(), 50); };
     window.addEventListener("max-open-chat", handler);
     return () => window.removeEventListener("max-open-chat", handler);
+  }, []);
+
+  // Load recent conversation history once — bubble shares state with the chat page
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/chat/history");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled || !Array.isArray(data.messages)) return;
+        // Keep last ~12 messages to fit the bubble; chat page shows more
+        const recent = data.messages.slice(-12).map((m: { role: string; content: string }) => ({
+          role: m.role === "max" ? "max" as const : "user" as const,
+          content: m.content,
+        }));
+        setMessages(recent);
+      } catch {} finally {
+        if (!cancelled) setHistoryLoaded(true);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -95,24 +118,66 @@ export default function MaxChatBubble() {
     setMessages(updated);
     setLoading(true);
 
+    // Reserve an assistant slot we'll stream into
+    const asstIndex = updated.length;
+    setMessages(prev => [...prev, { role: "max", content: "" }]);
+
     try {
       const liveData = messages.length === 0 ? await fetchPageContext(pathname) : "";
       const contextHeader = `[Context: M.A.X. dashboard — ${pageLabel} page${liveData}]`;
 
       const apiMessages = updated.map((m, i) => ({
-        role: m.role === "max" ? "model" : "user",
+        role: m.role === "max" ? "assistant" : "user",
         content: i === 0 ? `${contextHeader}\n\n${m.content}` : m.content,
       }));
 
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: apiMessages }),
+        body: JSON.stringify({ messages: apiMessages, surface: "bubble" }),
       });
-      const data = await res.json();
-      setMessages(prev => [...prev, { role: "max", content: data.reply ?? "Error." }]);
+
+      if (!res.ok || !res.body) {
+        setMessages(prev => prev.map((m, i) => i === asstIndex ? { ...m, content: "Connection error." } : m));
+        return;
+      }
+
+      // Stream SSE — the chat API returns { t: 'chunk' | 'tool' | 'done' } events
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      let full = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        // Events are separated by blank lines per SSE spec
+        const parts = buf.split("\n\n");
+        buf = parts.pop() ?? "";
+        for (const part of parts) {
+          const line = part.trim();
+          if (!line.startsWith("data:")) continue;
+          const payload = line.slice(5).trim();
+          if (!payload) continue;
+          try {
+            const evt = JSON.parse(payload) as { t: string; text?: string; full?: string };
+            if (evt.t === "chunk" && evt.text) {
+              full += evt.text;
+              setMessages(prev => prev.map((m, i) => i === asstIndex ? { ...m, content: full } : m));
+            } else if (evt.t === "done" && evt.full) {
+              full = evt.full;
+              setMessages(prev => prev.map((m, i) => i === asstIndex ? { ...m, content: full } : m));
+            }
+          } catch {}
+        }
+      }
+
+      if (!full) {
+        setMessages(prev => prev.map((m, i) => i === asstIndex ? { ...m, content: "No response." } : m));
+      }
     } catch {
-      setMessages(prev => [...prev, { role: "max", content: "Connection error." }]);
+      setMessages(prev => prev.map((m, i) => i === asstIndex ? { ...m, content: "Connection error." } : m));
     }
     setLoading(false);
   }
@@ -152,7 +217,7 @@ export default function MaxChatBubble() {
           </div>
 
           <div style={{ flex: 1, overflowY: "auto", padding: "14px 14px 8px", display: "flex", flexDirection: "column", gap: 10 }}>
-            {messages.length === 0 && (
+            {historyLoaded && messages.length === 0 && (
               <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, opacity: 0.5 }}>
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--t4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
