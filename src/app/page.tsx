@@ -106,12 +106,7 @@ export default function AccessPage() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: `
-        radial-gradient(700px 520px at 50% 42%, rgba(125,184,232,0.12), transparent 65%),
-        radial-gradient(1400px 800px at 50% 120%, rgba(125,184,232,0.09), transparent 70%),
-        radial-gradient(1600px 900px at 50% -15%, rgba(30,60,100,0.18), transparent 60%),
-        linear-gradient(180deg, ${C.bg} 0%, ${C.bgSoft} 60%, ${C.bg} 100%)
-      `,
+      background: `linear-gradient(180deg, ${C.bg} 0%, ${C.bgSoft} 100%)`,
       color: C.t1,
       fontFamily: "'Inter', system-ui, sans-serif",
       position: "relative",
@@ -135,20 +130,13 @@ export default function AccessPage() {
         input::placeholder { color: ${C.t3}; }
       `}</style>
 
-      {/* Grain overlay — coarser, brighter, actually visible */}
+      {/* Grain overlay — subtle, even texture across the whole page */}
       <div style={{
         position: "absolute", inset: 0, pointerEvents: "none",
-        backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.6  0 0 0 0 0.78  0 0 0 0 0.95  0 0 0 0.9 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")`,
-        opacity: 0.22,
+        backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.55  0 0 0 0 0.72  0 0 0 0 0.9  0 0 0 0.8 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")`,
+        opacity: 0.14,
         mixBlendMode: "screen",
         zIndex: 1,
-      }} />
-
-      {/* Vignette — dark edges, bright center — pronounces the composition */}
-      <div style={{
-        position: "absolute", inset: 0, pointerEvents: "none",
-        background: "radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.75) 100%)",
-        zIndex: 2,
       }} />
 
       {/* Camera framing marks — precision instrument cue, not hacker UI */}
