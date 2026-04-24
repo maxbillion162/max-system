@@ -59,14 +59,14 @@ export default function TransactionReview({ transactions, categories, categoryCo
         <div style={{ fontSize: 32, marginBottom: 12 }}>✦</div>
         <div style={{ fontSize: 16, fontWeight: 700, color: "var(--t1)", marginBottom: 6 }}>All done — {confirmed} transactions confirmed</div>
         <div style={{ fontSize: 13, color: "var(--t3)", marginBottom: 24 }}>M.A.X. will remember these rules for future transactions.</div>
-        <button onClick={onDone} style={{ padding: "10px 24px", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "rgba(69,137,255,0.15)", border: "1px solid rgba(69,137,255,0.35)", color: "var(--blue)", cursor: "pointer" }}>
+        <button onClick={onDone} style={{ padding: "10px 24px", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "rgba(125,184,232,0.15)", border: "1px solid rgba(125,184,232,0.35)", color: "var(--blue)", cursor: "pointer" }}>
           Done
         </button>
       </div>
     );
   }
 
-  const color  = categoryColors[current.budget_category] ?? "#4589ff";
+  const color  = categoryColors[current.budget_category] ?? "#7DB8E8";
   const pctDone = (idx / total) * 100;
 
   return (
@@ -98,7 +98,7 @@ export default function TransactionReview({ transactions, categories, categoryCo
         }}>
           {/* M.A.X. badge */}
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 20 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(69,137,255,0.6)" }}>M.A.X. categorized</div>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(125,184,232,0.6)" }}>M.A.X. categorized</div>
           </div>
 
           {/* Merchant */}
@@ -141,7 +141,7 @@ export default function TransactionReview({ transactions, categories, categoryCo
           <div style={{ fontSize: 12, color: "var(--t3)", marginBottom: 12, textAlign: "center" }}>Pick the correct category:</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
             {categories.map(cat => {
-              const c = categoryColors[cat] ?? "#4589ff";
+              const c = categoryColors[cat] ?? "#7DB8E8";
               return (
                 <button
                   key={cat}

@@ -235,8 +235,8 @@ export default function FeedPage() {
       )}
 
       {/* M.A.X. Brief */}
-      <div style={{marginBottom:16,padding:"14px 18px",borderRadius:10,background:"rgba(69,137,255,0.04)",border:"1px solid rgba(69,137,255,0.12)",display:"flex",alignItems:"flex-start",gap:12}}>
-        <div style={{width:28,height:28,borderRadius:7,background:"rgba(69,137,255,0.1)",border:"1px solid rgba(69,137,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+      <div style={{marginBottom:16,padding:"14px 18px",borderRadius:10,background:"rgba(125,184,232,0.04)",border:"1px solid rgba(125,184,232,0.12)",display:"flex",alignItems:"flex-start",gap:12}}>
+        <div style={{width:28,height:28,borderRadius:7,background:"rgba(125,184,232,0.1)",border:"1px solid rgba(125,184,232,0.2)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
           <span style={{fontSize:12,fontWeight:900,color:"var(--blue)"}}>M</span>
         </div>
         <div style={{flex:1}}>
@@ -259,7 +259,7 @@ export default function FeedPage() {
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16,flexWrap:"wrap"}}>
         <div style={{display:"flex",gap:4,flexWrap:"wrap",flex:1}}>
           {TAGS.map(t=>(
-            <button key={t} onClick={()=>setTag(t)} style={{padding:"5px 12px",borderRadius:20,cursor:"pointer",fontSize:11,fontWeight:600,background:tag===t?"rgba(69,137,255,0.15)":"transparent",border:`1px solid ${tag===t?"rgba(69,137,255,0.35)":"var(--border)"}`,color:tag===t?"var(--blue)":"var(--t3)",transition:"all .15s"}}>
+            <button key={t} onClick={()=>setTag(t)} style={{padding:"5px 12px",borderRadius:20,cursor:"pointer",fontSize:11,fontWeight:600,background:tag===t?"rgba(125,184,232,0.15)":"transparent",border:`1px solid ${tag===t?"rgba(125,184,232,0.35)":"var(--border)"}`,color:tag===t?"var(--blue)":"var(--t3)",transition:"all .15s"}}>
               {t==="Breaking"?"● Breaking":t}
             </button>
           ))}
@@ -317,7 +317,7 @@ export default function FeedPage() {
           {/* M.A.X. Top 3 */}
           <HudCard style={{padding:"16px 18px"}}>
             <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:12}}>
-              <div style={{width:22,height:22,borderRadius:6,background:"rgba(69,137,255,0.1)",border:"1px solid rgba(69,137,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              <div style={{width:22,height:22,borderRadius:6,background:"rgba(125,184,232,0.1)",border:"1px solid rgba(125,184,232,0.2)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                 <span style={{fontSize:10,fontWeight:900,color:"var(--blue)"}}>M</span>
               </div>
               <p style={{fontSize:10,fontWeight:700,letterSpacing:"0.14em",textTransform:"uppercase",color:"var(--blue)"}}>Top 3 Picks</p>

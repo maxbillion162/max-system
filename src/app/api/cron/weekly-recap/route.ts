@@ -84,7 +84,7 @@ export async function GET() {
     const resendKey = process.env.RESEND_API_KEY;
     if (resendKey) {
       const resend = new Resend(resendKey);
-      const S = { bg: "#04060f", card: "#07101e", border: "rgba(69,137,255,0.12)", blue: "#4589ff", green: "#22c55e", red: "#ef4444", amber: "#f59e0b", t1: "#f0f9ff", t2: "#94a3b8", t3: "#475569", t4: "#1e3a5f" };
+      const S = { bg: "#04060f", card: "#040608", border: "rgba(125,184,232,0.12)", blue: "#7DB8E8", green: "#22c55e", red: "#ef4444", amber: "#f59e0b", t1: "#f0f9ff", t2: "#94a3b8", t3: "#475569", t4: "#1e3a5f" };
       const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:${S.bg};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:${S.bg};padding:40px 20px;"><tr><td align="center">
@@ -101,7 +101,7 @@ export async function GET() {
           <div style="color:${S.t3};font-size:11px;margin-top:3px;">Habits today</div>
         </td>
         <td style="width:12px;"></td>
-        <td style="padding:14px;background:rgba(69,137,255,0.06);border:1px solid rgba(69,137,255,0.12);border-radius:8px;text-align:center;">
+        <td style="padding:14px;background:rgba(125,184,232,0.06);border:1px solid rgba(125,184,232,0.12);border-radius:8px;text-align:center;">
           <div style="color:${S.blue};font-size:28px;font-weight:900;">${completedThisWeek}</div>
           <div style="color:${S.t3};font-size:11px;margin-top:3px;">Tasks done</div>
         </td>
@@ -113,12 +113,12 @@ export async function GET() {
       </tr>
     </table>
     ${btc || xrp ? `
-    <div style="margin-top:24px;padding-top:20px;border-top:1px solid rgba(69,137,255,0.08);">
+    <div style="margin-top:24px;padding-top:20px;border-top:1px solid rgba(125,184,232,0.08);">
       <div style="color:${S.t3};font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:12px;">📈 Crypto</div>
       ${btc ? `<div style="color:${S.t2};font-size:13px;margin-bottom:4px;">BTC <span style="color:${S.t1};font-weight:700;font-family:monospace;">$${Math.round(btc.price).toLocaleString()}</span> <span style="color:${btc.change24h >= 0 ? S.green : S.red};">${fmt(btc.change24h)}% 24h</span></div>` : ""}
       ${xrp ? `<div style="color:${S.t2};font-size:13px;">XRP <span style="color:${S.t1};font-weight:700;font-family:monospace;">$${xrp.price.toFixed(4)}</span> <span style="color:${xrp.change24h >= 0 ? S.green : S.red};">${fmt(xrp.change24h)}% 24h</span></div>` : ""}
     </div>` : ""}
-    <div style="margin-top:24px;padding-top:20px;border-top:1px solid rgba(69,137,255,0.08);text-align:center;color:${S.t4};font-size:11px;">M.A.X. &middot; Maximum Adaptive eXecutive</div>
+    <div style="margin-top:24px;padding-top:20px;border-top:1px solid rgba(125,184,232,0.08);text-align:center;color:${S.t4};font-size:11px;">M.A.X. &middot; Maximum Adaptive eXecutive</div>
   </td></tr>
 </table>
 </td></tr></table>

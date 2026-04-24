@@ -89,9 +89,9 @@ function FeedSection({ interests, onSave }: { interests:string[]; onSave:(v:stri
       </p>
       <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:18}}>
         {items.map(t=>(
-          <div key={t} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 10px 6px 12px",borderRadius:20,background:"rgba(69,137,255,0.08)",border:"1px solid rgba(69,137,255,0.2)"}}>
+          <div key={t} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 10px 6px 12px",borderRadius:20,background:"rgba(125,184,232,0.08)",border:"1px solid rgba(125,184,232,0.2)"}}>
             <span style={{fontSize:12,fontWeight:600,color:"var(--blue)"}}>{t}</span>
-            <button onClick={()=>remove(t)} style={{width:16,height:16,borderRadius:"50%",background:"rgba(69,137,255,0.15)",border:"none",cursor:"pointer",color:"var(--blue)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,padding:0}}>×</button>
+            <button onClick={()=>remove(t)} style={{width:16,height:16,borderRadius:"50%",background:"rgba(125,184,232,0.15)",border:"none",cursor:"pointer",color:"var(--blue)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,padding:0}}>×</button>
           </div>
         ))}
       </div>
@@ -110,7 +110,7 @@ function FeedSection({ interests, onSave }: { interests:string[]; onSave:(v:stri
       <button
         onClick={handleSave}
         disabled={saving}
-        style={{padding:"9px 20px",borderRadius:8,background:"rgba(69,137,255,0.1)",border:"1px solid rgba(69,137,255,0.25)",cursor:"pointer",fontSize:12,fontWeight:700,color:saved?"var(--green)":"var(--blue)",transition:"color .2s"}}
+        style={{padding:"9px 20px",borderRadius:8,background:"rgba(125,184,232,0.1)",border:"1px solid rgba(125,184,232,0.25)",cursor:"pointer",fontSize:12,fontWeight:700,color:saved?"var(--green)":"var(--blue)",transition:"color .2s"}}
       >
         {saving?"Saving…":saved?"✓ Saved":"Save Interests"}
       </button>
@@ -153,7 +153,7 @@ function NotifSection({ prefs, onSave }: { prefs:NotifPrefs; onSave:(v:NotifPref
         <button
           onClick={save}
           disabled={saving}
-          style={{padding:"9px 20px",borderRadius:8,background:"rgba(69,137,255,0.1)",border:"1px solid rgba(69,137,255,0.25)",cursor:"pointer",fontSize:12,fontWeight:700,color:saved?"var(--green)":"var(--blue)",transition:"color .2s"}}
+          style={{padding:"9px 20px",borderRadius:8,background:"rgba(125,184,232,0.1)",border:"1px solid rgba(125,184,232,0.25)",cursor:"pointer",fontSize:12,fontWeight:700,color:saved?"var(--green)":"var(--blue)",transition:"color .2s"}}
         >
           {saving?"Saving…":saved?"✓ Saved":"Save"}
         </button>
@@ -264,8 +264,8 @@ function PrefsSection({ prefs, onSave }: { prefs:Preferences; onSave:(v:Preferen
             <button key={v} onClick={()=>setLocal(p=>({...p,calendar_default_view:v}))}
               style={{
                 padding:"5px 12px",borderRadius:6,border:"1px solid",cursor:"pointer",fontSize:12,fontWeight:600,
-                background:local.calendar_default_view===v?"rgba(69,137,255,0.12)":"transparent",
-                borderColor:local.calendar_default_view===v?"rgba(69,137,255,0.3)":"var(--border)",
+                background:local.calendar_default_view===v?"rgba(125,184,232,0.12)":"transparent",
+                borderColor:local.calendar_default_view===v?"rgba(125,184,232,0.3)":"var(--border)",
                 color:local.calendar_default_view===v?"var(--blue)":"var(--t3)",
                 transition:"all .15s",
               }}
@@ -280,7 +280,7 @@ function PrefsSection({ prefs, onSave }: { prefs:Preferences; onSave:(v:Preferen
         <button
           onClick={save}
           disabled={saving}
-          style={{padding:"9px 20px",borderRadius:8,background:"rgba(69,137,255,0.1)",border:"1px solid rgba(69,137,255,0.25)",cursor:"pointer",fontSize:12,fontWeight:700,color:saved?"var(--green)":"var(--blue)",transition:"color .2s"}}
+          style={{padding:"9px 20px",borderRadius:8,background:"rgba(125,184,232,0.1)",border:"1px solid rgba(125,184,232,0.25)",cursor:"pointer",fontSize:12,fontWeight:700,color:saved?"var(--green)":"var(--blue)",transition:"color .2s"}}
         >
           {saving?"Saving…":saved?"✓ Saved":"Save"}
         </button>
@@ -398,14 +398,14 @@ function DataSection() {
 
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         <SettingRow label="Export Goals" desc="Download all goal data including milestones and subgoals">
-          <button onClick={exportGoals} disabled={exportingGoals} style={{...btnBase,background:"rgba(69,137,255,0.08)",borderColor:"rgba(69,137,255,0.2)",color:"var(--blue)"}}>
+          <button onClick={exportGoals} disabled={exportingGoals} style={{...btnBase,background:"rgba(125,184,232,0.08)",borderColor:"rgba(125,184,232,0.2)",color:"var(--blue)"}}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             {exportingGoals?"Exporting…":"Export JSON"}
           </button>
         </SettingRow>
 
         <SettingRow label="Export Goal Notes" desc="Download all journal entries for your goals">
-          <button onClick={exportNotes} disabled={exportingNotes} style={{...btnBase,background:"rgba(69,137,255,0.08)",borderColor:"rgba(69,137,255,0.2)",color:"var(--blue)"}}>
+          <button onClick={exportNotes} disabled={exportingNotes} style={{...btnBase,background:"rgba(125,184,232,0.08)",borderColor:"rgba(125,184,232,0.2)",color:"var(--blue)"}}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             {exportingNotes?"Exporting…":"Export JSON"}
           </button>
@@ -465,7 +465,7 @@ export default function SettingsPage() {
               style={{
                 display:"flex",alignItems:"center",gap:10,width:"100%",textAlign:"left",
                 padding:"10px 12px",borderRadius:8,border:"none",cursor:"pointer",transition:"all .15s",
-                background:active===s.id?"rgba(69,137,255,0.1)":"transparent",
+                background:active===s.id?"rgba(125,184,232,0.1)":"transparent",
                 color:active===s.id?"var(--blue)":"var(--t3)",
               }}
               onMouseEnter={e=>{ if(active!==s.id)(e.currentTarget as HTMLElement).style.background="rgba(255,255,255,0.04)"; }}
@@ -489,7 +489,7 @@ export default function SettingsPage() {
             {/* Section header */}
             <div style={{marginBottom:32}}>
               <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
-                <div style={{width:32,height:32,borderRadius:9,background:"rgba(69,137,255,0.08)",border:"1px solid rgba(69,137,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,color:"rgba(69,137,255,0.7)"}}>
+                <div style={{width:32,height:32,borderRadius:9,background:"rgba(125,184,232,0.08)",border:"1px solid rgba(125,184,232,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,color:"rgba(125,184,232,0.7)"}}>
                   {section.icon}
                 </div>
                 <h2 style={{fontSize:20,fontWeight:800,color:"var(--t1)",letterSpacing:"-0.02em",margin:0}}>{section.label}</h2>

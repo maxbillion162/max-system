@@ -61,7 +61,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       style={{
         width: collapsed ? 56 : 220,
         background: "linear-gradient(180deg, #080b15 0%, #060810 100%)",
-        borderRight: "1px solid rgba(77,144,255,0.1)",
+        borderRight: "1px solid rgba(125,184,232,0.1)",
         transition: "width 0.25s ease",
         overflow: "hidden",
       }}
@@ -70,7 +70,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       <div
         className="flex items-center flex-shrink-0"
         style={{
-          borderBottom: "1px solid rgba(77,144,255,0.08)",
+          borderBottom: "1px solid rgba(125,184,232,0.08)",
           height: 60,
           padding: collapsed ? "0 12px" : "0 14px",
           justifyContent: collapsed ? "center" : "space-between",
@@ -82,9 +82,9 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             className="flex-shrink-0 rounded-lg flex items-center justify-center"
             style={{
               width: 32, height: 32,
-              background: "linear-gradient(135deg, rgba(77,144,255,0.15), rgba(77,144,255,0.05))",
-              border: "1px solid rgba(77,144,255,0.35)",
-              boxShadow: "0 0 16px rgba(77,144,255,0.1)",
+              background: "linear-gradient(135deg, rgba(125,184,232,0.15), rgba(125,184,232,0.05))",
+              border: "1px solid rgba(125,184,232,0.35)",
+              boxShadow: "0 0 16px rgba(125,184,232,0.1)",
             }}
           >
             <span style={{ fontSize: 14, fontWeight: 900, color: "var(--blue)", letterSpacing: "-0.02em" }}>M</span>
@@ -112,14 +112,14 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             onClick={onToggle}
             style={{
               width: 26, height: 26, flexShrink: 0, cursor: "pointer",
-              background: "rgba(77,144,255,0.06)",
-              border: "1px solid rgba(77,144,255,0.12)",
+              background: "rgba(125,184,232,0.06)",
+              border: "1px solid rgba(125,184,232,0.12)",
               borderRadius: 6, color: "var(--t3)",
               display: "flex", alignItems: "center", justifyContent: "center",
               transition: "all 0.15s",
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(77,144,255,0.25)"; (e.currentTarget as HTMLElement).style.color = "var(--t2)"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(77,144,255,0.12)"; (e.currentTarget as HTMLElement).style.color = "var(--t3)"; }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(125,184,232,0.25)"; (e.currentTarget as HTMLElement).style.color = "var(--t2)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(125,184,232,0.12)"; (e.currentTarget as HTMLElement).style.color = "var(--t3)"; }}
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M15 18l-6-6 6-6" />
@@ -135,7 +135,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* ── Nav ── */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden" style={{ padding: collapsed ? "10px 6px" : "10px 8px" }}>
         {!collapsed && (
-          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(77,144,255,0.3)", padding: "4px 8px 8px", whiteSpace: "nowrap" }}>
+          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(125,184,232,0.3)", padding: "4px 8px 8px", whiteSpace: "nowrap" }}>
             Navigation
           </div>
         )}
@@ -155,7 +155,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 style={{
                   opacity: isDragging ? 0.3 : 1,
                   transition: "opacity .15s",
-                  borderTop: isDropTarget ? "1px solid rgba(77,144,255,0.45)" : "1px solid transparent",
+                  borderTop: isDropTarget ? "1px solid rgba(125,184,232,0.45)" : "1px solid transparent",
                 }}
               >
                 <Link
@@ -169,12 +169,12 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     justifyContent: collapsed ? "center" : "flex-start",
                     borderRadius: 7,
                     color: active ? "var(--t1)" : "var(--t3)",
-                    background: active ? "rgba(77,144,255,0.1)" : "transparent",
+                    background: active ? "rgba(125,184,232,0.1)" : "transparent",
                     borderLeft: active && !collapsed ? "2px solid var(--blue)" : "2px solid transparent",
                     textDecoration: "none",
                     transition: "all 0.15s ease",
                   }}
-                  onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLElement).style.background = "rgba(77,144,255,0.05)"; (e.currentTarget as HTMLElement).style.color = "var(--t2)"; } }}
+                  onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLElement).style.background = "rgba(125,184,232,0.05)"; (e.currentTarget as HTMLElement).style.color = "var(--t2)"; } }}
                   onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--t3)"; } }}
                 >
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
@@ -194,7 +194,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </nav>
 
       {/* ── Settings ── */}
-      <div style={{ padding: collapsed ? "8px 6px" : "8px 8px", borderTop: "1px solid rgba(77,144,255,0.07)", flexShrink: 0 }}>
+      <div style={{ padding: collapsed ? "8px 6px" : "8px 8px", borderTop: "1px solid rgba(125,184,232,0.07)", flexShrink: 0 }}>
         <Link
           href="/dashboard/settings"
           title={collapsed ? "Settings" : undefined}
@@ -204,13 +204,13 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             justifyContent: collapsed ? "center" : "flex-start",
             borderRadius: 7, textDecoration: "none",
             color: pathname === "/dashboard/settings" ? "var(--t2)" : "var(--t3)",
-            background: pathname === "/dashboard/settings" ? "rgba(77,144,255,0.07)" : "transparent",
+            background: pathname === "/dashboard/settings" ? "rgba(125,184,232,0.07)" : "transparent",
             transition: "all 0.15s ease",
           }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--t2)"; (e.currentTarget as HTMLElement).style.background = "rgba(77,144,255,0.05)"; }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--t2)"; (e.currentTarget as HTMLElement).style.background = "rgba(125,184,232,0.05)"; }}
           onMouseLeave={e => {
             (e.currentTarget as HTMLElement).style.color = pathname === "/dashboard/settings" ? "var(--t2)" : "var(--t3)";
-            (e.currentTarget as HTMLElement).style.background = pathname === "/dashboard/settings" ? "rgba(77,144,255,0.07)" : "transparent";
+            (e.currentTarget as HTMLElement).style.background = pathname === "/dashboard/settings" ? "rgba(125,184,232,0.07)" : "transparent";
           }}
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
@@ -226,13 +226,13 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         display: "flex", alignItems: "center", gap: 10,
         padding: collapsed ? "12px 0" : "12px 14px",
         justifyContent: collapsed ? "center" : "flex-start",
-        borderTop: "1px solid rgba(77,144,255,0.07)",
+        borderTop: "1px solid rgba(125,184,232,0.07)",
         flexShrink: 0,
       }}>
         <div style={{
           width: 28, height: 28, borderRadius: 8, flexShrink: 0,
-          background: "linear-gradient(135deg, rgba(77,144,255,0.3), rgba(155,138,251,0.3))",
-          border: "1px solid rgba(77,144,255,0.2)",
+          background: "linear-gradient(135deg, rgba(125,184,232,0.3), rgba(155,138,251,0.3))",
+          border: "1px solid rgba(125,184,232,0.2)",
           display: "flex", alignItems: "center", justifyContent: "center",
           fontSize: 12, fontWeight: 800, color: "var(--t1)",
         }}>M</div>

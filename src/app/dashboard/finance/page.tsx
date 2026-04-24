@@ -22,7 +22,7 @@ interface Transaction    { id: string; date: string; amount: number; merchant: s
 
 /* ─────────────── Constants ─────────────── */
 const CAT_COLORS: Record<string, string> = {
-  Housing:"#4589ff", Food:"#10b981", Transport:"#f59e0b", Entertainment:"#8b5cf6",
+  Housing:"#7DB8E8", Food:"#10b981", Transport:"#f59e0b", Entertainment:"#8b5cf6",
   Subscriptions:"#06b6d4", Savings:"#10b981", Health:"#ef4444", Shopping:"#f97316",
   Personal:"#ec4899", Investing:"#6366f1", Misc:"#6b7280",
 };
@@ -67,8 +67,8 @@ function TabBtn({ label, active, onClick }: { label: string; active: boolean; on
   return (
     <button onClick={onClick} style={{
       padding:"10px 20px", borderRadius:8, fontSize:13, fontWeight:active?700:500, cursor:"pointer",
-      background: active ? "rgba(69,137,255,0.12)" : "transparent",
-      border: `1px solid ${active ? "rgba(69,137,255,0.35)" : "transparent"}`,
+      background: active ? "rgba(125,184,232,0.12)" : "transparent",
+      border: `1px solid ${active ? "rgba(125,184,232,0.35)" : "transparent"}`,
       color: active ? "var(--blue)" : "var(--t3)",
       transition:"all 0.15s",
     }}
@@ -115,7 +115,7 @@ function IncomeModal({ current, onSave, onClose }: { current:number; onSave:(n:n
         </div>
         <div style={{ display:"flex",gap:10 }}>
           <button onClick={onClose} style={{ flex:1,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:600,cursor:"pointer",background:"transparent",border:"1px solid var(--border2)",color:"var(--t3)" }}>Cancel</button>
-          <button onClick={()=>{onSave(parseFloat(val)||0);onClose();}} style={{ flex:2,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer",background:"rgba(69,137,255,0.15)",border:"1px solid rgba(69,137,255,0.4)",color:"var(--blue)" }}>Save</button>
+          <button onClick={()=>{onSave(parseFloat(val)||0);onClose();}} style={{ flex:2,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer",background:"rgba(125,184,232,0.15)",border:"1px solid rgba(125,184,232,0.4)",color:"var(--blue)" }}>Save</button>
         </div>
       </div>
     </div>
@@ -156,7 +156,7 @@ function AllocModal({ alloc, existingCats, onSave, onDelete, onClose }: { alloc?
         <div style={{ display:"flex",gap:10 }}>
           {onDelete&&<button onClick={onDelete} style={{ padding:"11px 14px",borderRadius:6,fontSize:13,fontWeight:600,cursor:"pointer",background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.2)",color:"var(--red)" }}>Delete</button>}
           <button onClick={onClose} style={{ flex:1,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:600,cursor:"pointer",background:"transparent",border:"1px solid var(--border2)",color:"var(--t3)" }}>Cancel</button>
-          <button onClick={()=>onSave(cat,parseFloat(amt)||0,alloc?.id)} style={{ flex:2,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer",background:"rgba(69,137,255,0.15)",border:"1px solid rgba(69,137,255,0.4)",color:"var(--blue)" }}>Save</button>
+          <button onClick={()=>onSave(cat,parseFloat(amt)||0,alloc?.id)} style={{ flex:2,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer",background:"rgba(125,184,232,0.15)",border:"1px solid rgba(125,184,232,0.4)",color:"var(--blue)" }}>Save</button>
         </div>
       </div>
     </div>
@@ -480,7 +480,7 @@ export default function FinancePage() {
                 {allocations.length===0?(
                   <div style={{ padding:"16px 0",textAlign:"center" }}>
                     <div style={{ fontSize:13,color:"var(--t3)",marginBottom:12 }}>Budget not set up</div>
-                    <button onClick={()=>setTab("budget")} style={{ padding:"8px 16px",borderRadius:7,fontSize:12,fontWeight:600,background:"rgba(69,137,255,0.1)",border:"1px solid rgba(69,137,255,0.25)",color:"var(--blue)",cursor:"pointer" }}>Set Up Budget</button>
+                    <button onClick={()=>setTab("budget")} style={{ padding:"8px 16px",borderRadius:7,fontSize:12,fontWeight:600,background:"rgba(125,184,232,0.1)",border:"1px solid rgba(125,184,232,0.25)",color:"var(--blue)",cursor:"pointer" }}>Set Up Budget</button>
                   </div>
                 ):(
                   <>
@@ -492,7 +492,7 @@ export default function FinancePage() {
                       {allocations.slice(0,4).map(a=>{
                         const spent=spendByCategory[a.category]??0;
                         const pct=a.budgeted>0?(spent/a.budgeted)*100:0;
-                        const color=CAT_COLORS[a.category]??"#4589ff";
+                        const color=CAT_COLORS[a.category]??"#7DB8E8";
                         const status=pct>=100?"var(--red)":pct>=80?"var(--amber)":"var(--green)";
                         return (
                           <div key={a.id}>
@@ -560,7 +560,7 @@ export default function FinancePage() {
                   <div style={{ display:"flex",gap:28,paddingTop:4,flexWrap:"wrap" }}>
                     <div onClick={()=>setModal("income")} style={{ cursor:"pointer" }}>
                       <StatPill label="Income" value={`$${fmtInt(income)}`} color="var(--green)"/>
-                      <div style={{ fontSize:10,color:"rgba(69,137,255,0.4)",marginTop:4 }}>click to edit</div>
+                      <div style={{ fontSize:10,color:"rgba(125,184,232,0.4)",marginTop:4 }}>click to edit</div>
                     </div>
                     <StatPill label="Budgeted" value={`$${fmtInt(totalBudgeted)}`} color="var(--blue)"/>
                     <StatPill label="Spent" value={`$${fmtInt(totalSpent)}`} color="var(--amber)"/>
@@ -573,9 +573,9 @@ export default function FinancePage() {
                   >
                     <span>✦</span>{aiRunning?"Categorizing…":"Auto-Categorize with M.A.X."}
                   </button>
-                  <button onClick={()=>setModal("addAlloc")} style={{ padding:"10px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",background:"rgba(69,137,255,0.12)",border:"1px solid rgba(69,137,255,0.3)",color:"var(--blue)",display:"flex",alignItems:"center",gap:6,transition:"all 0.15s" }}
-                    onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background="rgba(69,137,255,0.22)"}
-                    onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background="rgba(69,137,255,0.12)"}
+                  <button onClick={()=>setModal("addAlloc")} style={{ padding:"10px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",background:"rgba(125,184,232,0.12)",border:"1px solid rgba(125,184,232,0.3)",color:"var(--blue)",display:"flex",alignItems:"center",gap:6,transition:"all 0.15s" }}
+                    onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background="rgba(125,184,232,0.22)"}
+                    onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background="rgba(125,184,232,0.12)"}
                   >
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
                     Add Category
@@ -607,15 +607,15 @@ export default function FinancePage() {
             {/* Categories */}
             {allocations.length===0?(
               <HudCard style={{ padding:"52px 40px",textAlign:"center" }} delay={0.08}>
-                <div style={{ fontSize:36,marginBottom:16,color:"rgba(69,137,255,0.4)" }}>◈</div>
+                <div style={{ fontSize:36,marginBottom:16,color:"rgba(125,184,232,0.4)" }}>◈</div>
                 <div style={{ fontSize:18,fontWeight:700,color:"var(--t1)",marginBottom:8 }}>No budget set up yet</div>
                 <div style={{ fontSize:14,color:"var(--t3)",marginBottom:28,maxWidth:360,margin:"0 auto 28px" }}>
                   Zero-based budgeting means every dollar has a job. Quick Setup loads sensible defaults instantly.
                 </div>
                 <div style={{ display:"flex",gap:12,justifyContent:"center" }}>
-                  <button onClick={quickBudgetSetup} style={{ padding:"12px 28px",borderRadius:8,fontSize:14,fontWeight:700,background:"rgba(69,137,255,0.15)",border:"1px solid rgba(69,137,255,0.35)",color:"var(--blue)",cursor:"pointer",transition:"all 0.15s" }}
-                    onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background="rgba(69,137,255,0.25)"}
-                    onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background="rgba(69,137,255,0.15)"}
+                  <button onClick={quickBudgetSetup} style={{ padding:"12px 28px",borderRadius:8,fontSize:14,fontWeight:700,background:"rgba(125,184,232,0.15)",border:"1px solid rgba(125,184,232,0.35)",color:"var(--blue)",cursor:"pointer",transition:"all 0.15s" }}
+                    onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background="rgba(125,184,232,0.25)"}
+                    onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background="rgba(125,184,232,0.15)"}
                   >Quick Setup — Load Defaults</button>
                   <button onClick={()=>setModal("addAlloc")} style={{ padding:"12px 24px",borderRadius:8,fontSize:14,fontWeight:600,background:"transparent",border:"1px solid rgba(255,255,255,0.1)",color:"var(--t3)",cursor:"pointer" }}>Build Manually</button>
                 </div>
@@ -626,7 +626,7 @@ export default function FinancePage() {
                   const spent=spendByCategory[alloc.category]??0;
                   const pct=alloc.budgeted>0?(spent/alloc.budgeted)*100:0;
                   const remaining=alloc.budgeted-spent;
-                  const color=CAT_COLORS[alloc.category]??"#4589ff";
+                  const color=CAT_COLORS[alloc.category]??"#7DB8E8";
                   const status=pct>=100?"var(--red)":pct>=80?"var(--amber)":"var(--green)";
                   return (
                     <div key={alloc.id} onClick={()=>setModal({type:"edit",alloc})} style={{ padding:"18px 18px",borderRadius:10,cursor:"pointer",background:"rgba(255,255,255,0.025)",border:"1px solid rgba(255,255,255,0.06)",transition:"all 0.15s" }}
@@ -850,7 +850,7 @@ export default function FinancePage() {
               <HudCard style={{ padding:"24px 28px" }} delay={0.14}>
                 <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:16 }}>
                   <h2 style={{ fontSize:14,fontWeight:700,color:"var(--t1)" }}>Investment News</h2>
-                  <div style={{ fontSize:10,fontWeight:700,color:"var(--blue)",background:"rgba(69,137,255,0.1)",padding:"2px 8px",borderRadius:20,border:"1px solid rgba(69,137,255,0.2)" }}>M.A.X. Curated</div>
+                  <div style={{ fontSize:10,fontWeight:700,color:"var(--blue)",background:"rgba(125,184,232,0.1)",padding:"2px 8px",borderRadius:20,border:"1px solid rgba(125,184,232,0.2)" }}>M.A.X. Curated</div>
                 </div>
                 <div style={{ display:"flex",flexDirection:"column",gap:1 }}>
                   {news.map((article,i)=>(
@@ -977,7 +977,7 @@ function BillsModal({ bills, onSave, onClose }: { bills:Bill[]; onSave:(b:Bill[]
         >+ Add Bill</button>
         <div style={{ display:"flex",gap:10 }}>
           <button onClick={onClose} style={{ flex:1,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:600,cursor:"pointer",background:"transparent",border:"1px solid var(--border2)",color:"var(--t3)" }}>Cancel</button>
-          <button onClick={()=>{onSave(draft);onClose();}} style={{ flex:2,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer",background:"rgba(69,137,255,0.15)",border:"1px solid rgba(69,137,255,0.4)",color:"var(--blue)" }}>Save</button>
+          <button onClick={()=>{onSave(draft);onClose();}} style={{ flex:2,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer",background:"rgba(125,184,232,0.15)",border:"1px solid rgba(125,184,232,0.4)",color:"var(--blue)" }}>Save</button>
         </div>
       </div>
     </div>

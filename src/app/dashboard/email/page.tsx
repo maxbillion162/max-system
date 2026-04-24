@@ -32,7 +32,7 @@ function relativeTime(dateStr: string): string {
   return d.toLocaleDateString("en-US",{month:"short",day:"numeric"});
 }
 function initials(name: string) { return name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()||"?"; }
-const AVATAR_COLORS = ["#8b5cf6","#06b6d4","#10b981","#f97316","#ec4899","#4589ff","#f59e0b","#ef4444"];
+const AVATAR_COLORS = ["#8b5cf6","#06b6d4","#10b981","#f97316","#ec4899","#7DB8E8","#f59e0b","#ef4444"];
 function avatarColor(name: string) {
   let h=0; for(let i=0;i<name.length;i++) h=(h*31+name.charCodeAt(i))%AVATAR_COLORS.length; return AVATAR_COLORS[h];
 }
@@ -66,7 +66,7 @@ function ShortcutsModal({ onClose }: { onClose: ()=>void }) {
       <div style={{ background:"var(--surface)",border:"1px solid var(--border2)",borderRadius:14,padding:24,width:360,boxShadow:"0 32px 80px rgba(0,0,0,0.7)" }} onClick={e=>e.stopPropagation()}>
         <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20 }}>
           <div style={{ display:"flex",alignItems:"center",gap:10 }}>
-            <div style={{ width:32,height:32,borderRadius:8,background:"rgba(69,137,255,0.1)",border:"1px solid rgba(69,137,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center" }}>
+            <div style={{ width:32,height:32,borderRadius:8,background:"rgba(125,184,232,0.1)",border:"1px solid rgba(125,184,232,0.2)",display:"flex",alignItems:"center",justifyContent:"center" }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
               </svg>
@@ -227,7 +227,7 @@ export default function EmailPage() {
   function priorityPill(email: Email) {
     if (email.labels.includes("STARRED")) return { label:"URGENT", color:"var(--red)", bg:"rgba(239,68,68,0.1)", border:"rgba(239,68,68,0.25)" };
     if (email.category==="action") return { label:"REPLY NEEDED", color:"var(--amber)", bg:"rgba(245,158,11,0.1)", border:"rgba(245,158,11,0.25)" };
-    if (email.category==="fyi") return { label:"FYI", color:"var(--blue)", bg:"rgba(69,137,255,0.1)", border:"rgba(69,137,255,0.25)" };
+    if (email.category==="fyi") return { label:"FYI", color:"var(--blue)", bg:"rgba(125,184,232,0.1)", border:"rgba(125,184,232,0.25)" };
     return { label:"NOISE", color:"var(--t4)", bg:"rgba(255,255,255,0.04)", border:"var(--border)" };
   }
 
@@ -264,7 +264,7 @@ export default function EmailPage() {
             { id:"newsletters", label:"Newsletters",    count:nlCount,         dot:"var(--amber)" },
             { id:"noise",       label:"Noise",          count:noiseCount,      dot:"var(--t4)" },
           ] as { id:Folder; label:string; count:number; dot:string }[]).map(f=>(
-            <button key={f.id} onClick={()=>setFolder(f.id)} style={{ width:"100%",display:"flex",alignItems:"center",gap:9,padding:"9px 10px",borderRadius:7,cursor:"pointer",background:folder===f.id?"rgba(69,137,255,0.1)":"transparent",border:`1px solid ${folder===f.id?"rgba(69,137,255,0.2)":"transparent"}`,textAlign:"left",marginBottom:2,transition:"all .12s" }}
+            <button key={f.id} onClick={()=>setFolder(f.id)} style={{ width:"100%",display:"flex",alignItems:"center",gap:9,padding:"9px 10px",borderRadius:7,cursor:"pointer",background:folder===f.id?"rgba(125,184,232,0.1)":"transparent",border:`1px solid ${folder===f.id?"rgba(125,184,232,0.2)":"transparent"}`,textAlign:"left",marginBottom:2,transition:"all .12s" }}
               onMouseEnter={e=>folder!==f.id&&((e.currentTarget as HTMLElement).style.background="rgba(255,255,255,0.03)")}
               onMouseLeave={e=>folder!==f.id&&((e.currentTarget as HTMLElement).style.background="transparent")}
             >
@@ -278,7 +278,7 @@ export default function EmailPage() {
         {/* Connect / Status */}
         <div style={{ padding:"12px 16px",borderTop:"1px solid var(--border)" }}>
           {!connected ? (
-            <a href="/api/auth/google" style={{ display:"block",textAlign:"center",padding:"8px",borderRadius:7,background:"rgba(69,137,255,0.08)",border:"1px solid rgba(69,137,255,0.2)",color:"var(--blue)",fontSize:11,fontWeight:700,textDecoration:"none" }}>Connect Gmail →</a>
+            <a href="/api/auth/google" style={{ display:"block",textAlign:"center",padding:"8px",borderRadius:7,background:"rgba(125,184,232,0.08)",border:"1px solid rgba(125,184,232,0.2)",color:"var(--blue)",fontSize:11,fontWeight:700,textDecoration:"none" }}>Connect Gmail →</a>
           ) : (
             <div style={{ display:"flex",alignItems:"center",gap:6 }}>
               <span style={{ width:5,height:5,borderRadius:"50%",background:"var(--green)",boxShadow:"0 0 6px var(--green)",flexShrink:0 }}/>
@@ -300,8 +300,8 @@ export default function EmailPage() {
               {search&&<button onClick={()=>setSearch("")} style={{ background:"none",border:"none",cursor:"pointer",color:"var(--t4)",fontSize:12,lineHeight:1 }}>✕</button>}
             </div>
             {/* 👁 Eye icon — click for keyboard shortcuts */}
-            <button onClick={()=>setShowShortcuts(v=>!v)} title="Keyboard shortcuts (?))" style={{ width:32,height:32,borderRadius:8,border:`1px solid ${showShortcuts?"rgba(69,137,255,0.4)":"var(--border)"}`,background:showShortcuts?"rgba(69,137,255,0.1)":"var(--surface2)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s",color:showShortcuts?"var(--blue)":"var(--t4)" }}
-              onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor="rgba(69,137,255,0.4)";(e.currentTarget as HTMLElement).style.color="var(--blue)";}}
+            <button onClick={()=>setShowShortcuts(v=>!v)} title="Keyboard shortcuts (?))" style={{ width:32,height:32,borderRadius:8,border:`1px solid ${showShortcuts?"rgba(125,184,232,0.4)":"var(--border)"}`,background:showShortcuts?"rgba(125,184,232,0.1)":"var(--surface2)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s",color:showShortcuts?"var(--blue)":"var(--t4)" }}
+              onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor="rgba(125,184,232,0.4)";(e.currentTarget as HTMLElement).style.color="var(--blue)";}}
               onMouseLeave={e=>{if(!showShortcuts){(e.currentTarget as HTMLElement).style.borderColor="var(--border)";(e.currentTarget as HTMLElement).style.color="var(--t4)";}}}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -311,7 +311,7 @@ export default function EmailPage() {
           </div>
 
           {/* M.A.X. situation report */}
-          <div style={{ padding:"9px 11px",borderRadius:8,background:"rgba(69,137,255,0.04)",border:"1px solid rgba(69,137,255,0.1)" }}>
+          <div style={{ padding:"9px 11px",borderRadius:8,background:"rgba(125,184,232,0.04)",border:"1px solid rgba(125,184,232,0.1)" }}>
             <p style={{ fontSize:9,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",color:"var(--blue)",marginBottom:3 }}>M.A.X.</p>
             <p style={{ fontSize:11,color:"var(--t3)",lineHeight:1.6 }}>
               {digestLoad ? (
@@ -339,8 +339,8 @@ export default function EmailPage() {
               <button key={e.id} onClick={()=>selectEmail(e)} style={{
                 display:"flex",alignItems:"flex-start",gap:10,width:"100%",padding:"11px 14px",
                 textAlign:"left",cursor:"pointer",borderBottom:"1px solid var(--border)",
-                background:isSelected?"rgba(69,137,255,0.06)":"transparent",
-                borderLeft:`3px solid ${e.unread?catDot:isSelected?"rgba(69,137,255,0.4)":"transparent"}`,
+                background:isSelected?"rgba(125,184,232,0.06)":"transparent",
+                borderLeft:`3px solid ${e.unread?catDot:isSelected?"rgba(125,184,232,0.4)":"transparent"}`,
                 transition:"background .1s",
               }}
                 onMouseEnter={ev=>!isSelected&&((ev.currentTarget as HTMLElement).style.background="rgba(255,255,255,0.02)")}
@@ -383,7 +383,7 @@ export default function EmailPage() {
               <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14 }}>
                 <div style={{ display:"flex",alignItems:"center",gap:8 }}>
                   {pill&&<span style={{ fontSize:9,fontWeight:800,padding:"4px 10px",borderRadius:5,background:pill.bg,border:`1px solid ${pill.border}`,color:pill.color,letterSpacing:"0.1em" }}>{pill.label}</span>}
-                  {selected.unread&&<span style={{ fontSize:9,fontWeight:700,color:"var(--blue)",background:"rgba(69,137,255,0.1)",padding:"3px 8px",borderRadius:4,border:"1px solid rgba(69,137,255,0.2)" }}>UNREAD</span>}
+                  {selected.unread&&<span style={{ fontSize:9,fontWeight:700,color:"var(--blue)",background:"rgba(125,184,232,0.1)",padding:"3px 8px",borderRadius:4,border:"1px solid rgba(125,184,232,0.2)" }}>UNREAD</span>}
                   {selected.pinned&&<span style={{ fontSize:9,fontWeight:700,color:"var(--amber)" }}>◆ PINNED</span>}
                 </div>
                 <div style={{ display:"flex",gap:6 }}>
@@ -451,9 +451,9 @@ export default function EmailPage() {
                     <span style={{ fontSize:11,color:"var(--t4)",flex:1 }}>
                       Re: <span style={{ color:"var(--t3)" }}>{selected.from}</span>
                     </span>
-                    <button onClick={()=>selected&&generateAiReply(selected)} disabled={aiReplyLoad} style={{ display:"flex",alignItems:"center",gap:6,padding:"5px 12px",borderRadius:6,background:"rgba(69,137,255,0.1)",border:"1px solid rgba(69,137,255,0.25)",color:"var(--blue)",fontSize:11,fontWeight:700,cursor:"pointer",opacity:aiReplyLoad?0.6:1 }}
-                      onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background="rgba(69,137,255,0.18)"}
-                      onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background="rgba(69,137,255,0.1)"}
+                    <button onClick={()=>selected&&generateAiReply(selected)} disabled={aiReplyLoad} style={{ display:"flex",alignItems:"center",gap:6,padding:"5px 12px",borderRadius:6,background:"rgba(125,184,232,0.1)",border:"1px solid rgba(125,184,232,0.25)",color:"var(--blue)",fontSize:11,fontWeight:700,cursor:"pointer",opacity:aiReplyLoad?0.6:1 }}
+                      onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background="rgba(125,184,232,0.18)"}
+                      onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background="rgba(125,184,232,0.1)"}
                     >
                       {aiReplyLoad
                         ? <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ animation:"spin-slow 1s linear infinite" }}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/></svg>
@@ -473,7 +473,7 @@ export default function EmailPage() {
                       </div>
                       <div style={{ display:"flex",gap:8 }}>
                         {draftText&&<button onClick={()=>setDraftText("")} style={{ padding:"6px 12px",borderRadius:6,background:"none",border:"1px solid var(--border)",fontSize:11,fontWeight:600,color:"var(--t3)",cursor:"pointer" }}>Clear</button>}
-                        <button onClick={saveDraft} disabled={drafting||!draftText.trim()} style={{ padding:"6px 16px",borderRadius:6,background:"rgba(69,137,255,0.12)",border:"1px solid rgba(69,137,255,0.3)",fontSize:12,fontWeight:700,color:"var(--blue)",cursor:"pointer",opacity:draftText.trim()?1:0.4 }}>
+                        <button onClick={saveDraft} disabled={drafting||!draftText.trim()} style={{ padding:"6px 16px",borderRadius:6,background:"rgba(125,184,232,0.12)",border:"1px solid rgba(125,184,232,0.3)",fontSize:12,fontWeight:700,color:"var(--blue)",cursor:"pointer",opacity:draftText.trim()?1:0.4 }}>
                           {drafting?"Saving…":"Save Draft"}
                         </button>
                       </div>

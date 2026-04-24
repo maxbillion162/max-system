@@ -35,11 +35,11 @@ const PRIO_COLOR: Record<string,string> = { high:"var(--red)", medium:"var(--amb
 const GCAL_COLORS: Record<string,string> = {
   "1":"#ac725e","2":"#d06b64","3":"#f83a22","4":"#fa573c","5":"#ff7537",
   "6":"#ffad46","7":"#42d692","8":"#16a765","9":"#7bd148","10":"#b3dc6c",
-  "11":"#fbe983","default":"#4589ff",
+  "11":"#fbe983","default":"#7DB8E8",
 };
-const LIST_PALETTE = ["#4589ff","#10b981","#8b5cf6","#f59e0b","#ef4444","#06b6d4","#ec4899","#f97316"];
+const LIST_PALETTE = ["#7DB8E8","#10b981","#8b5cf6","#f59e0b","#ef4444","#06b6d4","#ec4899","#f97316"];
 const DEFAULT_LISTS = [
-  { name:"Personal", color:"#4589ff" },
+  { name:"Personal", color:"#7DB8E8" },
   { name:"Work",     color:"#10b981" },
   { name:"M.A.X.",   color:"#8b5cf6" },
 ];
@@ -139,9 +139,9 @@ function EventDetail({ event, onClose }: { event: GCalEvent; onClose: ()=>void }
       )}
       <div style={{ flex:1 }} />
       {event.htmlLink&&(
-        <a href={event.htmlLink} target="_blank" rel="noreferrer" style={{ display:"block",padding:"10px 14px",borderRadius:8,background:"rgba(69,137,255,0.08)",border:"1px solid rgba(69,137,255,0.2)",color:"var(--blue)",fontSize:12,fontWeight:700,textDecoration:"none",textAlign:"center" }}
-          onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background="rgba(69,137,255,0.15)"}
-          onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background="rgba(69,137,255,0.08)"}
+        <a href={event.htmlLink} target="_blank" rel="noreferrer" style={{ display:"block",padding:"10px 14px",borderRadius:8,background:"rgba(125,184,232,0.08)",border:"1px solid rgba(125,184,232,0.2)",color:"var(--blue)",fontSize:12,fontWeight:700,textDecoration:"none",textAlign:"center" }}
+          onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background="rgba(125,184,232,0.15)"}
+          onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background="rgba(125,184,232,0.08)"}
         >Open in Google Calendar →</a>
       )}
     </div>
@@ -240,7 +240,7 @@ function TaskDetail({ task, lists, onUpdate, onDelete, onBack }: {
             placeholder="Add subtask…"
             style={{ flex:1,background:"var(--surface2)",border:"1px solid var(--border2)",borderRadius:5,padding:"6px 8px",fontSize:11,color:"var(--t1)",outline:"none" }}
           />
-          <button onClick={addSub} style={{ padding:"6px 10px",borderRadius:5,background:"rgba(69,137,255,0.1)",border:"1px solid rgba(69,137,255,0.2)",color:"var(--blue)",fontSize:11,fontWeight:700,cursor:"pointer" }}>+</button>
+          <button onClick={addSub} style={{ padding:"6px 10px",borderRadius:5,background:"rgba(125,184,232,0.1)",border:"1px solid rgba(125,184,232,0.2)",color:"var(--blue)",fontSize:11,fontWeight:700,cursor:"pointer" }}>+</button>
         </div>
       </div>
       <button onClick={()=>{onDelete(task.id);onBack();}} style={{ padding:"9px",borderRadius:6,cursor:"pointer",fontSize:12,fontWeight:600,background:"rgba(239,68,68,0.06)",border:"1px solid rgba(239,68,68,0.15)",color:"var(--red)",width:"100%" }}
@@ -303,7 +303,7 @@ function NLConfirm({ preview, onConfirm, onCancel }: {
   const dayStr = start.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
   const timeStr = `${fmtTime(preview.start)} – ${fmtTime(preview.end)}`;
   return (
-    <div style={{ marginTop:8,background:"var(--surface2)",border:"1px solid rgba(69,137,255,0.3)",borderRadius:10,padding:14 }}>
+    <div style={{ marginTop:8,background:"var(--surface2)",border:"1px solid rgba(125,184,232,0.3)",borderRadius:10,padding:14 }}>
       <p style={{ fontSize:10,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",color:"var(--blue)",marginBottom:8 }}>Preview</p>
       <p style={{ fontSize:14,fontWeight:700,color:"var(--t1)",marginBottom:4 }}>{preview.title}</p>
       <p style={{ fontSize:12,color:"var(--t2)",marginBottom:2 }}>{dayStr}</p>
@@ -489,10 +489,10 @@ export default function CalendarPage() {
 
       {/* Google banner */}
       {!loadingCal&&!gcalConnected&&(
-        <div style={{ marginBottom:20,padding:"12px 18px",borderRadius:10,background:"rgba(69,137,255,0.06)",border:"1px solid rgba(69,137,255,0.18)",display:"flex",alignItems:"center",gap:14 }}>
+        <div style={{ marginBottom:20,padding:"12px 18px",borderRadius:10,background:"rgba(125,184,232,0.06)",border:"1px solid rgba(125,184,232,0.18)",display:"flex",alignItems:"center",gap:14 }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           <p style={{ fontSize:12,color:"var(--t2)",flex:1 }}>Connect Google Calendar to sync events and create directly from M.A.X.</p>
-          <a href="/api/auth/google" style={{ padding:"7px 16px",borderRadius:7,background:"rgba(69,137,255,0.12)",border:"1px solid rgba(69,137,255,0.3)",color:"var(--blue)",fontSize:12,fontWeight:700,textDecoration:"none" }}>Connect Google</a>
+          <a href="/api/auth/google" style={{ padding:"7px 16px",borderRadius:7,background:"rgba(125,184,232,0.12)",border:"1px solid rgba(125,184,232,0.3)",color:"var(--blue)",fontSize:12,fontWeight:700,textDecoration:"none" }}>Connect Google</a>
         </div>
       )}
       {gcalConnected&&(
@@ -511,7 +511,7 @@ export default function CalendarPage() {
         <div style={{ display:"flex",alignItems:"center",gap:8 }}>
           <div style={{ display:"flex",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:8,padding:3,gap:2 }}>
             {(["day","week","month"] as CalView[]).map(v=>(
-              <button key={v} onClick={()=>setView(v)} style={{ padding:"6px 14px",borderRadius:6,cursor:"pointer",fontSize:12,fontWeight:600,background:view===v?"rgba(69,137,255,0.15)":"transparent",border:`1px solid ${view===v?"rgba(69,137,255,0.3)":"transparent"}`,color:view===v?"var(--blue)":"var(--t3)",transition:"all .15s",textTransform:"capitalize" }}>{v}</button>
+              <button key={v} onClick={()=>setView(v)} style={{ padding:"6px 14px",borderRadius:6,cursor:"pointer",fontSize:12,fontWeight:600,background:view===v?"rgba(125,184,232,0.15)":"transparent",border:`1px solid ${view===v?"rgba(125,184,232,0.3)":"transparent"}`,color:view===v?"var(--blue)":"var(--t3)",transition:"all .15s",textTransform:"capitalize" }}>{v}</button>
             ))}
           </div>
           <div style={{ display:"flex",gap:4 }}>
@@ -527,7 +527,7 @@ export default function CalendarPage() {
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>Event
             </button>
           )}
-          <button onClick={()=>{setSelectedTask(null);setSelectedEvent(null);setAddingTask(true);}} style={{ display:"flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:8,cursor:"pointer",fontSize:12,fontWeight:700,background:"rgba(69,137,255,0.1)",border:"1px solid rgba(69,137,255,0.25)",color:"var(--blue)" }}>
+          <button onClick={()=>{setSelectedTask(null);setSelectedEvent(null);setAddingTask(true);}} style={{ display:"flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:8,cursor:"pointer",fontSize:12,fontWeight:700,background:"rgba(125,184,232,0.1)",border:"1px solid rgba(125,184,232,0.25)",color:"var(--blue)" }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>Task
           </button>
         </div>
@@ -546,7 +546,7 @@ export default function CalendarPage() {
                 style={{ width:"100%",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:8,padding:"10px 12px 10px 36px",fontSize:12,color:"var(--t1)",outline:"none" }}
               />
             </div>
-            <button onClick={parseNL} disabled={nlLoading||!nlInput.trim()} style={{ padding:"10px 18px",borderRadius:8,cursor:"pointer",fontSize:12,fontWeight:700,background:"rgba(69,137,255,0.1)",border:"1px solid rgba(69,137,255,0.25)",color:"var(--blue)",opacity:nlLoading?0.5:1 }}>
+            <button onClick={parseNL} disabled={nlLoading||!nlInput.trim()} style={{ padding:"10px 18px",borderRadius:8,cursor:"pointer",fontSize:12,fontWeight:700,background:"rgba(125,184,232,0.1)",border:"1px solid rgba(125,184,232,0.25)",color:"var(--blue)",opacity:nlLoading?0.5:1 }}>
               {nlLoading?"…":"Parse"}
             </button>
           </div>
@@ -645,7 +645,7 @@ export default function CalendarPage() {
               <div style={{ display:"grid",gridTemplateColumns:`${TIME_W}px repeat(7,1fr)`,borderBottom:"1px solid var(--border)" }}>
                 <div/>
                 {weekDays.map((d,i)=>(
-                  <div key={i} style={{ padding:"10px 4px",textAlign:"center",borderLeft:"1px solid var(--border)",background:isSameDay(d,today)?"rgba(69,137,255,0.04)":undefined }}>
+                  <div key={i} style={{ padding:"10px 4px",textAlign:"center",borderLeft:"1px solid var(--border)",background:isSameDay(d,today)?"rgba(125,184,232,0.04)":undefined }}>
                     <p style={{ fontSize:10,fontWeight:600,color:"var(--t3)",marginBottom:3 }}>{DAYS_SHORT[d.getDay()]}</p>
                     <div style={{ width:26,height:26,borderRadius:"50%",margin:"0 auto",background:isSameDay(d,today)?"var(--blue)":"transparent",display:"flex",alignItems:"center",justifyContent:"center" }}>
                       <p style={{ fontSize:12,fontWeight:700,color:isSameDay(d,today)?"#fff":"var(--t1)" }}>{d.getDate()}</p>
@@ -683,7 +683,7 @@ export default function CalendarPage() {
                     const positioned=positionEvents(eventsForDay(day));
                     const isToday=isSameDay(day,today);
                     return (
-                      <div key={dayIdx} style={{ position:"relative",borderLeft:"1px solid var(--border)",background:isToday?"rgba(69,137,255,0.02)":undefined }}>
+                      <div key={dayIdx} style={{ position:"relative",borderLeft:"1px solid var(--border)",background:isToday?"rgba(125,184,232,0.02)":undefined }}>
                         {/* Hour click targets */}
                         {HOURS.map(h=>(
                           <div key={h} style={{ height:HOUR_PX,borderTop:h>0?"1px solid rgba(30,37,48,0.7)":undefined,cursor:gcalConnected?"pointer":"default" }}
@@ -739,7 +739,7 @@ export default function CalendarPage() {
                   const showItems=all.slice(0,2);
                   const overflow=all.length+dt.length-2;
                   return (
-                    <div key={i} onClick={()=>{setCursor(d);setView("day");}} style={{ minHeight:88,padding:"6px 6px",borderRadius:6,background:isT?"rgba(69,137,255,0.07)":"var(--surface)",border:`1px solid ${isT?"rgba(69,137,255,0.25)":"var(--border)"}`,cursor:"pointer",transition:"border-color .12s" }}
+                    <div key={i} onClick={()=>{setCursor(d);setView("day");}} style={{ minHeight:88,padding:"6px 6px",borderRadius:6,background:isT?"rgba(125,184,232,0.07)":"var(--surface)",border:`1px solid ${isT?"rgba(125,184,232,0.25)":"var(--border)"}`,cursor:"pointer",transition:"border-color .12s" }}
                       onMouseEnter={e=>!isT&&((e.currentTarget as HTMLElement).style.borderColor="rgba(255,255,255,0.1)")}
                       onMouseLeave={e=>!isT&&((e.currentTarget as HTMLElement).style.borderColor="var(--border)")}
                     >
@@ -795,7 +795,7 @@ export default function CalendarPage() {
                 {/* List tabs */}
                 <div style={{ marginBottom:12 }}>
                   <div style={{ display:"flex",flexWrap:"wrap",gap:5,marginBottom:8 }}>
-                    <button onClick={()=>setActiveListId(null)} style={{ padding:"5px 11px",borderRadius:20,fontSize:11,fontWeight:600,cursor:"pointer",background:activeListId===null?"rgba(69,137,255,0.15)":"transparent",border:`1px solid ${activeListId===null?"rgba(69,137,255,0.35)":"var(--border2)"}`,color:activeListId===null?"var(--blue)":"var(--t3)" }}>All</button>
+                    <button onClick={()=>setActiveListId(null)} style={{ padding:"5px 11px",borderRadius:20,fontSize:11,fontWeight:600,cursor:"pointer",background:activeListId===null?"rgba(125,184,232,0.15)":"transparent",border:`1px solid ${activeListId===null?"rgba(125,184,232,0.35)":"var(--border2)"}`,color:activeListId===null?"var(--blue)":"var(--t3)" }}>All</button>
                     {lists.map(l=>(
                       <button key={l.id} onClick={()=>setActiveListId(l.id)} style={{ padding:"5px 11px",borderRadius:20,fontSize:11,fontWeight:600,cursor:"pointer",background:activeListId===l.id?`${l.color}20`:"transparent",border:`1px solid ${activeListId===l.id?l.color:"var(--border2)"}`,color:activeListId===l.id?l.color:"var(--t3)" }}>{l.name}</button>
                     ))}
@@ -807,7 +807,7 @@ export default function CalendarPage() {
                   {newListMode&&(
                     <div style={{ display:"flex",gap:5,marginBottom:8 }}>
                       <input autoFocus value={newListName} onChange={e=>setNewListName(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")createList();if(e.key==="Escape"){setNewListMode(false);setNewListName("");}}} placeholder="List name…" style={{ flex:1,background:"var(--surface2)",border:"1px solid var(--border2)",borderRadius:6,padding:"6px 10px",fontSize:12,color:"var(--t1)",outline:"none" }}/>
-                      <button onClick={createList} style={{ padding:"6px 12px",borderRadius:6,background:"rgba(69,137,255,0.1)",border:"1px solid rgba(69,137,255,0.2)",color:"var(--blue)",fontSize:12,fontWeight:700,cursor:"pointer" }}>Add</button>
+                      <button onClick={createList} style={{ padding:"6px 12px",borderRadius:6,background:"rgba(125,184,232,0.1)",border:"1px solid rgba(125,184,232,0.2)",color:"var(--blue)",fontSize:12,fontWeight:700,cursor:"pointer" }}>Add</button>
                       <button onClick={()=>{setNewListMode(false);setNewListName("");}} style={{ padding:"6px 10px",borderRadius:6,background:"transparent",border:"1px solid var(--border2)",color:"var(--t3)",fontSize:12,cursor:"pointer" }}>✕</button>
                     </div>
                   )}
@@ -822,8 +822,8 @@ export default function CalendarPage() {
                 {/* Add task */}
                 {addingTask ? (
                   <div style={{ display:"flex",gap:5,marginBottom:10 }}>
-                    <input autoFocus value={newTaskText} onChange={e=>setNewTaskText(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addTask();if(e.key==="Escape"){setAddingTask(false);setNewTaskText("");}}} placeholder="Task name…" style={{ flex:1,background:"var(--surface2)",border:"1px solid rgba(69,137,255,0.35)",borderRadius:6,padding:"8px 10px",fontSize:13,color:"var(--t1)",outline:"none" }}/>
-                    <button onClick={addTask} style={{ padding:"8px 14px",borderRadius:6,background:"rgba(69,137,255,0.15)",border:"1px solid rgba(69,137,255,0.3)",color:"var(--blue)",fontSize:12,fontWeight:700,cursor:"pointer" }}>Add</button>
+                    <input autoFocus value={newTaskText} onChange={e=>setNewTaskText(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addTask();if(e.key==="Escape"){setAddingTask(false);setNewTaskText("");}}} placeholder="Task name…" style={{ flex:1,background:"var(--surface2)",border:"1px solid rgba(125,184,232,0.35)",borderRadius:6,padding:"8px 10px",fontSize:13,color:"var(--t1)",outline:"none" }}/>
+                    <button onClick={addTask} style={{ padding:"8px 14px",borderRadius:6,background:"rgba(125,184,232,0.15)",border:"1px solid rgba(125,184,232,0.3)",color:"var(--blue)",fontSize:12,fontWeight:700,cursor:"pointer" }}>Add</button>
                     <button onClick={()=>{setAddingTask(false);setNewTaskText("");}} style={{ padding:"8px 10px",borderRadius:6,background:"transparent",border:"1px solid var(--border2)",color:"var(--t3)",fontSize:12,cursor:"pointer" }}>✕</button>
                   </div>
                 ) : (

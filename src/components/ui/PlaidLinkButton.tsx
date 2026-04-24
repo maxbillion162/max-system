@@ -56,8 +56,8 @@ export default function PlaidLinkButton({ onConnected }: Props) {
       disabled={!ready || loading}
       style={{
         padding: "10px 20px", borderRadius: 8, fontSize: 13, fontWeight: 700,
-        background: ready ? "rgba(69,137,255,0.12)" : "rgba(255,255,255,0.04)",
-        border: `1px solid ${ready ? "rgba(69,137,255,0.35)" : "rgba(255,255,255,0.08)"}`,
+        background: ready ? "rgba(125,184,232,0.12)" : "rgba(255,255,255,0.04)",
+        border: `1px solid ${ready ? "rgba(125,184,232,0.35)" : "rgba(255,255,255,0.08)"}`,
         color: ready ? "var(--blue)" : "var(--t4)",
         cursor: ready ? "pointer" : "not-allowed",
         transition: "all 0.15s",
@@ -65,14 +65,14 @@ export default function PlaidLinkButton({ onConnected }: Props) {
       }}
       onMouseEnter={e => {
         if (ready) {
-          (e.currentTarget as HTMLElement).style.background = "rgba(69,137,255,0.2)";
-          (e.currentTarget as HTMLElement).style.borderColor = "rgba(69,137,255,0.5)";
+          (e.currentTarget as HTMLElement).style.background = "rgba(125,184,232,0.2)";
+          (e.currentTarget as HTMLElement).style.borderColor = "rgba(125,184,232,0.5)";
         }
       }}
       onMouseLeave={e => {
         if (ready) {
-          (e.currentTarget as HTMLElement).style.background = "rgba(69,137,255,0.12)";
-          (e.currentTarget as HTMLElement).style.borderColor = "rgba(69,137,255,0.35)";
+          (e.currentTarget as HTMLElement).style.background = "rgba(125,184,232,0.12)";
+          (e.currentTarget as HTMLElement).style.borderColor = "rgba(125,184,232,0.35)";
         }
       }}
     >

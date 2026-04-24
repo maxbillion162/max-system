@@ -178,8 +178,8 @@ export default function ArchivePage() {
           {(["chat", "telegram"] as TabType[]).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
               padding: "7px 18px", borderRadius: 6, cursor: "pointer", fontSize: 12, fontWeight: 600,
-              background: tab === t ? "rgba(69,137,255,0.12)" : "transparent",
-              border: `1px solid ${tab === t ? "rgba(69,137,255,0.3)" : "var(--border)"}`,
+              background: tab === t ? "rgba(125,184,232,0.12)" : "transparent",
+              border: `1px solid ${tab === t ? "rgba(125,184,232,0.3)" : "var(--border)"}`,
               color: tab === t ? "var(--blue)" : "var(--t3)", transition: "all .15s", textTransform: "capitalize",
             }}>{t === "chat" ? "Web Chat" : "Telegram"}</button>
           ))}
@@ -220,8 +220,8 @@ export default function ArchivePage() {
                     {items.map(s => (
                       <button key={s.session_id} onClick={() => setSelected(s)} style={{
                         textAlign: "left", padding: "12px 14px", borderRadius: 8, cursor: "pointer",
-                        background: selected?.session_id === s.session_id ? "rgba(69,137,255,0.08)" : "var(--surface)",
-                        border: `1px solid ${selected?.session_id === s.session_id ? "rgba(69,137,255,0.25)" : "var(--border)"}`,
+                        background: selected?.session_id === s.session_id ? "rgba(125,184,232,0.08)" : "var(--surface)",
+                        border: `1px solid ${selected?.session_id === s.session_id ? "rgba(125,184,232,0.25)" : "var(--border)"}`,
                         transition: "all .15s",
                       }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
@@ -273,7 +273,7 @@ export default function ArchivePage() {
                         maxWidth: "78%", padding: "10px 14px", borderRadius: 10,
                         fontSize: 13, lineHeight: 1.6,
                         ...(m.role === "user"
-                          ? { background: "rgba(69,137,255,0.1)", color: "var(--t1)", border: "1px solid rgba(69,137,255,0.2)" }
+                          ? { background: "rgba(125,184,232,0.1)", color: "var(--t1)", border: "1px solid rgba(125,184,232,0.2)" }
                           : { background: "var(--surface2)", color: "var(--t2)", border: "1px solid var(--border)" }
                         ),
                       }}>

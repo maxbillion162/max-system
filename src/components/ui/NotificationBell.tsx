@@ -15,13 +15,13 @@ interface Notification {
 
 const TYPE_CONFIG: Record<string, { icon: string; color: string }> = {
   crypto_alert:      { icon: "◈", color: "#f59e0b" },
-  habit_reminder:    { icon: "◎", color: "#4589ff" },
+  habit_reminder:    { icon: "◎", color: "#7DB8E8" },
   bill_due:          { icon: "!", color: "#ef4444" },
-  calendar_reminder: { icon: "◷", color: "#4589ff" },
+  calendar_reminder: { icon: "◷", color: "#7DB8E8" },
   max_action:        { icon: "✦", color: "#8b5cf6" },
   budget_alert:      { icon: "▲", color: "#f97316" },
   goal_milestone:    { icon: "◆", color: "#10b981" },
-  general:           { icon: "•", color: "#4589ff" },
+  general:           { icon: "•", color: "#7DB8E8" },
 };
 
 function getConfig(type: string) {
@@ -113,11 +113,11 @@ export default function NotificationBell() {
           title="Notifications"
           style={{
             width: 38, height: 38, borderRadius: 10,
-            background: open ? "rgba(69,137,255,0.12)" : "rgba(255,255,255,0.04)",
-            border: `1px solid ${open ? "rgba(69,137,255,0.35)" : "rgba(255,255,255,0.08)"}`,
+            background: open ? "rgba(125,184,232,0.12)" : "rgba(255,255,255,0.04)",
+            border: `1px solid ${open ? "rgba(125,184,232,0.35)" : "rgba(255,255,255,0.08)"}`,
             cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
             position: "relative", transition: "all 0.15s",
-            color: open ? "#4589ff" : "rgba(148,163,184,0.65)",
+            color: open ? "#7DB8E8" : "rgba(148,163,184,0.65)",
           }}
           onMouseEnter={e => {
             if (!open) {
@@ -172,7 +172,7 @@ export default function NotificationBell() {
         position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 49,
         width: 380,
         background: "linear-gradient(180deg, #07090f 0%, #050710 100%)",
-        borderLeft: "1px solid rgba(69,137,255,0.1)",
+        borderLeft: "1px solid rgba(125,184,232,0.1)",
         transform: open ? "translateX(0)" : "translateX(100%)",
         transition: "transform 0.25s cubic-bezier(0.4,0,0.2,1)",
         display: "flex", flexDirection: "column",
@@ -181,7 +181,7 @@ export default function NotificationBell() {
         {/* Header */}
         <div style={{
           padding: "20px 20px 16px",
-          borderBottom: "1px solid rgba(69,137,255,0.07)",
+          borderBottom: "1px solid rgba(125,184,232,0.07)",
           display: "flex", alignItems: "center", justifyContent: "space-between",
           flexShrink: 0,
         }}>
@@ -190,7 +190,7 @@ export default function NotificationBell() {
               Notifications
             </div>
             {unread > 0 && (
-              <div style={{ fontSize: 11, color: "rgba(69,137,255,0.7)", marginTop: 2 }}>
+              <div style={{ fontSize: 11, color: "rgba(125,184,232,0.7)", marginTop: 2 }}>
                 {unread} unread
               </div>
             )}
@@ -200,12 +200,12 @@ export default function NotificationBell() {
               <button
                 onClick={markAllRead}
                 style={{
-                  fontSize: 11, fontWeight: 500, color: "rgba(69,137,255,0.8)",
-                  background: "rgba(69,137,255,0.08)", border: "1px solid rgba(69,137,255,0.15)",
+                  fontSize: 11, fontWeight: 500, color: "rgba(125,184,232,0.8)",
+                  background: "rgba(125,184,232,0.08)", border: "1px solid rgba(125,184,232,0.15)",
                   borderRadius: 6, padding: "5px 10px", cursor: "pointer", transition: "all 0.15s",
                 }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(69,137,255,0.16)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(69,137,255,0.08)"; }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(125,184,232,0.16)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(125,184,232,0.08)"; }}
               >
                 Mark all read
               </button>
@@ -259,19 +259,19 @@ export default function NotificationBell() {
                       padding: "13px 20px",
                       display: "flex", gap: 12, alignItems: "flex-start",
                       cursor: "pointer",
-                      background: n.read ? "transparent" : "rgba(69,137,255,0.04)",
+                      background: n.read ? "transparent" : "rgba(125,184,232,0.04)",
                       borderLeft: `3px solid ${n.read ? "transparent" : cfg.color}`,
                       transition: "background 0.15s",
                     }}
                     onMouseEnter={e => {
                       (e.currentTarget as HTMLElement).style.background = n.read
                         ? "rgba(255,255,255,0.02)"
-                        : "rgba(69,137,255,0.08)";
+                        : "rgba(125,184,232,0.08)";
                     }}
                     onMouseLeave={e => {
                       (e.currentTarget as HTMLElement).style.background = n.read
                         ? "transparent"
-                        : "rgba(69,137,255,0.04)";
+                        : "rgba(125,184,232,0.04)";
                     }}
                   >
                     <div style={{

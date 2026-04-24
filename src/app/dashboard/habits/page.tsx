@@ -16,7 +16,7 @@ interface Achievement {
 
 /* ── Constants ── */
 const CATS   = ["Morning","Health","Nutrition","Learning","Sleep","Mindset","Work","Other"];
-const COLORS = ["#4589ff","#10b981","#f97316","#ec4899","#8b5cf6","#06b6d4","#ef4444","#f59e0b"];
+const COLORS = ["#7DB8E8","#10b981","#f97316","#ec4899","#8b5cf6","#06b6d4","#ef4444","#f59e0b"];
 const PPL_DEFAULT: PPLDay[] = [
   { name:"Push", detail:"Chest · Triceps · Shoulders", color:"#06b6d4", days:"Mon / Thu" },
   { name:"Pull", detail:"Back · Biceps",               color:"#10b981", days:"Tue / Fri" },
@@ -24,7 +24,7 @@ const PPL_DEFAULT: PPLDay[] = [
 ];
 const LEVEL_DEFS = [
   { name:"Recruit",     min:0,  max:6,   color:"var(--t3)",    glow:"rgba(148,163,184,0.3)"  },
-  { name:"Consistent",  min:7,  max:20,  color:"var(--blue)",   glow:"rgba(69,137,255,0.4)"  },
+  { name:"Consistent",  min:7,  max:20,  color:"var(--blue)",   glow:"rgba(125,184,232,0.4)"  },
   { name:"Machine",     min:21, max:59,  color:"var(--amber)",  glow:"rgba(245,158,11,0.4)"  },
   { name:"Untouchable", min:60, max:Infinity, color:"var(--green)", glow:"rgba(34,197,94,0.4)" },
 ];
@@ -112,7 +112,7 @@ function HabitModal({ habit, onSave, onClose, onDelete }: {
   const isNew = !habit;
   const [label, setLabel] = useState(habit?.label ?? "");
   const [cat,   setCat]   = useState(habit?.cat   ?? "Health");
-  const [color, setColor] = useState(habit?.color ?? "#4589ff");
+  const [color, setColor] = useState(habit?.color ?? "#7DB8E8");
 
   function save() {
     if (!label.trim()) return;
@@ -153,7 +153,7 @@ function HabitModal({ habit, onSave, onClose, onDelete }: {
         <div style={{ display:"flex",gap:10 }}>
           {!isNew&&onDelete&&<button onClick={()=>{onDelete();onClose();}} style={{ padding:"11px 16px",borderRadius:6,fontSize:13,fontWeight:600,cursor:"pointer",background:"rgba(239,68,68,0.06)",border:"1px solid rgba(239,68,68,0.2)",color:"var(--red)" }}>Delete</button>}
           <button onClick={onClose} style={{ flex:1,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:600,cursor:"pointer",background:"transparent",border:"1px solid var(--border2)",color:"var(--t3)" }}>Cancel</button>
-          <button onClick={save} disabled={!label.trim()} style={{ flex:2,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer",background:"rgba(69,137,255,0.15)",border:"1px solid rgba(69,137,255,0.4)",color:"var(--blue)",opacity:label.trim()?1:0.4 }}>Save</button>
+          <button onClick={save} disabled={!label.trim()} style={{ flex:2,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer",background:"rgba(125,184,232,0.15)",border:"1px solid rgba(125,184,232,0.4)",color:"var(--blue)",opacity:label.trim()?1:0.4 }}>Save</button>
         </div>
       </div>
     </div>
@@ -186,7 +186,7 @@ function PPLModal({ splits, onSave, onClose }: { splits: PPLDay[]; onSave:(s:PPL
         </div>
         <div style={{ display:"flex",gap:10 }}>
           <button onClick={onClose} style={{ flex:1,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:600,cursor:"pointer",background:"transparent",border:"1px solid var(--border2)",color:"var(--t3)" }}>Cancel</button>
-          <button onClick={()=>{onSave(draft);onClose();}} style={{ flex:2,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer",background:"rgba(69,137,255,0.15)",border:"1px solid rgba(69,137,255,0.4)",color:"var(--blue)" }}>Save Changes</button>
+          <button onClick={()=>{onSave(draft);onClose();}} style={{ flex:2,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer",background:"rgba(125,184,232,0.15)",border:"1px solid rgba(125,184,232,0.4)",color:"var(--blue)" }}>Save Changes</button>
         </div>
       </div>
     </div>
@@ -222,7 +222,7 @@ export default function HabitsPage() {
           id:    String(r.id),
           label: r.name ?? "",
           cat:   r.cat  ?? "General",
-          color: r.color?? "#4589ff",
+          color: r.color?? "#7DB8E8",
           best:  r.best ?? 0,
         })));
       }
@@ -401,7 +401,7 @@ export default function HabitsPage() {
         <p style={{ fontSize:11,fontWeight:700,letterSpacing:"0.14em",textTransform:"uppercase",color:"var(--t3)",marginBottom:6 }}>Habits & Training</p>
         <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between" }}>
           <h1 style={{ fontSize:28,fontWeight:800,color:"var(--t1)",letterSpacing:"-0.02em" }}>Daily Discipline</h1>
-          <button onClick={()=>setModalHabit("new")} style={{ display:"flex",alignItems:"center",gap:6,padding:"9px 16px",borderRadius:8,cursor:"pointer",fontSize:12,fontWeight:700,background:"rgba(69,137,255,0.1)",border:"1px solid rgba(69,137,255,0.25)",color:"var(--blue)" }}>
+          <button onClick={()=>setModalHabit("new")} style={{ display:"flex",alignItems:"center",gap:6,padding:"9px 16px",borderRadius:8,cursor:"pointer",fontSize:12,fontWeight:700,background:"rgba(125,184,232,0.1)",border:"1px solid rgba(125,184,232,0.25)",color:"var(--blue)" }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>Add Habit
           </button>
         </div>
@@ -413,7 +413,7 @@ export default function HabitsPage() {
         {/* Today's Ring */}
         <HudCard style={{ padding:"20px 24px",display:"flex",alignItems:"center",gap:16 }}>
           <svg width="96" height="96" viewBox="0 0 100 100">
-            <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(69,137,255,0.07)" strokeWidth="6"/>
+            <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(125,184,232,0.07)" strokeWidth="6"/>
             <circle cx="50" cy="50" r="44" fill="none"
               stroke={todayPct===100?"var(--green)":"var(--blue)"} strokeWidth="6"
               strokeDasharray={C} strokeDashoffset={dash} strokeLinecap="round"
@@ -516,7 +516,7 @@ export default function HabitsPage() {
       {/* ── HABITS LIST ── */}
       <HudCard style={{ overflow:"hidden",marginBottom:14 }}>
         {/* Header */}
-        <div style={{ display:"grid",gridTemplateColumns:"200px 1fr 80px 44px 36px",padding:"10px 20px",fontSize:9,fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--t3)",background:"rgba(69,137,255,0.03)",borderBottom:"1px solid var(--border)" }}>
+        <div style={{ display:"grid",gridTemplateColumns:"200px 1fr 80px 44px 36px",padding:"10px 20px",fontSize:9,fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--t3)",background:"rgba(125,184,232,0.03)",borderBottom:"1px solid var(--border)" }}>
           <div>Habit</div>
           <div>Last 30 Days</div>
           <div style={{ textAlign:"center" }}>Streak</div>
@@ -527,7 +527,7 @@ export default function HabitsPage() {
         {habits.length===0&&(
           <div style={{ padding:"32px 20px",textAlign:"center" }}>
             <p style={{ fontSize:13,color:"var(--t4)",marginBottom:12 }}>No habits yet.</p>
-            <button onClick={()=>setModalHabit("new")} style={{ padding:"8px 20px",borderRadius:7,cursor:"pointer",fontSize:12,fontWeight:700,background:"rgba(69,137,255,0.1)",border:"1px solid rgba(69,137,255,0.25)",color:"var(--blue)" }}>Add your first habit</button>
+            <button onClick={()=>setModalHabit("new")} style={{ padding:"8px 20px",borderRadius:7,cursor:"pointer",fontSize:12,fontWeight:700,background:"rgba(125,184,232,0.1)",border:"1px solid rgba(125,184,232,0.25)",color:"var(--blue)" }}>Add your first habit</button>
           </div>
         )}
 

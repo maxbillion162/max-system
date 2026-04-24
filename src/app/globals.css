@@ -2,20 +2,20 @@
 
 :root {
   /* ── Backgrounds ── */
-  --bg:       #06080f;
-  --surface:  #0b0e1a;
-  --surface2: #0f1220;
-  --surface3: #141828;
+  --bg:       #000000;
+  --surface:  #0a0d12;
+  --surface2: #10141c;
+  --surface3: #151a23;
 
   /* ── Borders ── */
-  --border:   #1a2035;
-  --border2:  #202840;
+  --border:   #1c222c;
+  --border2:  #252b38;
 
   /* ── Primary accent ── */
-  --blue:        #4d90ff;
-  --blue-dim:    rgba(77,144,255,0.08);
-  --blue-border: rgba(77,144,255,0.18);
-  --blue-glow:   rgba(77,144,255,0.05);
+  --blue:        #7DB8E8;
+  --blue-dim:    rgba(125,184,232,0.08);
+  --blue-border: rgba(125,184,232,0.18);
+  --blue-glow:   rgba(125,184,232,0.05);
 
   /* ── Semantic status — muted, professional ── */
   --green:  #2dd48a;
@@ -23,10 +23,10 @@
   --amber:  #e8a935;
 
   /* ── Typography ── */
-  --t1: #eef1fb;
-  --t2: #7e8da8;
-  --t3: #445068;
-  --t4: #2a3450;
+  --t1: #E4EAF2;
+  --t2: #8794A6;
+  --t3: #525C6B;
+  --t4: #2E3440;
 
   /* ── Legacy aliases → all resolve to blue ── */
   --teal:        var(--blue);
@@ -47,7 +47,7 @@ html, body {
   min-height: 100vh;
 }
 
-::selection { background: rgba(77,144,255,0.2); }
+::selection { background: rgba(125,184,232,0.2); }
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }

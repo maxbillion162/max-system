@@ -33,7 +33,7 @@ const GOALS_SEED: Goal[] = [
 ];
 
 const CATEGORIES = ["Income","Finance","Fitness","Learning","Morning","Health","Business","Personal"];
-const COLORS = ["#10b981","#8b5cf6","#06b6d4","#f97316","#ec4899","#4589ff","#f59e0b","#ef4444"];
+const COLORS = ["#10b981","#8b5cf6","#06b6d4","#f97316","#ec4899","#7DB8E8","#f59e0b","#ef4444"];
 
 const inp: React.CSSProperties = { width:"100%", background:"var(--surface2)", border:"1px solid var(--border2)", borderRadius:6, padding:"9px 12px", color:"var(--t1)", fontSize:13, fontWeight:500, outline:"none", boxSizing:"border-box" };
 const lbl: React.CSSProperties = { fontSize:10, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", color:"var(--t3)", display:"block", marginBottom:6 };
@@ -134,7 +134,7 @@ function GoalEditModal({ goal, onSave, onClose, onDelete }: {
         <div style={{display:"flex",gap:10}}>
           {onDelete&&<button onClick={()=>{onDelete();onClose();}} style={{padding:"11px 16px",borderRadius:6,fontSize:13,fontWeight:600,cursor:"pointer",background:"rgba(239,68,68,0.06)",border:"1px solid rgba(239,68,68,0.2)",color:"var(--red)"}}>Delete</button>}
           <button onClick={onClose} style={{flex:1,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:600,cursor:"pointer",background:"transparent",border:"1px solid var(--border2)",color:"var(--t3)"}}>Cancel</button>
-          <button onClick={()=>{onSave({label,desc,category,unit,deadline,colorHex:color,current:parseFloat(current)||0,target:parseFloat(target)||goal.target});onClose();}} style={{flex:2,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer",background:"rgba(69,137,255,0.15)",border:"1px solid rgba(69,137,255,0.4)",color:"var(--blue)"}}>Save Changes</button>
+          <button onClick={()=>{onSave({label,desc,category,unit,deadline,colorHex:color,current:parseFloat(current)||0,target:parseFloat(target)||goal.target});onClose();}} style={{flex:2,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer",background:"rgba(125,184,232,0.15)",border:"1px solid rgba(125,184,232,0.4)",color:"var(--blue)"}}>Save Changes</button>
         </div>
       </div>
     </div>
@@ -143,7 +143,7 @@ function GoalEditModal({ goal, onSave, onClose, onDelete }: {
 
 /* ── Add Goal Modal ── */
 function AddGoalModal({ onAdd, onClose }: { onAdd:(g:Goal)=>void; onClose:()=>void }) {
-  const [draft, setDraft] = useState<Goal>({id:"",category:"Finance",label:"",desc:"",current:0,target:100,unit:"$",deadline:"2027-01-01",colorHex:"#4589ff",milestones:[],subgoals:[]});
+  const [draft, setDraft] = useState<Goal>({id:"",category:"Finance",label:"",desc:"",current:0,target:100,unit:"$",deadline:"2027-01-01",colorHex:"#7DB8E8",milestones:[],subgoals:[]});
   return (
     <div style={{position:"fixed",inset:0,zIndex:100,background:"rgba(0,0,0,0.75)",backdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center"}} onClick={onClose}>
       <div style={{background:"var(--surface)",border:"1px solid var(--border2)",borderRadius:12,padding:"28px 32px",width:480,maxWidth:"92vw",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,0.5)"}} onClick={e=>e.stopPropagation()}>
@@ -178,7 +178,7 @@ function AddGoalModal({ onAdd, onClose }: { onAdd:(g:Goal)=>void; onClose:()=>vo
             if(!draft.label.trim()) return;
             const id=draft.label.toLowerCase().replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"")+"-"+Date.now();
             onAdd({...draft,id}); onClose();
-          }} disabled={!draft.label.trim()} style={{flex:2,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer",background:"rgba(69,137,255,0.15)",border:"1px solid rgba(69,137,255,0.4)",color:"var(--blue)",opacity:draft.label.trim()?1:0.4}}>Add Goal</button>
+          }} disabled={!draft.label.trim()} style={{flex:2,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer",background:"rgba(125,184,232,0.15)",border:"1px solid rgba(125,184,232,0.4)",color:"var(--blue)",opacity:draft.label.trim()?1:0.4}}>Add Goal</button>
         </div>
       </div>
     </div>
@@ -413,7 +413,7 @@ export default function GoalsPage() {
       target:   Number(r.target ?? 100),
       unit:     String(r.unit ?? "$"),
       deadline: String(r.deadline ?? "2027-01-01"),
-      colorHex: String(r.color ?? "#4589ff"),
+      colorHex: String(r.color ?? "#7DB8E8"),
       category: String(r.category ?? "Personal"),
       milestones: Array.isArray(r.milestones) ? (r.milestones as {l:string;v:number}[]) : [],
       subgoals:   Array.isArray(r.subgoals)   ? (r.subgoals   as {text:string;done:boolean}[]) : [],
@@ -425,7 +425,7 @@ export default function GoalsPage() {
         name:   String(r.name ?? ""),
         cat:    String(r.cat  ?? ""),
         streak: Number(r.streak ?? 0),
-        color:  String(r.color ?? "#4589ff"),
+        color:  String(r.color ?? "#7DB8E8"),
       })));
     }
 
@@ -519,9 +519,9 @@ export default function GoalsPage() {
               <h1 style={{fontSize:36,fontWeight:800,color:"var(--t1)",letterSpacing:"-0.02em",marginBottom:6}}>Your Targets</h1>
               <p style={{fontSize:14,color:"var(--t2)"}}>Every goal tracked. Every milestone visible. No excuses.</p>
             </div>
-            <button onClick={()=>setAddModal(true)} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 20px",borderRadius:8,background:"rgba(69,137,255,0.1)",border:"1px solid rgba(69,137,255,0.3)",color:"var(--blue)",fontSize:13,fontWeight:700,cursor:"pointer",transition:"all .15s"}}
-              onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background="rgba(69,137,255,0.18)"}
-              onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background="rgba(69,137,255,0.1)"}
+            <button onClick={()=>setAddModal(true)} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 20px",borderRadius:8,background:"rgba(125,184,232,0.1)",border:"1px solid rgba(125,184,232,0.3)",color:"var(--blue)",fontSize:13,fontWeight:700,cursor:"pointer",transition:"all .15s"}}
+              onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background="rgba(125,184,232,0.18)"}
+              onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background="rgba(125,184,232,0.1)"}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               New Goal
@@ -546,7 +546,7 @@ export default function GoalsPage() {
         </div>
 
         {/* Quarterly check-in info */}
-        <div style={{padding:"12px 18px",borderRadius:8,background:"rgba(69,137,255,0.05)",border:"1px solid rgba(69,137,255,0.12)",marginBottom:28,display:"flex",alignItems:"center",gap:12}}>
+        <div style={{padding:"12px 18px",borderRadius:8,background:"rgba(125,184,232,0.05)",border:"1px solid rgba(125,184,232,0.12)",marginBottom:28,display:"flex",alignItems:"center",gap:12}}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           <p style={{fontSize:12,color:"var(--t2)"}}>
             <span style={{fontWeight:700,color:"var(--blue)"}}>Quarterly Check-in</span> — M.A.X. reviews your goals on Jan 1, Apr 1, Jul 1 &amp; Oct 1 and sends a full progress report to Telegram.
@@ -557,7 +557,7 @@ export default function GoalsPage() {
         {goals.length === 0 ? (
           <div style={{textAlign:"center",padding:"60px 0"}}>
             <p style={{fontSize:14,color:"var(--t4)",marginBottom:16}}>No goals yet. Set your first target.</p>
-            <button onClick={()=>setAddModal(true)} style={{padding:"10px 24px",borderRadius:8,background:"rgba(69,137,255,0.1)",border:"1px solid rgba(69,137,255,0.3)",color:"var(--blue)",fontSize:13,fontWeight:700,cursor:"pointer"}}>Add First Goal</button>
+            <button onClick={()=>setAddModal(true)} style={{padding:"10px 24px",borderRadius:8,background:"rgba(125,184,232,0.1)",border:"1px solid rgba(125,184,232,0.3)",color:"var(--blue)",fontSize:13,fontWeight:700,cursor:"pointer"}}>Add First Goal</button>
           </div>
         ) : (
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>

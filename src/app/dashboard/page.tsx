@@ -470,7 +470,7 @@ export default function Dashboard() {
       {imminentEvent && imminentMins !== null && (
         <div className="afu" style={{
           display: "flex", alignItems: "center", gap: 10, padding: "9px 16px", marginBottom: 12, borderRadius: 8,
-          background: "rgba(69,137,255,0.07)", border: "1px solid rgba(69,137,255,0.2)",
+          background: "rgba(125,184,232,0.07)", border: "1px solid rgba(125,184,232,0.2)",
         }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round">
             <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
@@ -712,7 +712,7 @@ export default function Dashboard() {
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {(goals.length > 0 ? goals : Object.entries(GOAL_META).map(([id, m]) => ({ id, label: m.label, current: 0, target: m.target, unit: m.unit, deadline: null, color: m.colorHex } as FullGoal)))
                 .map(g => {
-                  const meta = GOAL_META[g.id] ?? { label: g.label ?? g.id, target: g.target ?? 100, unit: g.unit ?? "", colorHex: g.color ?? "#4589ff" };
+                  const meta = GOAL_META[g.id] ?? { label: g.label ?? g.id, target: g.target ?? 100, unit: g.unit ?? "", colorHex: g.color ?? "#7DB8E8" };
                   const cur    = g.current ?? 0;
                   const target = g.target ?? meta.target;
                   const pct    = Math.min(100, Math.round((cur / target) * 100));
@@ -766,7 +766,7 @@ export default function Dashboard() {
             {calConnected === false ? (
               <a href="/api/auth/google" style={{
                 display: "flex", alignItems: "center", gap: 8, padding: "12px", borderRadius: 6,
-                background: "rgba(69,137,255,0.05)", border: "1px dashed rgba(69,137,255,0.2)",
+                background: "rgba(125,184,232,0.05)", border: "1px dashed rgba(125,184,232,0.2)",
                 textDecoration: "none",
               }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round">
@@ -826,8 +826,8 @@ export default function Dashboard() {
             {ALL_TAGS.map(tag => (
               <button key={tag} onClick={() => setActiveTag(tag)} style={{
                 fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 3, cursor: "pointer",
-                background: activeTag === tag ? "rgba(69,137,255,0.15)" : "transparent",
-                border: `1px solid ${activeTag === tag ? "rgba(69,137,255,0.4)" : "var(--border)"}`,
+                background: activeTag === tag ? "rgba(125,184,232,0.15)" : "transparent",
+                border: `1px solid ${activeTag === tag ? "rgba(125,184,232,0.4)" : "var(--border)"}`,
                 color: activeTag === tag ? "var(--blue)" : "var(--t3)",
                 transition: "all .15s",
               }}>
@@ -919,8 +919,8 @@ export default function Dashboard() {
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <button onClick={() => setAddingTask(t => !t)} style={{
                   width: 22, height: 22, borderRadius: 5, cursor: "pointer",
-                  background: addingTask ? "rgba(69,137,255,0.12)" : "transparent",
-                  border: `1px solid ${addingTask ? "rgba(69,137,255,0.3)" : "var(--border2)"}`,
+                  background: addingTask ? "rgba(125,184,232,0.12)" : "transparent",
+                  border: `1px solid ${addingTask ? "rgba(125,184,232,0.3)" : "var(--border2)"}`,
                   color: addingTask ? "var(--blue)" : "var(--t3)",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   transition: "all .15s",
@@ -949,8 +949,8 @@ export default function Dashboard() {
                   }}
                 />
                 <button onClick={addTask} style={{
-                  padding: "6px 12px", background: "rgba(69,137,255,0.1)",
-                  border: "1px solid rgba(69,137,255,0.2)", borderRadius: 6,
+                  padding: "6px 12px", background: "rgba(125,184,232,0.1)",
+                  border: "1px solid rgba(125,184,232,0.2)", borderRadius: 6,
                   fontSize: 12, fontWeight: 600, color: "var(--blue)", cursor: "pointer",
                 }}>Add</button>
               </div>
@@ -1096,7 +1096,7 @@ export default function Dashboard() {
               <button onClick={() => window.dispatchEvent(new CustomEvent("max-open-chat"))} style={{
                 flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                 padding: "10px 0", borderRadius: 4, fontSize: 12, fontWeight: 700,
-                background: "rgba(69,137,255,0.1)", color: "var(--blue)", border: "1px solid rgba(69,137,255,0.2)",
+                background: "rgba(125,184,232,0.1)", color: "var(--blue)", border: "1px solid rgba(125,184,232,0.2)",
                 cursor: "pointer",
               }}>
                 Ask M.A.X. →

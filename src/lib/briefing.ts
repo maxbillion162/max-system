@@ -61,9 +61,9 @@ function weatherIcon(code: number): string {
 }
 
 const S = {
-  bg: "#04060f", card: "#07101e", cardAlt: "#050d1a",
-  border: "rgba(69,137,255,0.12)", borderFaint: "rgba(69,137,255,0.06)",
-  blue: "#4589ff", green: "#22c55e", red: "#ef4444", amber: "#f59e0b",
+  bg: "#04060f", card: "#040608", cardAlt: "#020406",
+  border: "rgba(125,184,232,0.12)", borderFaint: "rgba(125,184,232,0.06)",
+  blue: "#7DB8E8", green: "#22c55e", red: "#ef4444", amber: "#f59e0b",
   t1: "#f0f9ff", t2: "#94a3b8", t3: "#475569", t4: "#1e3a5f",
 };
 
@@ -103,7 +103,7 @@ export function buildBriefingEmail(data: BriefingData): string {
     `<tr><td style="padding:12px 0;border-bottom:1px solid ${S.borderFaint};">
       <a href="${n.link}" style="color:${S.t1};font-size:14px;font-weight:600;text-decoration:none;display:block;line-height:1.4;margin-bottom:5px;">${n.title}</a>
       <span style="color:${S.t3};font-size:12px;">${n.source}</span>
-      <span style="margin-left:8px;padding:2px 7px;background:rgba(69,137,255,0.1);color:${S.blue};border-radius:4px;font-size:11px;font-weight:700;">${n.tag}</span>
+      <span style="margin-left:8px;padding:2px 7px;background:rgba(125,184,232,0.1);color:${S.blue};border-radius:4px;font-size:11px;font-weight:700;">${n.tag}</span>
     </td></tr>`
   ).join("");
 
@@ -150,7 +150,7 @@ export function buildBriefingEmail(data: BriefingData): string {
   <!-- HEADER -->
   <tr><td style="background:linear-gradient(135deg,${S.card},${S.cardAlt});border:1px solid ${S.border};border-radius:16px 16px 0 0;padding:36px;text-align:center;">
     <table cellpadding="0" cellspacing="0" style="margin:0 auto 16px;">
-      <tr><td style="width:52px;height:52px;background:linear-gradient(135deg,#080f1c,#050c18);border:1px solid rgba(69,137,255,0.3);border-radius:12px;text-align:center;vertical-align:middle;">
+      <tr><td style="width:52px;height:52px;background:linear-gradient(135deg,#080f1c,#050c18);border:1px solid rgba(125,184,232,0.3);border-radius:12px;text-align:center;vertical-align:middle;">
         <span style="color:${S.blue};font-size:22px;font-weight:900;">M</span>
       </td></tr>
     </table>
@@ -160,7 +160,7 @@ export function buildBriefingEmail(data: BriefingData): string {
   </td></tr>
 
   <!-- NET WORTH -->
-  <tr><td style="background:linear-gradient(135deg,#071828,#050d1a);border:1px solid ${S.border};border-top:none;padding:24px 36px;">
+  <tr><td style="background:linear-gradient(135deg,#071828,#020406);border:1px solid ${S.border};border-top:none;padding:24px 36px;">
     <table width="100%" cellpadding="0" cellspacing="0"><tr>
       <td>
         <div style="color:${S.t3};font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:8px;">Tracked Net Worth</div>
@@ -190,7 +190,7 @@ export function buildBriefingEmail(data: BriefingData): string {
         <div style="color:${S.t3};font-size:11px;margin-top:3px;">Top streak</div>
       </td>
       <td style="width:4%;"></td>
-      <td style="width:23%;padding:14px;background:rgba(69,137,255,0.06);border:1px solid rgba(69,137,255,0.12);border-radius:8px;text-align:center;">
+      <td style="width:23%;padding:14px;background:rgba(125,184,232,0.06);border:1px solid rgba(125,184,232,0.12);border-radius:8px;text-align:center;">
         <div style="color:${S.blue};font-size:22px;font-weight:900;">${openTasks.length}</div>
         <div style="color:${S.t3};font-size:11px;margin-top:3px;">Open tasks</div>
       </td>

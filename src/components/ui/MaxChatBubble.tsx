@@ -126,14 +126,14 @@ export default function MaxChatBubble() {
           position: "fixed", bottom: 88, right: 24, zIndex: 1000,
           width: 360, height: 460,
           background: "linear-gradient(160deg, #080f1c 0%, #050c18 100%)",
-          border: "1px solid rgba(69,137,255,0.14)",
+          border: "1px solid rgba(125,184,232,0.14)",
           borderRadius: 16,
-          boxShadow: "0 32px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(69,137,255,0.04)",
+          boxShadow: "0 32px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(125,184,232,0.04)",
           display: "flex", flexDirection: "column",
           animation: "fade-up 0.18s ease forwards",
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderBottom: "1px solid rgba(69,137,255,0.07)", flexShrink: 0 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, background: "rgba(69,137,255,0.08)", border: "1px solid rgba(69,137,255,0.18)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderBottom: "1px solid rgba(125,184,232,0.07)", flexShrink: 0 }}>
+            <div style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, background: "rgba(125,184,232,0.08)", border: "1px solid rgba(125,184,232,0.18)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <span style={{ fontSize: 12, fontWeight: 900, color: "var(--blue)" }}>M</span>
             </div>
             <div style={{ flex: 1 }}>
@@ -165,7 +165,7 @@ export default function MaxChatBubble() {
                 <div style={{
                   maxWidth: "85%", padding: "8px 12px", borderRadius: 10, fontSize: 13, lineHeight: 1.55,
                   ...(m.role === "user"
-                    ? { background: "rgba(69,137,255,0.12)", color: "var(--t1)", border: "1px solid rgba(69,137,255,0.18)" }
+                    ? { background: "rgba(125,184,232,0.12)", color: "var(--t1)", border: "1px solid rgba(125,184,232,0.18)" }
                     : { background: "rgba(255,255,255,0.04)", color: "var(--t2)", border: "1px solid rgba(255,255,255,0.05)" }
                   ),
                 }}>
@@ -186,7 +186,7 @@ export default function MaxChatBubble() {
           </div>
 
           <div style={{ padding: "8px 12px 12px", flexShrink: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(69,137,255,0.1)", borderRadius: 8, padding: "8px 12px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(125,184,232,0.1)", borderRadius: 8, padding: "8px 12px" }}>
               <input
                 ref={inputRef}
                 value={input}
@@ -214,8 +214,8 @@ export default function MaxChatBubble() {
           position: "fixed", bottom: 24, right: 24, zIndex: 1001,
           width: 52, height: 52, borderRadius: "50%",
           background: open ? "linear-gradient(135deg, #1e40af, #2563eb)" : "linear-gradient(135deg, #080f1c, #060c18)",
-          border: `1px solid rgba(69,137,255,${open ? "0.5" : hovered ? "0.35" : "0.18"})`,
-          boxShadow: open ? "0 0 32px rgba(69,137,255,0.35), 0 4px 20px rgba(0,0,0,0.5)" : hovered ? "0 0 20px rgba(69,137,255,0.15), 0 4px 16px rgba(0,0,0,0.4)" : "0 4px 16px rgba(0,0,0,0.4)",
+          border: `1px solid rgba(125,184,232,${open ? "0.5" : hovered ? "0.35" : "0.18"})`,
+          boxShadow: open ? "0 0 32px rgba(125,184,232,0.35), 0 4px 20px rgba(0,0,0,0.5)" : hovered ? "0 0 20px rgba(125,184,232,0.15), 0 4px 16px rgba(0,0,0,0.4)" : "0 4px 16px rgba(0,0,0,0.4)",
           cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
           opacity: open || hovered ? 1 : 0.5,
           transition: "all 0.2s ease",
