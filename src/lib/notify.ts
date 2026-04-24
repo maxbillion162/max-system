@@ -21,6 +21,7 @@ export type NotifyCategory =
   | "bill_alerts"
   | "budget_alerts"
   | "habit_nudge"
+  | "habit_coach"        // Proactive coaching push when Max is slacking on habits/goals
   | "goal_milestone"
   | "goal_checkin"
   | "calendar_alerts"
@@ -46,6 +47,7 @@ const CATEGORY_TO_DISPLAY: Record<NotifyCategory, NotifyDisplayType> = {
   bill_alerts:      "bill_due",
   budget_alerts:    "budget_alert",
   habit_nudge:      "habit_reminder",
+  habit_coach:      "habit_reminder",
   goal_milestone:   "goal_milestone",
   goal_checkin:     "goal_milestone",
   calendar_alerts:  "calendar_reminder",

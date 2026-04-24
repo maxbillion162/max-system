@@ -441,11 +441,12 @@ export default function DisciplinePage() {
   const [links,     setLinks]     = useState<LinkMap>({});
   const [loading,   setLoading]   = useState(true);
 
-  const [editingGoalId, setEditingGoalId] = useState<string | "new" | null>(null);
-  const [editingHabit,  setEditingHabit]  = useState<Habit | "new" | null>(null);
-  const [expandedGoal,  setExpandedGoal]  = useState<string | null>(null);
-  const [linkingGoalId, setLinkingGoalId] = useState<string | null>(null);
-  const [celebration,   setCelebration]   = useState<{ label: string; color: string } | null>(null);
+  const [editingGoalId,   setEditingGoalId]   = useState<string | "new" | null>(null);
+  const [editingHabit,    setEditingHabit]    = useState<Habit | "new" | null>(null);
+  const [expandedGoal,    setExpandedGoal]    = useState<string | null>(null);
+  const [linkingGoalId,   setLinkingGoalId]   = useState<string | null>(null);
+  const [suggestingGoalId, setSuggestingGoalId] = useState<string | null>(null);
+  const [celebration,     setCelebration]     = useState<{ label: string; color: string } | null>(null);
 
   const today = todayStr();
   const last30 = useMemo(getLast30Days, []);
@@ -608,6 +609,19 @@ export default function DisciplinePage() {
     }
   }
 
+  /* ─── Create habit + link to goal in one action (used by suggestions) ─── */
+  async function createAndLinkHabit(h: { name: string; category: string }, goalId: string) {
+    const id = `h${Date.now()}${Math.floor(Math.random() * 100)}`;
+    const color = "#7DB8E8";
+    setHabits(p => [...p, { id, name: h.name, cat: h.category, color, best: 0 }]);
+    await supabase.from("habits").insert({ id, name: h.name, cat: h.category, color, completed: false, streak: 0, best: 0, updated_at: new Date().toISOString() });
+    // Link immediately
+    const next = { ...links };
+    next[id] = [...(next[id] ?? []), goalId];
+    setLinks(next);
+    await supabase.from("settings").upsert({ key: "habit_goal_links", value: next });
+  }
+
   /* ─── Linking ─── */
   async function linkHabitToGoal(habitId: string, goalId: string) {
     const next = { ...links };
@@ -742,6 +756,17 @@ export default function DisciplinePage() {
           />
         );
       })()}
+      {suggestingGoalId && (() => {
+        const g = goals.find(x => x.id === suggestingGoalId);
+        if (!g) return null;
+        return (
+          <SuggestionsModal
+            goal={g}
+            onCreate={async (h) => { await createAndLinkHabit(h, g.id); }}
+            onClose={() => setSuggestingGoalId(null)}
+          />
+        );
+      })()}
 
       {/* Milestone celebration */}
       {celebration && <CelebrationOverlay label={celebration.label} color={celebration.color} />}
@@ -811,6 +836,7 @@ export default function DisciplinePage() {
                   onToggleSubgoal={i => toggleSubgoal(g.id, i)}
                   onLinkHabit={() => setLinkingGoalId(g.id)}
                   onUnlinkHabit={hid => unlinkHabitFromGoal(hid, g.id)}
+                  onAskSuggestions={() => setSuggestingGoalId(g.id)}
                   onAddNote={async text => {
                     const { data } = await supabase.from("goal_notes").insert({ goal_id: g.id, text, created_at: new Date().toISOString() }).select("id,goal_id,text,created_at").single();
                     if (data) setNotes(p => [...p, { id: String(data.id), goal_id: String(data.goal_id), text: String(data.text), created_at: String(data.created_at) }]);
@@ -1007,7 +1033,7 @@ function HabitRow({ habit, done, streak, feedingGoals, onToggle, onEdit }: {
 function GoalCard({
   goal, linkedHabits, logsForHabits, today, notes, expanded,
   onToggleExpand, onEdit, onUpdateCurrent, onToggleSubgoal,
-  onLinkHabit, onUnlinkHabit, onAddNote, onDeleteNote,
+  onLinkHabit, onUnlinkHabit, onAskSuggestions, onAddNote, onDeleteNote,
 }: {
   goal: Goal;
   linkedHabits: Habit[];
@@ -1021,6 +1047,7 @@ function GoalCard({
   onToggleSubgoal: (i: number) => void;
   onLinkHabit: () => void;
   onUnlinkHabit: (habitId: string) => void;
+  onAskSuggestions: () => void;
   onAddNote: (text: string) => Promise<void>;
   onDeleteNote: (id: string) => Promise<void>;
 }) {
@@ -1136,7 +1163,13 @@ function GoalCard({
             <button onClick={onLinkHabit} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--blue)", fontSize: 10, fontFamily: MONO, letterSpacing: "0.14em" }}>+ LINK</button>
           </div>
           {linkedHabits.length === 0 ? (
-            <p style={{ fontSize: 11, color: "var(--t4)", fontStyle: "italic" }}>No habits linked yet.</p>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <p style={{ fontSize: 11, color: "var(--t4)", fontStyle: "italic" }}>No habits linked yet.</p>
+              <button onClick={onAskSuggestions}
+                style={{ padding: "5px 10px", borderRadius: 2, background: `${goal.color}0D`, border: `1px solid ${goal.color}3A`, color: goal.color, fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", cursor: "pointer", fontFamily: MONO }}>
+                ✦ M.A.X. Suggestions
+              </button>
+            </div>
           ) : (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
               {linkedHabits.map(h => {
@@ -1259,6 +1292,120 @@ function Heatmap({ habits, logs, last30 }: { habits: Habit[]; logs: Map<string, 
         </tbody>
       </table>
     </div>
+  );
+}
+
+function SuggestionsModal({ goal, onCreate, onClose }: {
+  goal: Goal;
+  onCreate: (h: { name: string; category: string }) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<{ name: string; category: string; reason: string }[]>([]);
+  const [creating, setCreating] = useState<Set<string>>(new Set());
+  const [created, setCreated]   = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/discipline/suggest-habits", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ goalId: goal.id }),
+        });
+        const data = await res.json();
+        if (!cancelled) {
+          if (Array.isArray(data.suggestions) && data.suggestions.length > 0) {
+            setSuggestions(data.suggestions);
+          } else {
+            setError("M.A.X. couldn't form confident suggestions — try adding a description to the goal or rating more outputs so memories build up.");
+          }
+        }
+      } catch {
+        if (!cancelled) setError("Connection error — try again in a moment.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [goal.id]);
+
+  async function handleCreate(s: { name: string; category: string; reason: string }) {
+    const key = s.name;
+    setCreating(prev => new Set(prev).add(key));
+    try {
+      await onCreate({ name: s.name, category: s.category });
+      setCreated(prev => new Set(prev).add(key));
+    } finally {
+      setCreating(prev => { const next = new Set(prev); next.delete(key); return next; });
+    }
+  }
+
+  return (
+    <Modal onClose={onClose} width={480}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+        <div>
+          <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.32em", textTransform: "uppercase", color: goal.color, fontFamily: MONO, marginBottom: 4 }}>✦ M.A.X. SUGGESTIONS</p>
+          <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--t1)" }}>Habits for {goal.label}</h3>
+        </div>
+        <button onClick={onClose} style={iconBtn()}><CloseIcon /></button>
+      </div>
+
+      {loading ? (
+        <div style={{ padding: "32px 0", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+          <div style={{ display: "flex", gap: 5 }}>
+            {[0, 1, 2].map(i => <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: goal.color, opacity: 0.5, animation: `bounce 0.8s ease-in-out ${i * 0.18}s infinite` }} />)}
+          </div>
+          <p style={{ fontSize: 11, color: "var(--t4)", fontFamily: MONO, letterSpacing: "0.14em" }}>THINKING…</p>
+        </div>
+      ) : error ? (
+        <p style={{ fontSize: 12, color: "var(--t3)", lineHeight: 1.6, padding: "8px 0" }}>{error}</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {suggestions.map((s) => {
+            const isCreating = creating.has(s.name);
+            const isCreated  = created.has(s.name);
+            return (
+              <div key={s.name} style={{
+                padding: "12px 14px",
+                background: isCreated ? `${goal.color}0A` : "var(--surface)",
+                border: `1px solid ${isCreated ? `${goal.color}45` : "var(--border)"}`,
+                borderRadius: 3,
+                transition: "background .15s, border-color .15s",
+              }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 6 }}>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: "var(--t1)", marginBottom: 2 }}>{s.name}</p>
+                    <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--t4)", fontFamily: MONO }}>{s.category}</p>
+                  </div>
+                  <button
+                    onClick={() => handleCreate(s)}
+                    disabled={isCreating || isCreated}
+                    style={{
+                      padding: "6px 12px", borderRadius: 2,
+                      background: isCreated ? "rgba(95,176,125,0.12)" : `${goal.color}15`,
+                      border: `1px solid ${isCreated ? "rgba(95,176,125,0.4)" : `${goal.color}40`}`,
+                      color: isCreated ? "var(--green)" : goal.color,
+                      fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase",
+                      cursor: isCreating || isCreated ? "default" : "pointer",
+                      fontFamily: MONO, flexShrink: 0, minWidth: 108, textAlign: "center",
+                    }}>
+                    {isCreated ? "✓ Added" : isCreating ? "Adding…" : "Create + Link"}
+                  </button>
+                </div>
+                <p style={{ fontSize: 12, color: "var(--t3)", lineHeight: 1.5 }}>{s.reason}</p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+        <button onClick={onClose} style={btnSecondary()}>Done</button>
+      </div>
+    </Modal>
   );
 }
 

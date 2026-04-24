@@ -12,6 +12,7 @@ interface NotifPrefs {
   bill_alerts:      boolean;
   // Proactive intelligence
   max_insight:      boolean;
+  habit_coach:      boolean;
   budget_alerts:    boolean;
   goal_milestone:   boolean;
   market_update:    boolean;
@@ -37,7 +38,7 @@ interface BudgetPrefs {
 /** DEFAULT ALL OFF — opt-in model. Nothing fires until Max explicitly enables. */
 const DEFAULT_NOTIF: NotifPrefs = {
   habit_nudge:false, calendar_alerts:false, bill_alerts:false,
-  max_insight:false, budget_alerts:false, goal_milestone:false, market_update:false,
+  max_insight:false, habit_coach:false, budget_alerts:false, goal_milestone:false, market_update:false,
   weekly_recap:false, evening_checkin:false, goal_checkin:false,
 };
 const DEFAULT_PREFS:    Preferences   = { calendar_default_view:"week", tasks_in_calendar:true };
@@ -162,6 +163,7 @@ function NotifSection({ prefs, onSave }: { prefs:NotifPrefs; onSave:(v:NotifPref
     ]},
     { title: "Proactive Intelligence", rows: [
       { key:"max_insight",    label:"M.A.X. Insights",    desc:"Trend findings and observations M.A.X. surfaces on its own" },
+      { key:"habit_coach",    label:"Habit Coach",        desc:"Late-afternoon nudge when habits or goals are slipping" },
       { key:"budget_alerts",  label:"Budget Alerts",      desc:"Warnings when a spending category crosses thresholds" },
       { key:"goal_milestone", label:"Goal Milestones",    desc:"Ping when a goal milestone is reached" },
       { key:"market_update",  label:"Market Update",      desc:"2pm snapshot of SPY / QQQ / DIA" },
