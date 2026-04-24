@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { HudCard } from "@/components/ui/HudCard";
 import { Sparkline } from "@/components/ui/Sparkline";
+import { FeedbackControl } from "@/components/ui/FeedbackControl";
 import { supabase } from "@/lib/supabase";
 
 const BTC_FALLBACK = [88200, 89100, 91400, 90800, 92300, 93100, 94210];
@@ -1069,14 +1070,20 @@ export default function Dashboard() {
             </div>
             <div style={{ fontSize: 13, color: "var(--t2)", lineHeight: 1.7 }}>
               {brief.length > 0 ? (
-                <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 9 }}>
-                  {brief.map((line, i) => (
-                    <li key={i} style={{ display: "flex", gap: 9, alignItems: "flex-start" }}>
-                      <span style={{ color: "var(--blue)", fontWeight: 800, fontSize: 14, flexShrink: 0, lineHeight: 1.6 }}>{line.icon}</span>
-                      <span>{line.text}</span>
-                    </li>
-                  ))}
-                </ul>
+                <>
+                  <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 9 }}>
+                    {brief.map((line, i) => (
+                      <li key={i} style={{ display: "flex", gap: 9, alignItems: "flex-start" }}>
+                        <span style={{ color: "var(--blue)", fontWeight: 800, fontSize: 14, flexShrink: 0, lineHeight: 1.6 }}>{line.icon}</span>
+                        <span>{line.text}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div style={{ marginTop: 14, paddingTop: 10, borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: 10, fontFamily: "monospace", letterSpacing: "0.14em", color: "var(--t4)" }}>USEFUL TODAY?</span>
+                    <FeedbackControl artifactType="dashboard_brief" artifactId={briefGenAt ?? undefined} compact />
+                  </div>
+                </>
               ) : briefLoading ? (
                 <span style={{ color: "var(--t4)" }}>M.A.X. is thinking…</span>
               ) : insights.length > 0 ? (

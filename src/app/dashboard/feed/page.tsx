@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { HudCard } from "@/components/ui/HudCard";
+import { FeedbackControl } from "@/components/ui/FeedbackControl";
 
 interface NewsItem {
   title: string; source: string; tag: string; link: string;
@@ -332,11 +333,12 @@ export default function FeedPage() {
                   return (
                     <div key={i} style={{display:"flex",gap:8}}>
                       <span style={{fontSize:13,fontWeight:800,color:"var(--blue)",opacity:0.5,flexShrink:0,marginTop:1,fontFamily:"monospace"}}>{i+1}</span>
-                      <div>
+                      <div style={{flex:1}}>
                         <a href={article.link} target="_blank" rel="noopener noreferrer" style={{textDecoration:"none"}}>
                           <p style={{fontSize:12,fontWeight:600,color:"var(--t1)",lineHeight:1.4,marginBottom:4}}>{article.title.length>75?article.title.slice(0,75)+"…":article.title}</p>
                         </a>
-                        <p style={{fontSize:11,color:"var(--t3)",lineHeight:1.4}}>{pick.reason}</p>
+                        <p style={{fontSize:11,color:"var(--t3)",lineHeight:1.4,marginBottom:6}}>{pick.reason}</p>
+                        <FeedbackControl artifactType="feed_top3" artifactId={article.link} metadata={{ title: article.title, source: article.source, reason: pick.reason }} compact />
                       </div>
                     </div>
                   );
