@@ -19,8 +19,11 @@ import {
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const MODEL      = "claude-haiku-4-5-20251001";
-const MAX_TOKENS = 2048;
+const MODEL          = "claude-haiku-4-5-20251001";
+const MAX_TOKENS     = 2048;
+/** Messages from the unified chat_messages log to feed the agent as context.
+ *  Haiku 4.5 handles 200K tokens easily; 40 short messages is comfortably safe. */
+const HISTORY_WINDOW = 40;
 
 /* ─── System prompt ─── */
 const SYSTEM = `You are M.A.X. — Maximum Adaptive eXecutive. A genuinely intelligent, always-on personal assistant built for one person: Max. You run across three surfaces (the web dashboard, a floating chat bubble, and Telegram). You are the same entity on all three — one brain, one memory, one standard.
@@ -748,7 +751,7 @@ export async function buildContextHeader(): Promise<string> {
     readWeather(),
     sb.from("goals").select("label,current,target,unit,deadline").order("deadline").limit(5),
     readWealth(),
-    sb.from("memories").select("content").order("created_at", { ascending: false }).limit(3),
+    sb.from("memories").select("content").order("created_at", { ascending: false }).limit(8),
     sb.from("bills").select("name,amt,due_day").order("due_day"),
     sb.from("transactions").select("amount,budget_category,pending").gte("date", periodStart).gt("amount", 0),
     sb.from("budget_allocations").select("category,budgeted").eq("period_start", periodStart),
@@ -845,7 +848,7 @@ export async function buildContextHeader(): Promise<string> {
 
   // Recent memories
   if (memoriesRes.status === "fulfilled" && memoriesRes.value.data?.length) {
-    const mems = (memoriesRes.value.data as { content: string }[]).map(m => m.content.slice(0, 80));
+    const mems = (memoriesRes.value.data as { content: string }[]).map(m => m.content.slice(0, 240));
     ctx += `[RECENT MEMORY: ${mems.join(" | ")}]\n`;
   }
 
@@ -877,7 +880,7 @@ export async function runAgentStream(
     return;
   }
 
-  const apiMessages: Anthropic.MessageParam[] = messages.slice(-16).map(m => ({
+  const apiMessages: Anthropic.MessageParam[] = messages.slice(-HISTORY_WINDOW).map(m => ({
     role: m.role,
     content: m.content,
   }));
@@ -952,7 +955,7 @@ export interface AgentMessage {
 export async function runAgent(messages: AgentMessage[], injectContext = true): Promise<string> {
   if (!process.env.ANTHROPIC_API_KEY) return "M.A.X. offline — API key missing.";
 
-  const apiMessages: Anthropic.MessageParam[] = messages.slice(-16).map(m => ({
+  const apiMessages: Anthropic.MessageParam[] = messages.slice(-HISTORY_WINDOW).map(m => ({
     role: m.role,
     content: m.content,
   }));
