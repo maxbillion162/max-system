@@ -4,18 +4,33 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 
 /* ─── Types ─────────────────────────────────────────────────────── */
+/** All categories consumed by the notify() pipeline. Keys must match NotifyCategory in src/lib/notify.ts. */
 interface NotifPrefs {
-  habit_nudge:   boolean;
-  weekly_recap:  boolean;
-  bill_alerts:   boolean;
-  market_update: boolean;
+  // Reminders
+  habit_nudge:      boolean;
+  calendar_alerts:  boolean;
+  bill_alerts:      boolean;
+  // Proactive intelligence
+  max_insight:      boolean;
+  budget_alerts:    boolean;
+  goal_milestone:   boolean;
+  market_update:    boolean;
+  // Summaries
+  weekly_recap:     boolean;
+  evening_checkin:  boolean;
+  goal_checkin:     boolean;
 }
 interface Preferences {
   calendar_default_view: "day" | "week" | "month";
   tasks_in_calendar:     boolean;
 }
 
-const DEFAULT_NOTIF: NotifPrefs    = { habit_nudge:true, weekly_recap:true, bill_alerts:true, market_update:true };
+/** DEFAULT ALL OFF — opt-in model. Nothing fires until Max explicitly enables. */
+const DEFAULT_NOTIF: NotifPrefs = {
+  habit_nudge:false, calendar_alerts:false, bill_alerts:false,
+  max_insight:false, budget_alerts:false, goal_milestone:false, market_update:false,
+  weekly_recap:false, evening_checkin:false, goal_checkin:false,
+};
 const DEFAULT_PREFS: Preferences   = { calendar_default_view:"week", tasks_in_calendar:true };
 const DEFAULT_INTERESTS            = ["Crypto","AI","Sales","Entrepreneurship","Investing","Orlando"];
 
@@ -124,11 +139,24 @@ function NotifSection({ prefs, onSave }: { prefs:NotifPrefs; onSave:(v:NotifPref
   const [saving,  setSaving]  = useState(false);
   const [saved,   setSavedMsg]= useState(false);
 
-  const rows: { key:keyof NotifPrefs; label:string; desc:string }[] = [
-    { key:"habit_nudge",   label:"Habit Nudge",    desc:"9pm Telegram reminder for incomplete habits" },
-    { key:"weekly_recap",  label:"Weekly Recap",   desc:"Sunday 8am summary: habits, goals, wins" },
-    { key:"bill_alerts",   label:"Bill Alerts",    desc:"7am warning when a bill is due within 3 days" },
-    { key:"market_update", label:"Market Update",  desc:"2pm BTC/XRP + portfolio snapshot" },
+  type Row = { key:keyof NotifPrefs; label:string; desc:string };
+  const groups: { title:string; rows:Row[] }[] = [
+    { title: "Reminders", rows: [
+      { key:"habit_nudge",     label:"Habit Nudge",       desc:"9pm ping if habits are still open for the day" },
+      { key:"calendar_alerts", label:"Calendar Alerts",   desc:"30 minutes before a scheduled event" },
+      { key:"bill_alerts",     label:"Bill Due",          desc:"Heads-up when a bill is due in 3 days" },
+    ]},
+    { title: "Proactive Intelligence", rows: [
+      { key:"max_insight",    label:"M.A.X. Insights",    desc:"Trend findings and observations M.A.X. surfaces on its own" },
+      { key:"budget_alerts",  label:"Budget Alerts",      desc:"Warnings when a spending category crosses thresholds" },
+      { key:"goal_milestone", label:"Goal Milestones",    desc:"Ping when a goal milestone is reached" },
+      { key:"market_update",  label:"Market Update",      desc:"2pm snapshot of SPY / QQQ / DIA" },
+    ]},
+    { title: "Summaries", rows: [
+      { key:"weekly_recap",    label:"Weekly Recap",      desc:"Sunday morning summary — habits, goals, wins" },
+      { key:"evening_checkin", label:"Evening Check-in",  desc:"Nightly wrap-up with tomorrow's priorities" },
+      { key:"goal_checkin",    label:"Quarterly Goals",   desc:"Goal progress report every 3 months" },
+    ]},
   ];
 
   async function save() {
@@ -139,23 +167,34 @@ function NotifSection({ prefs, onSave }: { prefs:NotifPrefs; onSave:(v:NotifPref
     setTimeout(()=>setSavedMsg(false),2000);
   }
 
+  const enabledCount = Object.values(local).filter(Boolean).length;
+
   return (
     <div>
-      <p style={{fontSize:12,color:"var(--t3)",marginBottom:18,lineHeight:1.6}}>
-        All notifications are delivered via Telegram. Disabling here prevents the scheduled send — it does not remove cron jobs.
-      </p>
-      {rows.map(r=>(
-        <SettingRow key={r.key} label={r.label} desc={r.desc}>
-          <Toggle value={local[r.key]} onChange={v=>setLocal(p=>({...p,[r.key]:v}))}/>
-        </SettingRow>
+      <div style={{padding:"12px 14px",borderRadius:6,background:"rgba(125,184,232,0.04)",border:"1px solid rgba(125,184,232,0.12)",marginBottom:24}}>
+        <p style={{fontSize:12,color:"var(--t1b)",lineHeight:1.6,marginBottom:4,fontWeight:600}}>Everything here is opt-in.</p>
+        <p style={{fontSize:11,color:"var(--t3)",lineHeight:1.6}}>
+          Each enabled notification lands simultaneously in your dashboard bell and Telegram. Nothing fires unless you turn it on here.
+          {enabledCount === 0 && <> <span style={{color:"var(--t2)"}}>All currently off.</span></>}
+        </p>
+      </div>
+      {groups.map(g => (
+        <div key={g.title} style={{marginBottom:28}}>
+          <p style={{fontSize:10,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:"var(--t3)",marginBottom:8}}>{g.title}</p>
+          {g.rows.map(r => (
+            <SettingRow key={r.key} label={r.label} desc={r.desc}>
+              <Toggle value={local[r.key]} onChange={v=>setLocal(p=>({...p,[r.key]:v}))}/>
+            </SettingRow>
+          ))}
+        </div>
       ))}
-      <div style={{marginTop:20}}>
+      <div style={{marginTop:8}}>
         <button
           onClick={save}
           disabled={saving}
-          style={{padding:"9px 20px",borderRadius:8,background:"rgba(125,184,232,0.1)",border:"1px solid rgba(125,184,232,0.25)",cursor:"pointer",fontSize:12,fontWeight:700,color:saved?"var(--green)":"var(--blue)",transition:"color .2s"}}
+          style={{padding:"9px 20px",borderRadius:2,background:"rgba(125,184,232,0.1)",border:"1px solid rgba(125,184,232,0.3)",cursor:"pointer",fontSize:12,fontWeight:700,letterSpacing:"0.08em",color:saved?"var(--green)":"var(--blue)",transition:"color .2s"}}
         >
-          {saving?"Saving…":saved?"✓ Saved":"Save"}
+          {saving?"Saving…":saved?"✓ Saved":"Save Notifications"}
         </button>
       </div>
     </div>
