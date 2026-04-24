@@ -121,21 +121,30 @@ export default function AccessPage() {
         @keyframes shake { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-5px);} 75%{transform:translateX(5px);} }
         @keyframes hair-breathe { 0%,100% { opacity: 0.45; } 50% { opacity: 0.8; } }
         @keyframes letter-in {
-          0%   { opacity: 0; transform: translateY(14px); color: ${C.accent}; text-shadow: 0 0 22px rgba(125,184,232,0.6); }
-          60%  { opacity: 1; color: ${C.accent}; text-shadow: 0 0 18px rgba(125,184,232,0.35); }
-          100% { opacity: 1; transform: translateY(0); color: ${C.t1}; text-shadow: 0 0 40px rgba(125,184,232,0.04); }
+          0%   { opacity: 0; transform: translateY(16px); }
+          100% { opacity: 1; transform: translateY(0); }
         }
-        @keyframes hair-draw { from { width: 0; opacity: 0; } to { width: 36px; opacity: 1; } }
+        @keyframes hair-draw { from { width: 0; opacity: 0; } to { width: 56px; opacity: 1; } }
         *::selection { background: ${C.accent}; color: ${C.bg}; }
         input::placeholder { color: ${C.t3}; }
       `}</style>
 
-      {/* Grain overlay — subtle, even texture across the whole page */}
+      {/* Rock-surface marbling — large organic variation */}
       <div style={{
         position: "absolute", inset: 0, pointerEvents: "none",
-        backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.55  0 0 0 0 0.72  0 0 0 0 0.9  0 0 0 0.8 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")`,
-        opacity: 0.14,
+        backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1400' height='1400'><filter id='r'><feTurbulence type='fractalNoise' baseFrequency='0.006 0.011' numOctaves='4' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.42  0 0 0 0 0.58  0 0 0 0 0.78  0 0 0 0.9 0'/></filter><rect width='100%25' height='100%25' filter='url(%23r)'/></svg>")`,
+        backgroundSize: "cover",
+        opacity: 0.18,
         mixBlendMode: "screen",
+        zIndex: 1,
+      }} />
+
+      {/* Fine micro-grain on top for surface texture */}
+      <div style={{
+        position: "absolute", inset: 0, pointerEvents: "none",
+        backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.55  0 0 0 0 0.7  0 0 0 0 0.9  0 0 0 0.5 0'/></filter><rect width='100%25' height='100%25' filter='url(%23g)'/></svg>")`,
+        opacity: 0.08,
+        mixBlendMode: "overlay",
         zIndex: 1,
       }} />
 
@@ -183,31 +192,28 @@ export default function AccessPage() {
       <div style={{
         position: "relative", zIndex: 5,
         display: "flex", flexDirection: "column", alignItems: "center",
-        width: "100%", maxWidth: 360, padding: "0 24px",
+        width: "100%", maxWidth: 520, padding: "0 24px",
         animation: shake ? "shake 0.35s ease" : "fade-up .8s ease .1s both",
       }}>
 
-        {/* Hero mark — stagger-in with ice-blue ignition + cursor-proximity weight breathe */}
+        {/* Hero mark — stagger-in with ice-blue ignition + cursor-proximity spotlight */}
         <div
           ref={wordRef}
           style={{
             display: "flex",
-            fontSize: 68,
-            letterSpacing: "-0.03em",
+            fontSize: "clamp(96px, 12vw, 140px)",
+            letterSpacing: "-0.035em",
             lineHeight: 1,
-            marginBottom: 20,
+            marginBottom: 30,
             cursor: "default",
           }}
         >
           {WORD.map((ch, i) => {
             const p = proximity[i] ?? 0;
-            /* Spotlight: letters under cursor wash ice-blue + glow;
-               others dim slightly — no geometry change, no jitter */
-            const anyHover = proximity.some(v => v > 0.02);
-            const dimmed = anyHover ? 0.55 : 1;
-            const letterColor = p > 0
-              ? `rgb(${Math.round(228 + (125 - 228) * p)}, ${Math.round(234 + (184 - 234) * p)}, ${Math.round(242 + (232 - 242) * p)})`
-              : `rgba(228,234,242,${dimmed})`;
+            /* Polished-metal gradient fill — cool platinum at top to deeper
+               steel at bottom. Under cursor, shifts toward ice-blue. */
+            const baseGrad = "linear-gradient(180deg, #F4F7FB 0%, #D9E0EB 40%, #A8B4C6 80%, #8C9AAF 100%)";
+            const hotGrad = "linear-gradient(180deg, #D8ECFF 0%, #A3CDF2 45%, #7DB8E8 80%, #5A9AD0 100%)";
             return (
               <span
                 key={i}
@@ -215,11 +221,16 @@ export default function AccessPage() {
                 style={{
                   display: "inline-block",
                   fontWeight: 800,
-                  color: letterColor,
-                  textShadow: p > 0.05
-                    ? `0 0 ${6 + p * 28}px rgba(125,184,232,${0.35 + p * 0.45}), 0 0 ${2 + p * 4}px rgba(125,184,232,${0.3 + p * 0.3})`
-                    : "0 0 40px rgba(125,184,232,0.05)",
-                  transition: "color .35s ease, text-shadow .35s ease",
+                  backgroundImage: p > 0.02 ? hotGrad : baseGrad,
+                  WebkitBackgroundClip: "text",
+                  backgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  color: "transparent",
+                  filter: p > 0.05
+                    ? `drop-shadow(0 0 ${4 + p * 16}px rgba(125,184,232,${0.35 + p * 0.45})) drop-shadow(0 2px 10px rgba(0,0,0,0.6))`
+                    : "drop-shadow(0 2px 14px rgba(0,0,0,0.55))",
+                  opacity: !proximity.some(v => v > 0.02) || p > 0.02 ? 1 : 0.6,
+                  transition: "background-image .35s ease, filter .35s ease, opacity .35s ease",
                   animation: `letter-in .9s cubic-bezier(.2,.6,.2,1) ${0.15 + i * 0.08}s both`,
                   padding: "0 0.01em",
                 }}
@@ -233,18 +244,19 @@ export default function AccessPage() {
         {/* Accent hairline — draws in from center, then breathes */}
         <div style={{
           height: 1,
+          maxWidth: 56,
           background: `linear-gradient(90deg, transparent, ${C.accent}, transparent)`,
-          marginBottom: 20,
+          marginBottom: 28,
           animation: "hair-draw .7s cubic-bezier(.2,.6,.2,1) .85s both, hair-breathe 4s ease-in-out 1.6s infinite",
         }} />
 
         {/* Wordmark tagline — very quiet */}
         <div style={{
           fontFamily: MONO,
-          fontSize: 10,
-          letterSpacing: "0.32em",
+          fontSize: 11,
+          letterSpacing: "0.36em",
           color: C.t2,
-          marginBottom: 64,
+          marginBottom: 80,
           textTransform: "uppercase",
         }}>
           Maximum Adaptive Executive
