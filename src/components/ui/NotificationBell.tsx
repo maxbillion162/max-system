@@ -43,7 +43,14 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-export default function NotificationBell() {
+interface NotificationBellProps {
+  /** When true, the bell button fills its container (for sidebar use). Default false = icon-only 38px. */
+  fullWidth?: boolean;
+  /** Optional label shown next to the icon (sidebar expanded state). */
+  label?: string;
+}
+
+export default function NotificationBell({ fullWidth = false, label }: NotificationBellProps = {}) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
   const [toasts, setToasts] = useState<Notification[]>([]);
@@ -107,53 +114,57 @@ export default function NotificationBell() {
       `}</style>
 
       {/* ── Bell button ── */}
-      <div style={{ position: "fixed", top: 20, right: 24, zIndex: 50 }}>
-        <button
-          onClick={() => setOpen(o => !o)}
-          title="Notifications"
-          style={{
-            width: 38, height: 38, borderRadius: 10,
-            background: open ? "rgba(125,184,232,0.12)" : "rgba(255,255,255,0.04)",
-            border: `1px solid ${open ? "rgba(125,184,232,0.35)" : "rgba(255,255,255,0.08)"}`,
-            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-            position: "relative", transition: "all 0.15s",
-            color: open ? "#7DB8E8" : "rgba(148,163,184,0.65)",
-          }}
-          onMouseEnter={e => {
-            if (!open) {
-              (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)";
-              (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.14)";
-            }
-          }}
-          onMouseLeave={e => {
-            if (!open) {
-              (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)";
-              (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.08)";
-            }
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24"
+      <button
+        onClick={() => setOpen(o => !o)}
+        title="Notifications"
+        style={{
+          width: fullWidth ? "100%" : 38, height: 38,
+          borderRadius: 2,
+          background: open ? "rgba(125,184,232,0.10)" : "transparent",
+          border: fullWidth ? "none" : `1px solid ${open ? "rgba(125,184,232,0.35)" : "rgba(125,184,232,0.08)"}`,
+          cursor: "pointer", display: "flex", alignItems: "center",
+          justifyContent: label ? "flex-start" : "center",
+          gap: label ? 9 : 0,
+          padding: fullWidth && label ? "0 10px" : 0,
+          position: "relative", transition: "background 0.15s, color 0.15s",
+          color: open ? "var(--blue)" : "var(--t3)",
+        }}
+        onMouseEnter={e => {
+          if (!open) {
+            (e.currentTarget as HTMLElement).style.color = "var(--t1b)";
+            if (fullWidth) (e.currentTarget as HTMLElement).style.background = "rgba(125,184,232,0.04)";
+          }
+        }}
+        onMouseLeave={e => {
+          if (!open) {
+            (e.currentTarget as HTMLElement).style.color = "var(--t3)";
+            if (fullWidth) (e.currentTarget as HTMLElement).style.background = "transparent";
+          }
+        }}
+      >
+        <span style={{ position: "relative", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", width: 15, height: 15 }}>
+          <svg width="15" height="15" viewBox="0 0 24 24"
             fill={unread > 0 ? "currentColor" : "none"}
-            stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
             <path d="M13.73 21a2 2 0 0 1-3.46 0" />
           </svg>
-
           {unread > 0 && (
             <div style={{
-              position: "absolute", top: -5, right: -5,
-              minWidth: 16, height: 16, borderRadius: 8,
+              position: "absolute", top: -4, right: -5,
+              minWidth: 14, height: 14, borderRadius: 7,
               background: "#C85A5A", color: "#fff",
-              fontSize: 9, fontWeight: 800,
+              fontSize: 8, fontWeight: 800,
               display: "flex", alignItems: "center", justifyContent: "center",
-              padding: "0 4px",
+              padding: "0 3px",
               animation: "pulse-badge 2.5s ease-in-out infinite",
             }}>
               {unread > 99 ? "99+" : unread}
             </div>
           )}
-        </button>
-      </div>
+        </span>
+        {label && <span style={{ fontSize: 13, fontWeight: 400, whiteSpace: "nowrap" }}>{label}</span>}
+      </button>
 
       {/* ── Backdrop ── */}
       {open && (

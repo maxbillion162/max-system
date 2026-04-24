@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import NotificationBell from "@/components/ui/NotificationBell";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -193,24 +194,26 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </ul>
       </nav>
 
-      {/* ── Settings ── */}
-      <div style={{ padding: collapsed ? "8px 6px" : "8px 8px", borderTop: "1px solid rgba(125,184,232,0.07)", flexShrink: 0 }}>
+      {/* ── Settings + Notifications ── */}
+      <div style={{ padding: collapsed ? "8px 6px" : "8px 8px", borderTop: "1px solid rgba(125,184,232,0.07)", flexShrink: 0, display: "flex", flexDirection: collapsed ? "column" : "row", gap: collapsed ? 2 : 4, alignItems: collapsed ? "stretch" : "center" }}>
         <Link
           href="/dashboard/settings"
           title={collapsed ? "Settings" : undefined}
           style={{
+            flex: collapsed ? undefined : 1,
             display: "flex", alignItems: "center", gap: collapsed ? 0 : 9,
             padding: collapsed ? "10px 0" : "8px 10px",
             justifyContent: collapsed ? "center" : "flex-start",
-            borderRadius: 7, textDecoration: "none",
-            color: pathname === "/dashboard/settings" ? "var(--t2)" : "var(--t3)",
-            background: pathname === "/dashboard/settings" ? "rgba(125,184,232,0.07)" : "transparent",
-            transition: "all 0.15s ease",
+            borderRadius: 2, textDecoration: "none",
+            color: pathname === "/dashboard/settings" ? "var(--t1)" : "var(--t3)",
+            borderLeft: pathname === "/dashboard/settings" && !collapsed ? "2px solid var(--blue)" : "2px solid transparent",
+            background: "transparent",
+            transition: "color 0.15s, background 0.15s",
           }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--t2)"; (e.currentTarget as HTMLElement).style.background = "rgba(125,184,232,0.05)"; }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--t1b)"; (e.currentTarget as HTMLElement).style.background = "rgba(125,184,232,0.04)"; }}
           onMouseLeave={e => {
-            (e.currentTarget as HTMLElement).style.color = pathname === "/dashboard/settings" ? "var(--t2)" : "var(--t3)";
-            (e.currentTarget as HTMLElement).style.background = pathname === "/dashboard/settings" ? "rgba(125,184,232,0.07)" : "transparent";
+            (e.currentTarget as HTMLElement).style.color = pathname === "/dashboard/settings" ? "var(--t1)" : "var(--t3)";
+            (e.currentTarget as HTMLElement).style.background = "transparent";
           }}
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
@@ -219,6 +222,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           </svg>
           {!collapsed && <span style={{ fontSize: 13, fontWeight: 400, whiteSpace: "nowrap" }}>Settings</span>}
         </Link>
+        <NotificationBell />
       </div>
 
       {/* ── User ── */}
