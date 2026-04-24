@@ -23,15 +23,20 @@ const C = {
 };
 const MONO = `ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace`;
 
+const WORD = ["M", ".", "A", ".", "X", "."];
+
 export default function AccessPage() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
+  const wordRef = useRef<HTMLDivElement>(null);
+  const letterRefs = useRef<(HTMLSpanElement | null)[]>([]);
 
   const [now, setNow] = useState<Date | null>(null);
   const [mode, setMode] = useState<"idle" | "pass">("idle");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "error" | "ok">("idle");
   const [shake, setShake] = useState(false);
+  const [proximity, setProximity] = useState<number[]>(() => WORD.map(() => 0));
 
   useEffect(() => {
     try { if (sessionStorage.getItem("max-auth") === "1") router.replace("/dashboard"); } catch {}
@@ -41,6 +46,35 @@ export default function AccessPage() {
     setNow(new Date());
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
+  }, []);
+
+  /* Cursor-proximity weight-breathe on the wordmark */
+  useEffect(() => {
+    const el = wordRef.current;
+    if (!el) return;
+    let raf = 0;
+    function onMove(e: MouseEvent) {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const next = letterRefs.current.map(lref => {
+          if (!lref) return 0;
+          const r = lref.getBoundingClientRect();
+          const cx = r.left + r.width / 2;
+          const cy = r.top + r.height / 2;
+          const d = Math.hypot(e.clientX - cx, e.clientY - cy);
+          return Math.max(0, Math.min(1, 1 - d / 120));
+        });
+        setProximity(next);
+      });
+    }
+    function onLeave() { setProximity(WORD.map(() => 0)); }
+    el.addEventListener("mousemove", onMove);
+    el.addEventListener("mouseleave", onLeave);
+    return () => {
+      el.removeEventListener("mousemove", onMove);
+      el.removeEventListener("mouseleave", onLeave);
+      cancelAnimationFrame(raf);
+    };
   }, []);
 
   const handleLogin = useCallback(async () => {
@@ -90,9 +124,24 @@ export default function AccessPage() {
         @keyframes fade { from { opacity: 0;} to { opacity: 1;} }
         @keyframes shake { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-5px);} 75%{transform:translateX(5px);} }
         @keyframes hair-breathe { 0%,100% { opacity: 0.45; } 50% { opacity: 0.8; } }
+        @keyframes letter-in {
+          0%   { opacity: 0; transform: translateY(14px); color: ${C.accent}; text-shadow: 0 0 22px rgba(125,184,232,0.6); }
+          60%  { opacity: 1; color: ${C.accent}; text-shadow: 0 0 18px rgba(125,184,232,0.35); }
+          100% { opacity: 1; transform: translateY(0); color: ${C.t1}; text-shadow: 0 0 40px rgba(125,184,232,0.04); }
+        }
+        @keyframes hair-draw { from { width: 0; opacity: 0; } to { width: 36px; opacity: 1; } }
         *::selection { background: ${C.accent}; color: ${C.bg}; }
         input::placeholder { color: ${C.t3}; }
       `}</style>
+
+      {/* Grain overlay — gives the black real depth */}
+      <div style={{
+        position: "absolute", inset: 0, pointerEvents: "none",
+        backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.49  0 0 0 0 0.72  0 0 0 0 0.91  0 0 0 0.5 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")`,
+        opacity: 0.06,
+        mixBlendMode: "overlay",
+        zIndex: 1,
+      }} />
 
       {/* Ultra-subtle grid texture */}
       <div style={{
@@ -123,25 +172,52 @@ export default function AccessPage() {
         animation: shake ? "shake 0.35s ease" : "fade-up .8s ease .1s both",
       }}>
 
-        {/* Hero mark */}
-        <div style={{
-          fontSize: 68,
-          fontWeight: 800,
-          letterSpacing: "-0.03em",
-          color: C.t1,
-          lineHeight: 1,
-          marginBottom: 20,
-          textShadow: "0 0 40px rgba(125,184,232,0.04)",
-        }}>
-          M.A.X.
+        {/* Hero mark — stagger-in with ice-blue ignition + cursor-proximity weight breathe */}
+        <div
+          ref={wordRef}
+          style={{
+            display: "flex",
+            fontSize: 68,
+            letterSpacing: "-0.03em",
+            lineHeight: 1,
+            marginBottom: 20,
+            cursor: "default",
+          }}
+        >
+          {WORD.map((ch, i) => {
+            const p = proximity[i] ?? 0;
+            const weight = Math.round(700 + p * 200);           // 700 → 900
+            const tint = `rgba(125, 184, 232, ${p * 0.9})`;      // ice-blue overlay via text-shadow
+            const lift = -p * 2;
+            return (
+              <span
+                key={i}
+                ref={el => { letterRefs.current[i] = el; }}
+                style={{
+                  display: "inline-block",
+                  fontWeight: weight,
+                  color: C.t1,
+                  transform: `translateY(${lift}px)`,
+                  textShadow: p > 0
+                    ? `0 0 ${4 + p * 18}px ${tint}, 0 0 ${1 + p * 2}px ${tint}`
+                    : "0 0 40px rgba(125,184,232,0.04)",
+                  transition: "font-weight .25s ease, transform .25s ease, text-shadow .25s ease",
+                  animation: `letter-in .9s cubic-bezier(.2,.6,.2,1) ${0.15 + i * 0.08}s both`,
+                  padding: "0 0.01em",
+                }}
+              >
+                {ch}
+              </span>
+            );
+          })}
         </div>
 
-        {/* Accent hairline — breathes slowly */}
+        {/* Accent hairline — draws in from center, then breathes */}
         <div style={{
-          width: 36, height: 1,
+          height: 1,
           background: `linear-gradient(90deg, transparent, ${C.accent}, transparent)`,
           marginBottom: 20,
-          animation: "hair-breathe 4s ease-in-out infinite",
+          animation: "hair-draw .7s cubic-bezier(.2,.6,.2,1) .85s both, hair-breathe 4s ease-in-out 1.6s infinite",
         }} />
 
         {/* Wordmark tagline — very quiet */}
@@ -263,6 +339,24 @@ export default function AccessPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Serial number — one-of-one limited edition cue */}
+      <div style={{
+        position: "absolute",
+        bottom: 28,
+        left: "50%",
+        transform: "translateX(-50%)",
+        fontFamily: MONO,
+        fontSize: 9,
+        letterSpacing: "0.42em",
+        color: C.t3,
+        animation: "fade 1.2s ease 1.4s both",
+      }}>
+        <span style={{ color: C.t4 }}>№</span>
+        <span style={{ margin: "0 10px", color: C.t2 }}>01</span>
+        <span style={{ color: C.t4 }}>/</span>
+        <span style={{ marginLeft: 10, color: C.t3 }}>01</span>
       </div>
     </div>
   );
