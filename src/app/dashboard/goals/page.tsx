@@ -100,6 +100,11 @@ function GoalEditModal({ goal, onSave, onClose, onDelete }: {
 }) {
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
   const [label,s1]=useState(goal.label); const [desc,s2]=useState(goal.desc);
   const [current,s3]=useState(String(goal.current)); const [target,s4]=useState(String(goal.target));
   const [unit,s5]=useState(goal.unit); const [deadline,s6]=useState(goal.deadline);
@@ -163,6 +168,11 @@ function GoalEditModal({ goal, onSave, onClose, onDelete }: {
 /* ── Add Goal Modal ── */
 function AddGoalModal({ onAdd, onClose }: { onAdd:(g:Goal)=>void; onClose:()=>void }) {
   const [draft, setDraft] = useState<Goal>({id:"",category:"Finance",label:"",desc:"",current:0,target:100,unit:"$",deadline:"2027-01-01",colorHex:"#7DB8E8",milestones:[],subgoals:[]});
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
   return (
     <div style={{position:"fixed",inset:0,zIndex:100,background:"rgba(0,0,0,0.75)",backdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center"}} onClick={onClose}>
       <div style={{background:"var(--surface)",border:"1px solid var(--border2)",borderRadius:12,padding:"28px 32px",width:480,maxWidth:"92vw",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,0.5)"}} onClick={e=>e.stopPropagation()}>

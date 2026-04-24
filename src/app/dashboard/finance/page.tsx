@@ -122,10 +122,17 @@ function IncomeModal({ current, onSave, onClose }: { current:number; onSave:(n:n
   );
 }
 
-function AllocModal({ alloc, existingCats, onSave, onDelete, onClose }: { alloc?:BudgetAlloc; existingCats:string[]; onSave:(cat:string,budgeted:number,id?:string)=>void; onDelete?:()=>void; onClose:()=>void }) {
+function AllocModal({ alloc, existingCats, onSave, onDelete, onClose }: { alloc?:BudgetAlloc; existingCats:string[]; onSave:(cat:string,budgeted:number,id?:string)=>void; onDelete?:()=>Promise<boolean>; onClose:()=>void }) {
   const available = ALL_CATEGORIES.filter(c=>!existingCats.includes(c)||c===alloc?.category);
   const [cat, setCat] = useState(alloc?.category??available[0]??"");
   const [amt, setAmt] = useState(String(alloc?.budgeted??""));
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
   return (
     <div style={{ position:"fixed",inset:0,zIndex:100,background:"rgba(0,0,0,0.7)",backdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center" }} onClick={onClose}>
       <div style={{ background:"var(--surface)",border:"1px solid var(--border2)",borderRadius:12,padding:"28px 32px",width:380 }} onClick={e=>e.stopPropagation()}>
@@ -153,8 +160,24 @@ function AllocModal({ alloc, existingCats, onSave, onDelete, onClose }: { alloc?
             </div>
           </div>
         </div>
+        {confirming && onDelete && (
+          <div style={{ padding:"12px 14px",borderRadius:6,background:"rgba(200,90,90,0.08)",border:"1px solid rgba(200,90,90,0.3)",marginBottom:12 }}>
+            <p style={{ fontSize:12,color:"var(--t1)",lineHeight:1.5,marginBottom:10 }}>Remove <strong>{alloc?.category}</strong> from this period&apos;s budget? Transactions are not affected.</p>
+            <div style={{ display:"flex",gap:8 }}>
+              <button onClick={()=>setConfirming(false)} disabled={deleting} style={{ flex:1,padding:"8px 0",borderRadius:4,fontSize:11,fontWeight:600,cursor:"pointer",background:"transparent",border:"1px solid var(--border2)",color:"var(--t3)" }}>Keep</button>
+              <button onClick={async()=>{
+                setDeleting(true);
+                const ok = await onDelete();
+                setDeleting(false);
+                if (!ok) setConfirming(false);
+              }} disabled={deleting} style={{ flex:1,padding:"8px 0",borderRadius:4,fontSize:11,fontWeight:700,cursor:deleting?"default":"pointer",background:"rgba(200,90,90,0.15)",border:"1px solid rgba(200,90,90,0.5)",color:"var(--red)",opacity:deleting?0.6:1 }}>
+                {deleting ? "Removing…" : "Remove"}
+              </button>
+            </div>
+          </div>
+        )}
         <div style={{ display:"flex",gap:10 }}>
-          {onDelete&&<button onClick={onDelete} style={{ padding:"11px 14px",borderRadius:6,fontSize:13,fontWeight:600,cursor:"pointer",background:"rgba(200,90,90,0.08)",border:"1px solid rgba(200,90,90,0.2)",color:"var(--red)" }}>Delete</button>}
+          {onDelete&&!confirming&&<button onClick={()=>setConfirming(true)} style={{ padding:"11px 14px",borderRadius:6,fontSize:13,fontWeight:600,cursor:"pointer",background:"rgba(200,90,90,0.08)",border:"1px solid rgba(200,90,90,0.2)",color:"var(--red)" }}>Delete</button>}
           <button onClick={onClose} style={{ flex:1,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:600,cursor:"pointer",background:"transparent",border:"1px solid var(--border2)",color:"var(--t3)" }}>Cancel</button>
           <button onClick={()=>onSave(cat,parseFloat(amt)||0,alloc?.id)} style={{ flex:2,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer",background:"rgba(125,184,232,0.15)",border:"1px solid rgba(125,184,232,0.4)",color:"var(--blue)" }}>Save</button>
         </div>
@@ -329,10 +352,17 @@ export default function FinancePage() {
     setModal(null);
   }
 
-  async function deleteAlloc(id:string) {
-    await supabase.from("budget_allocations").delete().eq("id",id);
-    setAllocations(prev=>prev.filter(a=>a.id!==id));
+  async function deleteAlloc(id:string): Promise<boolean> {
+    const prev = allocations;
+    setAllocations(p => p.filter(a => a.id !== id));
+    const { error } = await supabase.from("budget_allocations").delete().eq("id", id);
+    if (error) {
+      setAllocations(prev);
+      alert(`Couldn't remove category: ${error.message}`);
+      return false;
+    }
     setModal(null);
+    return true;
   }
 
   async function quickBudgetSetup() {
@@ -363,7 +393,7 @@ export default function FinancePage() {
       {/* Modals */}
       {modal==="income"&&<IncomeModal current={income} onSave={saveIncome} onClose={()=>setModal(null)}/>}
       {modal==="addAlloc"&&<AllocModal existingCats={allocations.map(a=>a.category)} onSave={saveAlloc} onClose={()=>setModal(null)}/>}
-      {modal!==null&&typeof modal==="object"&&modal.type==="edit"&&<AllocModal alloc={modal.alloc} existingCats={allocations.map(a=>a.category)} onSave={saveAlloc} onDelete={()=>deleteAlloc(modal.alloc.id)} onClose={()=>setModal(null)}/>}
+      {modal!==null&&typeof modal==="object"&&modal.type==="edit"&&<AllocModal alloc={modal.alloc} existingCats={allocations.map(a=>a.category)} onSave={saveAlloc} onDelete={async()=>deleteAlloc(modal.alloc.id)} onClose={()=>setModal(null)}/>}
       {saving&&<div style={{position:"fixed",bottom:24,right:24,zIndex:200,fontSize:12,color:"var(--t3)",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:8,padding:"10px 16px"}}>Saving…</div>}
 
       <div style={{ maxWidth:1140 }}>
