@@ -114,7 +114,7 @@ export default function AccessPage() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: `linear-gradient(135deg, #14181F 0%, #0A0D12 35%, #04060A 70%, #000000 100%)`,
+      background: C.bg,
       color: C.t1,
       fontFamily: "'Inter', system-ui, sans-serif",
       position: "relative",
@@ -156,18 +156,6 @@ export default function AccessPage() {
         </div>
       ))}
 
-      {/* Ultra-subtle grid texture */}
-      <div style={{
-        position: "absolute", inset: 0, pointerEvents: "none",
-        backgroundImage: `
-          linear-gradient(${C.hair} 1px, transparent 1px),
-          linear-gradient(90deg, ${C.hair} 1px, transparent 1px)
-        `,
-        backgroundSize: "64px 64px",
-        maskImage: "radial-gradient(ellipse at center, black 0%, transparent 75%)",
-        WebkitMaskImage: "radial-gradient(ellipse at center, black 0%, transparent 75%)",
-        opacity: 0.5,
-      }} />
 
       {/* Quiet timestamp — top-right, almost invisible */}
       <div style={{
@@ -182,7 +170,7 @@ export default function AccessPage() {
       <div style={{
         position: "relative", zIndex: 5,
         display: "flex", flexDirection: "column", alignItems: "center",
-        width: "100%", maxWidth: 520, padding: "0 24px",
+        width: "100%", maxWidth: 420, padding: "0 24px",
         animation: shake ? "shake 0.35s ease" : "fade-up .8s ease .1s both",
       }}>
 
@@ -191,10 +179,10 @@ export default function AccessPage() {
           ref={wordRef}
           style={{
             display: "flex",
-            fontSize: "clamp(96px, 12vw, 140px)",
+            fontSize: "clamp(80px, 9vw, 108px)",
             letterSpacing: "-0.035em",
             lineHeight: 1,
-            marginBottom: 30,
+            marginBottom: 24,
             cursor: "default",
           }}
         >
@@ -245,10 +233,10 @@ export default function AccessPage() {
         {/* Wordmark tagline — very quiet */}
         <div style={{
           fontFamily: MONO,
-          fontSize: 11,
-          letterSpacing: "0.36em",
+          fontSize: 10,
+          letterSpacing: "0.34em",
           color: C.t2,
-          marginBottom: 80,
+          marginBottom: 64,
           textTransform: "uppercase",
         }}>
           Maximum Adaptive Executive
