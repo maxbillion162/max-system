@@ -1,8 +1,19 @@
 import { NextResponse } from "next/server";
 import { readCalendar } from "@/lib/max-tools";
 import { sendNotification } from "@/app/api/telegram/route";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export async function GET() {
+  // OPT-IN: skip unless explicitly enabled in Settings
+  const { data: prefRow } = await supabase.from("settings").select("value").eq("key", "notification_prefs").single();
+  const prefs = (prefRow?.value ?? {}) as { calendar_alerts?: boolean };
+  if (prefs.calendar_alerts !== true) return NextResponse.json({ sent: 0, reason: "not opted in" });
+
   try {
     const result = await readCalendar(1);
     if (!result.connected || result.events.length === 0) {

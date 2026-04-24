@@ -7,6 +7,11 @@ const supabase = createClient(
 );
 
 export async function GET() {
+  // OPT-IN: skip unless explicitly enabled in Settings
+  const { data: prefRow } = await supabase.from("settings").select("value").eq("key", "notification_prefs").single();
+  const prefs = (prefRow?.value ?? {}) as { goal_checkin?: boolean };
+  if (prefs.goal_checkin !== true) return NextResponse.json({ sent: false, reason: "not opted in" });
+
   const { data: goals } = await supabase
     .from("goals")
     .select("id,label,current,target,unit,deadline,category");

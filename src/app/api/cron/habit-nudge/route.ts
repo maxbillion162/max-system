@@ -10,7 +10,8 @@ export async function GET() {
   // Check notification prefs
   const { data: prefRow } = await supabase.from("settings").select("value").eq("key", "notification_prefs").single();
   const prefs = (prefRow?.value ?? {}) as { habit_nudge?: boolean };
-  if (prefs.habit_nudge === false) return NextResponse.json({ sent: false, reason: "disabled in settings" });
+  // OPT-IN: skip unless explicitly enabled in Settings
+  if (prefs.habit_nudge !== true) return NextResponse.json({ sent: false, reason: "not opted in" });
 
   const today = new Date().toISOString().slice(0, 10);
 

@@ -1,10 +1,21 @@
 import { NextResponse } from "next/server";
 import { runAgent } from "@/lib/max-agent";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export async function GET(req: Request) {
   if (req.headers.get("Authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // OPT-IN: skip unless explicitly enabled in Settings
+  const { data: prefRow } = await supabase.from("settings").select("value").eq("key", "notification_prefs").single();
+  const prefs = (prefRow?.value ?? {}) as { evening_checkin?: boolean };
+  if (prefs.evening_checkin !== true) return NextResponse.json({ sent: false, reason: "not opted in" });
 
   try {
     const message = await runAgent([{

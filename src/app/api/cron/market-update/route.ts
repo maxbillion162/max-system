@@ -59,7 +59,8 @@ export async function GET() {
   }
 
   // Send Telegram update (if enabled)
-  if (prefs.market_update !== false && BOT_TOKEN && CHAT_ID) {
+  // OPT-IN: only send if user explicitly enabled it in Settings
+  if (prefs.market_update === true && BOT_TOKEN && CHAT_ID) {
     const fmt = (n: number) => (n >= 0 ? `+${n.toFixed(2)}%` : `${n.toFixed(2)}%`);
     const lines = [
       `📈 *2PM Market Update*`,

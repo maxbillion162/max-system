@@ -14,7 +14,8 @@ export async function GET() {
     // Check notification prefs
     const { data: prefRow } = await supabase.from("settings").select("value").eq("key", "notification_prefs").single();
     const prefs = (prefRow?.value ?? {}) as { weekly_recap?: boolean };
-    if (prefs.weekly_recap === false) return NextResponse.json({ ok: false, reason: "disabled in settings" });
+    // OPT-IN: skip unless explicitly enabled in Settings
+    if (prefs.weekly_recap !== true) return NextResponse.json({ ok: false, reason: "not opted in" });
 
     const [habitsRes, tasksRes, goalsRes, cryptoRes] = await Promise.allSettled([
       supabase.from("habits").select("name,completed,streak").order("streak", { ascending: false }),
