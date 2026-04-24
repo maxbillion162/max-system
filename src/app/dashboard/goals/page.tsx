@@ -96,8 +96,10 @@ function getLinkedHabits(goal: Goal, habits: Habit[]): Habit[] {
 
 /* ── Goal Edit Modal ── */
 function GoalEditModal({ goal, onSave, onClose, onDelete }: {
-  goal:Goal; onSave:(u:Partial<Goal>)=>void; onClose:()=>void; onDelete?:()=>void;
+  goal:Goal; onSave:(u:Partial<Goal>)=>void; onClose:()=>void; onDelete?:()=>Promise<boolean>;
 }) {
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [label,s1]=useState(goal.label); const [desc,s2]=useState(goal.desc);
   const [current,s3]=useState(String(goal.current)); const [target,s4]=useState(String(goal.target));
   const [unit,s5]=useState(goal.unit); const [deadline,s6]=useState(goal.deadline);
@@ -131,8 +133,25 @@ function GoalEditModal({ goal, onSave, onClose, onDelete }: {
             </div>
           </div>
         </div>
+        {confirming && onDelete ? (
+          <div style={{padding:"14px 16px",borderRadius:6,background:"rgba(200,90,90,0.08)",border:"1px solid rgba(200,90,90,0.3)",marginBottom:12}}>
+            <p style={{fontSize:12,color:"var(--t1)",marginBottom:10,lineHeight:1.5}}>Delete <strong>{goal.label}</strong>? This removes the goal and all its notes. This can&apos;t be undone.</p>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>setConfirming(false)} disabled={deleting} style={{flex:1,padding:"9px 0",borderRadius:6,fontSize:12,fontWeight:600,cursor:"pointer",background:"transparent",border:"1px solid var(--border2)",color:"var(--t3)"}}>Keep</button>
+              <button onClick={async()=>{
+                setDeleting(true);
+                const ok = await onDelete();
+                setDeleting(false);
+                if (ok) onClose();
+                else setConfirming(false);
+              }} disabled={deleting} style={{flex:1,padding:"9px 0",borderRadius:6,fontSize:12,fontWeight:700,cursor:deleting?"default":"pointer",background:"rgba(200,90,90,0.15)",border:"1px solid rgba(200,90,90,0.5)",color:"var(--red)",opacity:deleting?0.6:1}}>
+                {deleting ? "Deleting…" : "Delete"}
+              </button>
+            </div>
+          </div>
+        ) : null}
         <div style={{display:"flex",gap:10}}>
-          {onDelete&&<button onClick={()=>{onDelete();onClose();}} style={{padding:"11px 16px",borderRadius:6,fontSize:13,fontWeight:600,cursor:"pointer",background:"rgba(200,90,90,0.06)",border:"1px solid rgba(200,90,90,0.2)",color:"var(--red)"}}>Delete</button>}
+          {onDelete&&!confirming&&<button onClick={()=>setConfirming(true)} style={{padding:"11px 16px",borderRadius:6,fontSize:13,fontWeight:600,cursor:"pointer",background:"rgba(200,90,90,0.06)",border:"1px solid rgba(200,90,90,0.2)",color:"var(--red)"}}>Delete</button>}
           <button onClick={onClose} style={{flex:1,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:600,cursor:"pointer",background:"transparent",border:"1px solid var(--border2)",color:"var(--t3)"}}>Cancel</button>
           <button onClick={()=>{onSave({label,desc,category,unit,deadline,colorHex:color,current:parseFloat(current)||0,target:parseFloat(target)||goal.target});onClose();}} style={{flex:2,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer",background:"rgba(125,184,232,0.15)",border:"1px solid rgba(125,184,232,0.4)",color:"var(--blue)"}}>Save Changes</button>
         </div>
@@ -186,10 +205,12 @@ function AddGoalModal({ onAdd, onClose }: { onAdd:(g:Goal)=>void; onClose:()=>vo
 }
 
 /* ── Goal Card ── */
-function GoalCard({ g, habits, notes, onEdit, onNoteAdd, onNoteDelete, onSubgoalToggle }: {
-  g: Goal; habits: Habit[]; notes: Note[]; onEdit: ()=>void;
+function GoalCard({ g, habits, notes, onEdit, onDelete, onNoteAdd, onNoteDelete, onSubgoalToggle }: {
+  g: Goal; habits: Habit[]; notes: Note[]; onEdit: ()=>void; onDelete: ()=>Promise<boolean>;
   onNoteAdd: (text:string)=>Promise<void>; onNoteDelete: (id:string)=>Promise<void>; onSubgoalToggle: (idx:number)=>Promise<void>;
 }) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [expanded,    setExpanded]    = useState(false);
   const [showJournal, setShowJournal] = useState(false);
   const [noteInput,   setNoteInput]   = useState("");
@@ -237,7 +258,29 @@ function GoalCard({ g, habits, notes, onEdit, onNoteAdd, onNoteDelete, onSubgoal
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             Edit
           </button>
+          <button onClick={()=>setConfirmingDelete(true)} title="Delete goal" style={{background:"transparent",border:"1px solid var(--border)",borderRadius:5,padding:"4px 8px",cursor:"pointer",color:"var(--t3)",display:"flex",alignItems:"center",transition:"all .15s"}}
+            onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor="rgba(200,90,90,0.5)";(e.currentTarget as HTMLElement).style.color="var(--red)";}}
+            onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor="var(--border)";(e.currentTarget as HTMLElement).style.color="var(--t3)";}}
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          </button>
         </div>
+
+        {/* Inline delete confirmation */}
+        {confirmingDelete && (
+          <div style={{padding:"10px 14px",borderRadius:6,background:"rgba(200,90,90,0.08)",border:"1px solid rgba(200,90,90,0.3)",marginBottom:12,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+            <span style={{fontSize:12,color:"var(--t1)",flex:1,minWidth:180}}>Delete <strong>{g.label}</strong>? Notes will also be removed.</span>
+            <button onClick={()=>setConfirmingDelete(false)} disabled={deleting} style={{padding:"5px 12px",borderRadius:4,fontSize:11,fontWeight:600,cursor:"pointer",background:"transparent",border:"1px solid var(--border2)",color:"var(--t3)"}}>Keep</button>
+            <button onClick={async()=>{
+              setDeleting(true);
+              const ok = await onDelete();
+              setDeleting(false);
+              if (!ok) setConfirmingDelete(false);
+            }} disabled={deleting} style={{padding:"5px 14px",borderRadius:4,fontSize:11,fontWeight:700,cursor:deleting?"default":"pointer",background:"rgba(200,90,90,0.15)",border:"1px solid rgba(200,90,90,0.5)",color:"var(--red)",opacity:deleting?0.6:1}}>
+              {deleting ? "Deleting…" : "Delete"}
+            </button>
+          </div>
+        )}
 
         {/* Progress */}
         <div style={{display:"flex",gap:20,alignItems:"flex-start"}}>
@@ -460,10 +503,23 @@ export default function GoalsPage() {
   }
 
   async function deleteGoal(id: string) {
+    // Snapshot for rollback on failure
+    const prevGoals = goals;
+    const prevNotes = notes;
+    // Optimistic UI
     setGoals(p=>p.filter(g=>g.id!==id));
     setNotes(p=>p.filter(n=>n.goal_id!==id));
-    await supabase.from("goals").delete().eq("id",id);
-    await supabase.from("goal_notes").delete().eq("goal_id",id);
+    // Delete notes first (FK-safe order), then goal
+    const notesRes = await supabase.from("goal_notes").delete().eq("goal_id",id);
+    const goalRes  = await supabase.from("goals").delete().eq("id",id);
+    if (notesRes.error || goalRes.error) {
+      // Rollback — show the user their goal is still there
+      setGoals(prevGoals);
+      setNotes(prevNotes);
+      alert(`Couldn't delete goal: ${(goalRes.error ?? notesRes.error)?.message ?? "unknown error"}`);
+      return false;
+    }
+    return true;
   }
 
   async function addNote(goalId: string, text: string) {
@@ -566,6 +622,7 @@ export default function GoalsPage() {
                 key={g.id} g={g} habits={habits}
                 notes={notes.filter(n=>n.goal_id===g.id)}
                 onEdit={()=>setEditingId(g.id)}
+                onDelete={()=>deleteGoal(g.id)}
                 onNoteAdd={text=>addNote(g.id,text)}
                 onNoteDelete={deleteNote}
                 onSubgoalToggle={idx=>toggleSubgoal(g.id,idx)}
