@@ -114,7 +114,13 @@ export default function AccessPage() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: `linear-gradient(180deg, ${C.bg} 0%, ${C.bgSoft} 100%)`,
+      background: `
+        radial-gradient(1200px 900px at 15% 20%, rgba(40,50,65,0.35), transparent 55%),
+        radial-gradient(1000px 800px at 85% 70%, rgba(25,35,50,0.40), transparent 60%),
+        radial-gradient(800px 600px at 70% 15%, rgba(45,60,80,0.28), transparent 55%),
+        radial-gradient(900px 700px at 25% 85%, rgba(20,28,42,0.38), transparent 55%),
+        linear-gradient(180deg, ${C.bg} 0%, ${C.bgSoft} 100%)
+      `,
       color: C.t1,
       fontFamily: "'Inter', system-ui, sans-serif",
       position: "relative",
@@ -137,12 +143,12 @@ export default function AccessPage() {
         input::placeholder { color: ${C.t3}; }
       `}</style>
 
-      {/* Smooth stone — very low-freq, single-octave turbulence. Barely there. */}
+      {/* Stone texture — multi-octave turbulence, lightly tinted blue-grey */}
       <div style={{
         position: "absolute", inset: 0, pointerEvents: "none",
-        backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1800' height='1800'><filter id='s'><feTurbulence type='fractalNoise' baseFrequency='0.0025 0.004' numOctaves='1' seed='4' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.3  0 0 0 0 0.42  0 0 0 0 0.6  0 0 0 0.55 0'/></filter><rect width='100%25' height='100%25' filter='url(%23s)'/></svg>")`,
+        backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='2200' height='2200'><filter id='s'><feTurbulence type='fractalNoise' baseFrequency='0.012 0.009' numOctaves='2' seed='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.38  0 0 0 0 0.5  0 0 0 0 0.7  0 0 0 0.8 0'/></filter><rect width='100%25' height='100%25' filter='url(%23s)'/></svg>")`,
         backgroundSize: "cover",
-        opacity: 0.08,
+        opacity: 0.13,
         mixBlendMode: "screen",
         zIndex: 1,
       }} />
@@ -211,16 +217,10 @@ export default function AccessPage() {
             const p = proximity[i] ?? 0;
             /* Polished-metal fill. Hover shifts only the lower stops toward
                ice-blue — top stays near-white. Whisper, not a wash. */
-            const topHex = "#F4F7FB";
-            const midHex = p > 0
-              ? mixHex("#D9E0EB", "#BDD6EF", p * 0.6)
-              : "#D9E0EB";
-            const lowHex = p > 0
-              ? mixHex("#A8B4C6", "#7DB8E8", p * 0.7)
-              : "#A8B4C6";
-            const botHex = p > 0
-              ? mixHex("#8C9AAF", "#5A9AD0", p * 0.7)
-              : "#8C9AAF";
+            const topHex = mixHex("#F4F7FB", "#DDEBFA", p * 0.5);
+            const midHex = mixHex("#D9E0EB", "#A8CDEC", p * 0.85);
+            const lowHex = mixHex("#A8B4C6", "#7DB8E8", p * 0.9);
+            const botHex = mixHex("#8C9AAF", "#5A9AD0", p * 0.9);
             const grad = `linear-gradient(180deg, ${topHex} 0%, ${midHex} 40%, ${lowHex} 80%, ${botHex} 100%)`;
             return (
               <span
@@ -234,10 +234,10 @@ export default function AccessPage() {
                   backgroundClip: "text",
                   WebkitTextFillColor: "transparent",
                   color: "transparent",
-                  filter: p > 0.1
-                    ? `drop-shadow(0 0 ${4 + p * 8}px rgba(125,184,232,${0.15 + p * 0.18})) drop-shadow(0 2px 14px rgba(0,0,0,0.55))`
+                  filter: p > 0.05
+                    ? `drop-shadow(0 0 ${6 + p * 14}px rgba(125,184,232,${0.22 + p * 0.28})) drop-shadow(0 2px 14px rgba(0,0,0,0.55))`
                     : "drop-shadow(0 2px 14px rgba(0,0,0,0.55))",
-                  transition: "background-image .5s ease, filter .5s ease",
+                  transition: "background-image .45s ease, filter .45s ease",
                   animation: `letter-in .8s cubic-bezier(.2,.6,.2,1) ${0.1 + i * 0.06}s both`,
                   padding: "0 0.01em",
                 }}
