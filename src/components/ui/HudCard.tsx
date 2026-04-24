@@ -14,12 +14,12 @@ export function HudCard({ children, className, style, delay = 0, noAnim = false,
     <div
       className={cn(!noAnim && "afu", className)}
       style={{
-        background: "linear-gradient(145deg, #10141c 0%, #0a0d12 100%)",
-        border: "1px solid rgba(125,184,232,0.13)",
-        borderRadius: 10,
+        background: "linear-gradient(160deg, #0f141d 0%, #080b11 100%)",
+        border: "1px solid rgba(125,184,232,0.10)",
+        borderRadius: 3,
         boxShadow: accent
-          ? "0 0 0 1px rgba(125,184,232,0.08), 0 4px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(125,184,232,0.14)"
-          : "0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(125,184,232,0.07)",
+          ? "0 0 0 1px rgba(125,184,232,0.06), 0 8px 32px rgba(0,0,0,0.55), inset 0 1px 0 rgba(125,184,232,0.06)"
+          : "0 6px 24px rgba(0,0,0,0.45), inset 0 1px 0 rgba(125,184,232,0.035)",
         animationDelay: `${delay}s`,
         ...style,
       }}

@@ -196,7 +196,7 @@ export async function updateGoal(id: string, current: number) {
   return { success: true, goal: data };
 }
 
-const GOAL_COLORS = ["#4589FF","#22c55e","#f59e0b","#a78bfa","#06b6d4","#ec4899","#f97316"];
+const GOAL_COLORS = ["#4589FF","#5FB07D","#C85A5A","#a78bfa","#7DB8E8","#9B8AFB","#C85A5A"];
 
 export async function createGoal(
   label: string,

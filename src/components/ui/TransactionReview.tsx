@@ -171,12 +171,12 @@ export default function TransactionReview({ transactions, categories, categoryCo
             title="Wrong category (←)"
             style={{
               width: 56, height: 56, borderRadius: "50%", cursor: "pointer",
-              background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)",
+              background: "rgba(200,90,90,0.1)", border: "1px solid rgba(200,90,90,0.25)",
               color: "var(--red)", display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 22, transition: "all 0.15s",
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(239,68,68,0.2)"; (e.currentTarget as HTMLElement).style.transform = "scale(1.08)"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(239,68,68,0.1)"; (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(200,90,90,0.2)"; (e.currentTarget as HTMLElement).style.transform = "scale(1.08)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(200,90,90,0.1)"; (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
           >
             ✕
           </button>
@@ -190,12 +190,12 @@ export default function TransactionReview({ transactions, categories, categoryCo
             title="Correct category (→)"
             style={{
               width: 56, height: 56, borderRadius: "50%", cursor: "pointer",
-              background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)",
+              background: "rgba(95,176,125,0.1)", border: "1px solid rgba(95,176,125,0.25)",
               color: "var(--green)", display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 22, transition: "all 0.15s",
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(16,185,129,0.2)"; (e.currentTarget as HTMLElement).style.transform = "scale(1.08)"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(16,185,129,0.1)"; (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(95,176,125,0.2)"; (e.currentTarget as HTMLElement).style.transform = "scale(1.08)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(95,176,125,0.1)"; (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
           >
             ✓
           </button>

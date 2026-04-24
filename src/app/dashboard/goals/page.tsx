@@ -15,25 +15,25 @@ interface Note  { id: string; goal_id: string; text: string; created_at: string 
 
 /* ── Seed data (populates empty DB on first load) ── */
 const GOALS_SEED: Goal[] = [
-  { id:"income-100k", category:"Income", label:"$100K First Year", desc:"Hit $100K total compensation in your first full year as an Account Manager.", current:0, target:100000, unit:"$", deadline:"2027-07-01", colorHex:"#10b981",
+  { id:"income-100k", category:"Income", label:"$100K First Year", desc:"Hit $100K total compensation in your first full year as an Account Manager.", current:0, target:100000, unit:"$", deadline:"2027-07-01", colorHex:"#5FB07D",
     milestones:[{l:"$25K",v:25000},{l:"$50K",v:50000},{l:"$75K",v:75000},{l:"$100K",v:100000}],
     subgoals:[{text:"Start job at staffing firm (July 2026)",done:false},{text:"Hit first $10K in commissions",done:false},{text:"Close 5 placements in first quarter",done:false},{text:"Establish top-performer reputation",done:false}] },
-  { id:"emergency-fund", category:"Finance", label:"Emergency Fund — $10K", desc:"Build a 3-month cash cushion before allocating aggressively to investments.", current:2800, target:10000, unit:"$", deadline:"2026-12-01", colorHex:"#8b5cf6",
+  { id:"emergency-fund", category:"Finance", label:"Emergency Fund — $10K", desc:"Build a 3-month cash cushion before allocating aggressively to investments.", current:2800, target:10000, unit:"$", deadline:"2026-12-01", colorHex:"#9B8AFB",
     milestones:[{l:"$2.5K",v:2500},{l:"$5K",v:5000},{l:"$7.5K",v:7500},{l:"$10K",v:10000}],
     subgoals:[{text:"Reach $2,500 (checkpoint)",done:true},{text:"Reach $5,000 (halfway)",done:false},{text:"Reach $7,500",done:false},{text:"Hit $10,000 target",done:false}] },
-  { id:"gym-52weeks", category:"Fitness", label:"Gym 4×/Week — Full Year", desc:"Maintain 4+ gym sessions per week for 52 straight weeks. Push/Pull/Legs every cycle.", current:12, target:52, unit:"weeks", deadline:"2027-04-01", colorHex:"#06b6d4",
+  { id:"gym-52weeks", category:"Fitness", label:"Gym 4×/Week — Full Year", desc:"Maintain 4+ gym sessions per week for 52 straight weeks. Push/Pull/Legs every cycle.", current:12, target:52, unit:"weeks", deadline:"2027-04-01", colorHex:"#7DB8E8",
     milestones:[{l:"1 month",v:4},{l:"3 months",v:13},{l:"6 months",v:26},{l:"1 year",v:52}],
     subgoals:[{text:"Complete first 4 weeks consistently",done:true},{text:"Build morning gym habit",done:false},{text:"Track workouts in app",done:false},{text:"Hit 26-week (6-month) milestone",done:false}] },
-  { id:"ai-learning", category:"Learning", label:"Master AI + Vibe Coding", desc:"Build real competency in Claude Code, Python basics, and AI-assisted workflows.", current:8, target:30, unit:"sessions", deadline:"2026-09-01", colorHex:"#f97316",
+  { id:"ai-learning", category:"Learning", label:"Master AI + Vibe Coding", desc:"Build real competency in Claude Code, Python basics, and AI-assisted workflows.", current:8, target:30, unit:"sessions", deadline:"2026-09-01", colorHex:"#C85A5A",
     milestones:[{l:"5 sessions",v:5},{l:"10",v:10},{l:"20",v:20},{l:"30",v:30}],
     subgoals:[{text:"Build M.A.X. dashboard (v1)",done:true},{text:"Learn Python basics (loops, functions, data)",done:false},{text:"Build a second project from scratch",done:false},{text:"Integrate AI into daily work workflow",done:false}] },
-  { id:"morning-routine", category:"Morning", label:"Morning Routine — 30 Days", desc:"Wake up by 7:30 AM and complete a consistent morning routine for 30 consecutive days.", current:0, target:30, unit:"days", deadline:"2026-06-01", colorHex:"#ec4899",
+  { id:"morning-routine", category:"Morning", label:"Morning Routine — 30 Days", desc:"Wake up by 7:30 AM and complete a consistent morning routine for 30 consecutive days.", current:0, target:30, unit:"days", deadline:"2026-06-01", colorHex:"#9B8AFB",
     milestones:[{l:"7 days",v:7},{l:"14 days",v:14},{l:"21 days",v:21},{l:"30 days",v:30}],
     subgoals:[{text:"Wake up before 7:30 AM for 7 days straight",done:false},{text:"Build consistent bedtime (before 12 AM)",done:false},{text:"Complete morning routine checklist daily",done:false},{text:"Hit 30-day streak",done:false}] },
 ];
 
 const CATEGORIES = ["Income","Finance","Fitness","Learning","Morning","Health","Business","Personal"];
-const COLORS = ["#10b981","#8b5cf6","#06b6d4","#f97316","#ec4899","#7DB8E8","#f59e0b","#ef4444"];
+const COLORS = ["#5FB07D","#9B8AFB","#7DB8E8","#C85A5A","#9B8AFB","#7DB8E8","#C85A5A","#C85A5A"];
 
 const inp: React.CSSProperties = { width:"100%", background:"var(--surface2)", border:"1px solid var(--border2)", borderRadius:6, padding:"9px 12px", color:"var(--t1)", fontSize:13, fontWeight:500, outline:"none", boxSizing:"border-box" };
 const lbl: React.CSSProperties = { fontSize:10, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", color:"var(--t3)", display:"block", marginBottom:6 };
@@ -45,12 +45,12 @@ function getStatus(g: Goal) {
   const pct = Math.min(100, (g.current / g.target) * 100);
   const startDate = new Date(now.getFullYear()-1, now.getMonth(), now.getDate());
   const expectedPct = Math.min(100, (now.getTime() - startDate.getTime()) / (deadline.getTime() - startDate.getTime()) * 100);
-  if (g.current >= g.target) return { label:"COMPLETE",    color:"#22c55e", bg:"rgba(34,197,94,0.1)"  };
-  if (daysLeft <= 0)         return { label:"OVERDUE",     color:"#ef4444", bg:"rgba(239,68,68,0.1)"  };
-  if (pct >= expectedPct*1.1) return { label:"CRUSHING IT", color:"#22c55e", bg:"rgba(34,197,94,0.1)"  };
-  if (pct >= expectedPct*0.9) return { label:"ON TRACK",    color:"#06b6d4", bg:"rgba(6,182,212,0.1)"  };
-  if (pct >= expectedPct*0.6) return { label:"BEHIND",      color:"#f59e0b", bg:"rgba(245,158,11,0.1)" };
-  return                       { label:"STALLED",       color:"#ef4444", bg:"rgba(239,68,68,0.1)"  };
+  if (g.current >= g.target) return { label:"COMPLETE",    color:"#5FB07D", bg:"rgba(95,176,125,0.1)"  };
+  if (daysLeft <= 0)         return { label:"OVERDUE",     color:"#C85A5A", bg:"rgba(200,90,90,0.1)"  };
+  if (pct >= expectedPct*1.1) return { label:"CRUSHING IT", color:"#5FB07D", bg:"rgba(95,176,125,0.1)"  };
+  if (pct >= expectedPct*0.9) return { label:"ON TRACK",    color:"#7DB8E8", bg:"rgba(125,184,232,0.1)"  };
+  if (pct >= expectedPct*0.6) return { label:"BEHIND",      color:"#C85A5A", bg:"rgba(200,90,90,0.1)" };
+  return                       { label:"STALLED",       color:"#C85A5A", bg:"rgba(200,90,90,0.1)"  };
 }
 
 function projectedDate(g: Goal): string | null {
@@ -132,7 +132,7 @@ function GoalEditModal({ goal, onSave, onClose, onDelete }: {
           </div>
         </div>
         <div style={{display:"flex",gap:10}}>
-          {onDelete&&<button onClick={()=>{onDelete();onClose();}} style={{padding:"11px 16px",borderRadius:6,fontSize:13,fontWeight:600,cursor:"pointer",background:"rgba(239,68,68,0.06)",border:"1px solid rgba(239,68,68,0.2)",color:"var(--red)"}}>Delete</button>}
+          {onDelete&&<button onClick={()=>{onDelete();onClose();}} style={{padding:"11px 16px",borderRadius:6,fontSize:13,fontWeight:600,cursor:"pointer",background:"rgba(200,90,90,0.06)",border:"1px solid rgba(200,90,90,0.2)",color:"var(--red)"}}>Delete</button>}
           <button onClick={onClose} style={{flex:1,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:600,cursor:"pointer",background:"transparent",border:"1px solid var(--border2)",color:"var(--t3)"}}>Cancel</button>
           <button onClick={()=>{onSave({label,desc,category,unit,deadline,colorHex:color,current:parseFloat(current)||0,target:parseFloat(target)||goal.target});onClose();}} style={{flex:2,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer",background:"rgba(125,184,232,0.15)",border:"1px solid rgba(125,184,232,0.4)",color:"var(--blue)"}}>Save Changes</button>
         </div>

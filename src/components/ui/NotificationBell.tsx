@@ -14,13 +14,13 @@ interface Notification {
 }
 
 const TYPE_CONFIG: Record<string, { icon: string; color: string }> = {
-  crypto_alert:      { icon: "◈", color: "#f59e0b" },
+  crypto_alert:      { icon: "◈", color: "#C85A5A" },
   habit_reminder:    { icon: "◎", color: "#7DB8E8" },
-  bill_due:          { icon: "!", color: "#ef4444" },
+  bill_due:          { icon: "!", color: "#C85A5A" },
   calendar_reminder: { icon: "◷", color: "#7DB8E8" },
-  max_action:        { icon: "✦", color: "#8b5cf6" },
-  budget_alert:      { icon: "▲", color: "#f97316" },
-  goal_milestone:    { icon: "◆", color: "#10b981" },
+  max_action:        { icon: "✦", color: "#9B8AFB" },
+  budget_alert:      { icon: "▲", color: "#C85A5A" },
+  goal_milestone:    { icon: "◆", color: "#5FB07D" },
   general:           { icon: "•", color: "#7DB8E8" },
 };
 
@@ -97,8 +97,8 @@ export default function NotificationBell() {
     <>
       <style>{`
         @keyframes pulse-badge {
-          0%, 100% { transform: scale(1); box-shadow: 0 0 8px rgba(239,68,68,0.6); }
-          50% { transform: scale(1.15); box-shadow: 0 0 14px rgba(239,68,68,0.9); }
+          0%, 100% { transform: scale(1); box-shadow: 0 0 8px rgba(200,90,90,0.6); }
+          50% { transform: scale(1.15); box-shadow: 0 0 14px rgba(200,90,90,0.9); }
         }
         @keyframes toast-in {
           from { opacity: 0; transform: translateX(24px); }
@@ -143,7 +143,7 @@ export default function NotificationBell() {
             <div style={{
               position: "absolute", top: -5, right: -5,
               minWidth: 16, height: 16, borderRadius: 8,
-              background: "#ef4444", color: "#fff",
+              background: "#C85A5A", color: "#fff",
               fontSize: 9, fontWeight: 800,
               display: "flex", alignItems: "center", justifyContent: "center",
               padding: "0 4px",

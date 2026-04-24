@@ -411,7 +411,7 @@ export default function ChatPage() {
               { label: "Goals", color: "#9b8afb", items: ["Update my emergency fund to $3,200", "Create a goal to read 12 books this year", "How am I tracking on my goals?", "Add a milestone to my income goal"] },
               { label: "Calendar & Email", color: "#7DB8E8", items: ["What's on my calendar this week?", "Schedule a gym session tomorrow at 7am", "Check my inbox for urgent emails", "Draft a follow-up email to my recruiter"] },
               { label: "Finance", color: "#2dd48a", items: ["How's my budget looking this month?", "What are my upcoming bills?", "Project my savings if I add $400/month", "What's AAPL trading at?", "Update my IRA to $2,900"] },
-              { label: "Crypto & Markets", color: "#e8a935", items: ["What's BTC doing right now?", "What's the crypto fear & greed index?", "Show me my net worth", "How much is my XRP worth?"] },
+              { label: "Crypto & Markets", color: "#C85A5A", items: ["What's BTC doing right now?", "What's the crypto fear & greed index?", "Show me my net worth", "How much is my XRP worth?"] },
               { label: "Music", color: "#7DB8E8", items: ["Skip this song", "Pause Spotify", "What's playing?", "Search for a lo-fi playlist"] },
               { label: "Research & Web", color: "#7DB8E8", items: ["Search Reddit for sales tips", "Browse apple.com and tell me what's new", "Calculate 18% tip on $84", "Find coffee shops near me"] },
               { label: "SMS & Notifications", color: "#f06a6a", items: ["Text me a reminder about the meeting", "Send me a budget summary via Telegram"] },

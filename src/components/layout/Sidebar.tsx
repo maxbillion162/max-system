@@ -60,7 +60,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       className="fixed left-0 top-0 h-full z-40 flex flex-col"
       style={{
         width: collapsed ? 56 : 220,
-        background: "linear-gradient(180deg, #080b15 0%, #060810 100%)",
+        background: "#050709",
         borderRight: "1px solid rgba(125,184,232,0.1)",
         transition: "width 0.25s ease",
         overflow: "hidden",
@@ -82,9 +82,9 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             className="flex-shrink-0 rounded-lg flex items-center justify-center"
             style={{
               width: 32, height: 32,
-              background: "linear-gradient(135deg, rgba(125,184,232,0.15), rgba(125,184,232,0.05))",
-              border: "1px solid rgba(125,184,232,0.35)",
-              boxShadow: "0 0 16px rgba(125,184,232,0.1)",
+              background: "transparent",
+              border: "1px solid rgba(125,184,232,0.25)",
+              borderRadius: 3,
             }}
           >
             <span style={{ fontSize: 14, fontWeight: 900, color: "var(--blue)", letterSpacing: "-0.02em" }}>M</span>
@@ -167,14 +167,14 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     gap: collapsed ? 0 : 9,
                     padding: collapsed ? "10px 0" : "8px 10px",
                     justifyContent: collapsed ? "center" : "flex-start",
-                    borderRadius: 7,
+                    borderRadius: 2,
                     color: active ? "var(--t1)" : "var(--t3)",
-                    background: active ? "rgba(125,184,232,0.1)" : "transparent",
+                    background: "transparent",
                     borderLeft: active && !collapsed ? "2px solid var(--blue)" : "2px solid transparent",
                     textDecoration: "none",
-                    transition: "all 0.15s ease",
+                    transition: "color 0.15s ease, background 0.15s ease",
                   }}
-                  onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLElement).style.background = "rgba(125,184,232,0.05)"; (e.currentTarget as HTMLElement).style.color = "var(--t2)"; } }}
+                  onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLElement).style.background = "rgba(125,184,232,0.04)"; (e.currentTarget as HTMLElement).style.color = "var(--t1b)"; } }}
                   onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--t3)"; } }}
                 >
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none"

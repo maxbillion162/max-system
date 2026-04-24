@@ -211,7 +211,7 @@ function IntegrSection() {
           style={{
             padding:"6px 14px",borderRadius:7,border:"1px solid rgba(255,255,255,0.1)",cursor:"pointer",
             fontSize:12,fontWeight:600,transition:"all .15s",
-            background: telegramStatus==="ok"?"rgba(52,211,153,0.1)":telegramStatus==="fail"?"rgba(239,68,68,0.1)":"var(--surface2)",
+            background: telegramStatus==="ok"?"rgba(52,211,153,0.1)":telegramStatus==="fail"?"rgba(200,90,90,0.1)":"var(--surface2)",
             color: telegramStatus==="ok"?"var(--green)":telegramStatus==="fail"?"var(--red)":"var(--t2)",
           }}
         >
@@ -232,7 +232,7 @@ function IntegrSection() {
       </SettingRow>
 
       {/* Dev note for Plaid */}
-      <div style={{marginTop:18,padding:"14px 16px",borderRadius:8,background:"rgba(245,158,11,0.05)",border:"1px solid rgba(245,158,11,0.12)"}}>
+      <div style={{marginTop:18,padding:"14px 16px",borderRadius:8,background:"rgba(200,90,90,0.05)",border:"1px solid rgba(200,90,90,0.12)"}}>
         <p style={{fontSize:11,color:"var(--amber)",fontWeight:600,marginBottom:4}}>Plaid: Sandbox Mode Active</p>
         <p style={{fontSize:11,color:"var(--t4)",lineHeight:1.6}}>To connect real bank accounts: switch to Development on dashboard.plaid.com, update <code style={{fontFamily:"monospace",color:"var(--t3)"}}>PLAID_ENV=development</code> and <code style={{fontFamily:"monospace",color:"var(--t3)"}}>PLAID_SECRET</code> in Vercel env vars, then redeploy.</p>
       </div>
@@ -412,7 +412,7 @@ function DataSection() {
         </SettingRow>
 
         <SettingRow label="Clear Chat History" desc="Delete all web chat messages (Telegram history is kept)">
-          <button onClick={clearChat} disabled={clearingChat} style={{...btnBase,background:clearDone?"rgba(52,211,153,0.08)":"rgba(239,68,68,0.07)",borderColor:clearDone?"rgba(52,211,153,0.25)":"rgba(239,68,68,0.2)",color:clearDone?"var(--green)":"var(--red)"}}>
+          <button onClick={clearChat} disabled={clearingChat} style={{...btnBase,background:clearDone?"rgba(52,211,153,0.08)":"rgba(200,90,90,0.07)",borderColor:clearDone?"rgba(52,211,153,0.25)":"rgba(200,90,90,0.2)",color:clearDone?"var(--green)":"var(--red)"}}>
             {clearingChat?"Clearing…":clearDone?"✓ Cleared":"Clear History"}
           </button>
         </SettingRow>
@@ -454,7 +454,7 @@ export default function SettingsPage() {
       {/* Left nav */}
       <div style={{width:220,borderRight:"1px solid var(--border)",padding:"40px 0",flexShrink:0}}>
         <div style={{padding:"0 24px 24px",borderBottom:"1px solid var(--border)",marginBottom:12}}>
-          <p style={{fontSize:10,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:"rgba(6,182,212,0.5)",marginBottom:8}}>M.A.X. OS</p>
+          <p style={{fontSize:10,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:"rgba(125,184,232,0.5)",marginBottom:8}}>M.A.X. OS</p>
           <h1 style={{fontSize:20,fontWeight:800,color:"var(--t1)",letterSpacing:"-0.02em",margin:0}}>Settings</h1>
         </div>
         <nav style={{padding:"0 12px"}}>

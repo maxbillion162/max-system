@@ -30,43 +30,43 @@ function AccessDenied() {
       {/* Grid */}
       <div style={{
         position: "absolute", inset: 0, pointerEvents: "none",
-        backgroundImage: "linear-gradient(rgba(239,68,68,0.015) 1px,transparent 1px),linear-gradient(90deg,rgba(239,68,68,0.015) 1px,transparent 1px)",
+        backgroundImage: "linear-gradient(rgba(200,90,90,0.015) 1px,transparent 1px),linear-gradient(90deg,rgba(200,90,90,0.015) 1px,transparent 1px)",
         backgroundSize: "44px 44px",
       }} />
 
       {/* Scan line */}
       <div style={{
         position: "absolute", left: 0, right: 0, height: 1, pointerEvents: "none",
-        background: "linear-gradient(90deg,transparent,rgba(239,68,68,0.15) 50%,transparent)",
+        background: "linear-gradient(90deg,transparent,rgba(200,90,90,0.15) 50%,transparent)",
         animation: "scanline-err 5s linear infinite",
       }} />
 
       {/* Corner decorations */}
       {[
-        { top: 20, left: 20,   borderLeft: "1px solid rgba(239,68,68,0.25)", borderTop: "1px solid rgba(239,68,68,0.25)"    },
-        { top: 20, right: 20,  borderRight:"1px solid rgba(239,68,68,0.25)", borderTop: "1px solid rgba(239,68,68,0.25)"    },
-        { bottom:20,left: 20,  borderLeft: "1px solid rgba(239,68,68,0.25)", borderBottom:"1px solid rgba(239,68,68,0.25)"  },
-        { bottom:20,right: 20, borderRight:"1px solid rgba(239,68,68,0.25)", borderBottom:"1px solid rgba(239,68,68,0.25)" },
+        { top: 20, left: 20,   borderLeft: "1px solid rgba(200,90,90,0.25)", borderTop: "1px solid rgba(200,90,90,0.25)"    },
+        { top: 20, right: 20,  borderRight:"1px solid rgba(200,90,90,0.25)", borderTop: "1px solid rgba(200,90,90,0.25)"    },
+        { bottom:20,left: 20,  borderLeft: "1px solid rgba(200,90,90,0.25)", borderBottom:"1px solid rgba(200,90,90,0.25)"  },
+        { bottom:20,right: 20, borderRight:"1px solid rgba(200,90,90,0.25)", borderBottom:"1px solid rgba(200,90,90,0.25)" },
       ].map((s, i) => <div key={i} style={{ position: "absolute", width: 18, height: 18, ...s }} />)}
 
       <div style={{ textAlign: "center", maxWidth: 520, padding: "0 32px", position: "relative", zIndex: 10 }}>
 
         {/* Error code */}
-        <div style={{ fontSize: 10, letterSpacing: "0.22em", color: "rgba(239,68,68,0.5)", marginBottom: 20, textTransform: "uppercase" }}>
+        <div style={{ fontSize: 10, letterSpacing: "0.22em", color: "rgba(200,90,90,0.5)", marginBottom: 20, textTransform: "uppercase" }}>
           M.A.X. OS // SECURITY MODULE // EVENT 403
         </div>
 
         {/* Big ERROR */}
         <div style={{
-          fontSize: "clamp(52px,10vw,80px)", fontWeight: 900, color: "#ef4444",
+          fontSize: "clamp(52px,10vw,80px)", fontWeight: 900, color: "#C85A5A",
           letterSpacing: "-0.02em", lineHeight: 1, marginBottom: 16,
-          textShadow: "0 0 40px rgba(239,68,68,0.45), 0 0 80px rgba(239,68,68,0.2)",
+          textShadow: "0 0 40px rgba(200,90,90,0.45), 0 0 80px rgba(200,90,90,0.2)",
         }}>
           ACCESS DENIED
         </div>
 
         {/* Message */}
-        <div style={{ fontSize: 13, color: "rgba(239,68,68,0.55)", letterSpacing: "0.08em", lineHeight: 1.9, marginBottom: 10 }}>
+        <div style={{ fontSize: 13, color: "rgba(200,90,90,0.55)", letterSpacing: "0.08em", lineHeight: 1.9, marginBottom: 10 }}>
           ERROR — SECURE USER ACCESS CREDENTIALS REQUIRED
         </div>
         <div style={{ fontSize: 11, color: "rgba(148,163,184,0.25)", letterSpacing: "0.1em", lineHeight: 1.8, marginBottom: 44 }}>
@@ -75,7 +75,7 @@ function AccessDenied() {
         </div>
 
         {/* Log line */}
-        <div style={{ fontSize: 10, color: "rgba(239,68,68,0.3)", marginBottom: 36, letterSpacing: "0.1em" }}>
+        <div style={{ fontSize: 10, color: "rgba(200,90,90,0.3)", marginBottom: 36, letterSpacing: "0.1em" }}>
           {`[${new Date().toISOString()}] UNAUTHORIZED ACCESS ATTEMPT LOGGED`}
         </div>
 
@@ -84,13 +84,13 @@ function AccessDenied() {
           onClick={() => router.push("/")}
           style={{
             padding: "12px 36px", borderRadius: 3, cursor: "pointer",
-            background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.3)",
-            color: "rgba(239,68,68,0.8)", fontSize: 11, fontWeight: 700,
+            background: "rgba(200,90,90,0.07)", border: "1px solid rgba(200,90,90,0.3)",
+            color: "rgba(200,90,90,0.8)", fontSize: 11, fontWeight: 700,
             letterSpacing: "0.18em", textTransform: "uppercase",
             transition: "all .15s",
           }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(239,68,68,0.12)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(239,68,68,0.6)"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(239,68,68,0.07)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(239,68,68,0.3)"; }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(200,90,90,0.12)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(200,90,90,0.6)"; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(200,90,90,0.07)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(200,90,90,0.3)"; }}
         >
           → Authenticate
         </button>

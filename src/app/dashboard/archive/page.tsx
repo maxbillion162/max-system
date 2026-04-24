@@ -213,7 +213,7 @@ export default function ArchivePage() {
               if (!items || items.length === 0) return null;
               return (
                 <div key={group}>
-                  <div style={{ padding: "10px 4px 6px", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(6,182,212,0.35)" }}>
+                  <div style={{ padding: "10px 4px 6px", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(125,184,232,0.35)" }}>
                     {group}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 8 }}>
@@ -310,8 +310,8 @@ export default function ArchivePage() {
             {filteredTg.map((pair, i) => (
               <button key={i} onClick={() => setSelectedTg(pair)} style={{
                 textAlign: "left", padding: "12px 14px", borderRadius: 8, cursor: "pointer",
-                background: selectedTg === pair ? "rgba(245,158,11,0.08)" : "var(--surface)",
-                border: `1px solid ${selectedTg === pair ? "rgba(245,158,11,0.25)" : "var(--border)"}`,
+                background: selectedTg === pair ? "rgba(200,90,90,0.08)" : "var(--surface)",
+                border: `1px solid ${selectedTg === pair ? "rgba(200,90,90,0.25)" : "var(--border)"}`,
                 transition: "all .15s",
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
@@ -355,7 +355,7 @@ export default function ArchivePage() {
                 </div>
                 <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
                   <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                    <div style={{ maxWidth: "78%", padding: "10px 14px", borderRadius: 10, fontSize: 13, lineHeight: 1.6, background: "rgba(245,158,11,0.08)", color: "var(--t1)", border: "1px solid rgba(245,158,11,0.18)" }}>
+                    <div style={{ maxWidth: "78%", padding: "10px 14px", borderRadius: 10, fontSize: 13, lineHeight: 1.6, background: "rgba(200,90,90,0.08)", color: "var(--t1)", border: "1px solid rgba(200,90,90,0.18)" }}>
                       {selectedTg.user.content}
                     </div>
                   </div>

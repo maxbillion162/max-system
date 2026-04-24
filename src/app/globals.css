@@ -17,22 +17,23 @@
   --blue-border: rgba(125,184,232,0.18);
   --blue-glow:   rgba(125,184,232,0.05);
 
-  /* ── Semantic status — muted, professional ── */
-  --green:  #2dd48a;
-  --red:    #f06a6a;
-  --amber:  #e8a935;
+  /* ── Semantic status — simplified palette ── */
+  --green:  #5FB07D;   /* up / success */
+  --red:    #C85A5A;   /* down / error / warn */
+  --amber:  #C85A5A;   /* unified into red — no more yellow energy */
+  --purple: #9B8AFB;   /* secondary accent for special states */
 
   /* ── Typography ── */
-  --t1: #E4EAF2;
-  --t2: #8794A6;
-  --t3: #525C6B;
-  --t4: #2E3440;
+  --t1:  #E4EAF2;  /* primary — headlines, hero data */
+  --t1b: #C4CDDB;  /* emphasized body — important numbers, active labels */
+  --t2:  #8794A6;  /* secondary — labels */
+  --t3:  #525C6B;  /* tertiary — meta */
+  --t4:  #2E3440;  /* barely-there — dividers */
 
-  /* ── Legacy aliases → all resolve to blue ── */
-  --teal:        var(--blue);
-  --cyan:        var(--blue);
-  --orange:      var(--amber);
-  --purple:      #9b8afb;
+  /* ── Legacy aliases → resolve to simplified palette ── */
+  --teal:   var(--blue);
+  --cyan:   var(--blue);
+  --orange: var(--red);
   --s1:          var(--surface);
   --text-primary: var(--t1);
 }

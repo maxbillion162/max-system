@@ -84,7 +84,7 @@ export async function GET() {
     const resendKey = process.env.RESEND_API_KEY;
     if (resendKey) {
       const resend = new Resend(resendKey);
-      const S = { bg: "#04060f", card: "#040608", border: "rgba(125,184,232,0.12)", blue: "#7DB8E8", green: "#22c55e", red: "#ef4444", amber: "#f59e0b", t1: "#f0f9ff", t2: "#94a3b8", t3: "#475569", t4: "#1e3a5f" };
+      const S = { bg: "#04060f", card: "#040608", border: "rgba(125,184,232,0.12)", blue: "#7DB8E8", green: "#5FB07D", red: "#C85A5A", amber: "#C85A5A", t1: "#f0f9ff", t2: "#94a3b8", t3: "#475569", t4: "#1e3a5f" };
       const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:${S.bg};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:${S.bg};padding:40px 20px;"><tr><td align="center">
@@ -96,7 +96,7 @@ export async function GET() {
     </div>
     <table width="100%" cellpadding="0" cellspacing="0">
       <tr>
-        <td style="padding:14px;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.12);border-radius:8px;text-align:center;">
+        <td style="padding:14px;background:rgba(95,176,125,0.06);border:1px solid rgba(95,176,125,0.12);border-radius:8px;text-align:center;">
           <div style="color:${S.green};font-size:28px;font-weight:900;">${habitsDone}/${habitsTotal}</div>
           <div style="color:${S.t3};font-size:11px;margin-top:3px;">Habits today</div>
         </td>
@@ -106,7 +106,7 @@ export async function GET() {
           <div style="color:${S.t3};font-size:11px;margin-top:3px;">Tasks done</div>
         </td>
         <td style="width:12px;"></td>
-        <td style="padding:14px;background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.12);border-radius:8px;text-align:center;">
+        <td style="padding:14px;background:rgba(200,90,90,0.06);border:1px solid rgba(200,90,90,0.12);border-radius:8px;text-align:center;">
           <div style="color:${S.amber};font-size:28px;font-weight:900;">${topStreak?.streak ?? 0}</div>
           <div style="color:${S.t3};font-size:11px;margin-top:3px;">Top streak</div>
         </td>

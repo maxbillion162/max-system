@@ -32,7 +32,7 @@ function relativeTime(dateStr: string): string {
   return d.toLocaleDateString("en-US",{month:"short",day:"numeric"});
 }
 function initials(name: string) { return name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()||"?"; }
-const AVATAR_COLORS = ["#8b5cf6","#06b6d4","#10b981","#f97316","#ec4899","#7DB8E8","#f59e0b","#ef4444"];
+const AVATAR_COLORS = ["#9B8AFB","#7DB8E8","#5FB07D","#C85A5A","#9B8AFB","#7DB8E8","#C85A5A","#C85A5A"];
 function avatarColor(name: string) {
   let h=0; for(let i=0;i<name.length;i++) h=(h*31+name.charCodeAt(i))%AVATAR_COLORS.length; return AVATAR_COLORS[h];
 }
@@ -225,8 +225,8 @@ export default function EmailPage() {
 
   /* ── Priority pill ── */
   function priorityPill(email: Email) {
-    if (email.labels.includes("STARRED")) return { label:"URGENT", color:"var(--red)", bg:"rgba(239,68,68,0.1)", border:"rgba(239,68,68,0.25)" };
-    if (email.category==="action") return { label:"REPLY NEEDED", color:"var(--amber)", bg:"rgba(245,158,11,0.1)", border:"rgba(245,158,11,0.25)" };
+    if (email.labels.includes("STARRED")) return { label:"URGENT", color:"var(--red)", bg:"rgba(200,90,90,0.1)", border:"rgba(200,90,90,0.25)" };
+    if (email.category==="action") return { label:"REPLY NEEDED", color:"var(--amber)", bg:"rgba(200,90,90,0.1)", border:"rgba(200,90,90,0.25)" };
     if (email.category==="fyi") return { label:"FYI", color:"var(--blue)", bg:"rgba(125,184,232,0.1)", border:"rgba(125,184,232,0.25)" };
     return { label:"NOISE", color:"var(--t4)", bg:"rgba(255,255,255,0.04)", border:"var(--border)" };
   }
@@ -256,7 +256,7 @@ export default function EmailPage() {
         </div>
 
         <nav style={{ flex:1,padding:"12px 10px",overflowY:"auto" }}>
-          <p style={{ fontSize:9,fontWeight:700,letterSpacing:"0.14em",textTransform:"uppercase",color:"rgba(6,182,212,0.3)",padding:"0 6px 8px" }}>Smart Folders</p>
+          <p style={{ fontSize:9,fontWeight:700,letterSpacing:"0.14em",textTransform:"uppercase",color:"rgba(125,184,232,0.3)",padding:"0 6px 8px" }}>Smart Folders</p>
           {([
             { id:"all",         label:"All Mail",       count:visible.length,  dot:"var(--t3)" },
             { id:"action",      label:"Needs Action",   count:actionCount,     dot:"var(--red)" },
@@ -416,7 +416,7 @@ export default function EmailPage() {
             {/* M.A.X. action hint */}
             {selected.category==="action"&&aiActions[selected.subject]&&(
               <div style={{ padding:"10px 28px 0",flexShrink:0 }}>
-                <div style={{ display:"flex",alignItems:"flex-start",gap:9,padding:"10px 14px",borderRadius:8,background:"rgba(245,158,11,0.04)",border:"1px solid rgba(245,158,11,0.15)" }}>
+                <div style={{ display:"flex",alignItems:"flex-start",gap:9,padding:"10px 14px",borderRadius:8,background:"rgba(200,90,90,0.04)",border:"1px solid rgba(200,90,90,0.15)" }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink:0,marginTop:2 }}>
                     <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
                   </svg>
@@ -440,7 +440,7 @@ export default function EmailPage() {
             {/* Compose */}
             <div style={{ padding:"14px 28px 22px",borderTop:"1px solid var(--border)",flexShrink:0 }}>
               {draftSaved ? (
-                <div style={{ display:"flex",alignItems:"center",gap:8,padding:"12px 16px",borderRadius:10,background:"rgba(34,197,94,0.06)",border:"1px solid rgba(34,197,94,0.18)" }}>
+                <div style={{ display:"flex",alignItems:"center",gap:8,padding:"12px 16px",borderRadius:10,background:"rgba(95,176,125,0.06)",border:"1px solid rgba(95,176,125,0.18)" }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--green)" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
                   <p style={{ fontSize:12,color:"var(--green)",fontWeight:600 }}>Draft saved to Gmail</p>
                 </div>

@@ -37,11 +37,11 @@ const GCAL_COLORS: Record<string,string> = {
   "6":"#ffad46","7":"#42d692","8":"#16a765","9":"#7bd148","10":"#b3dc6c",
   "11":"#fbe983","default":"#7DB8E8",
 };
-const LIST_PALETTE = ["#7DB8E8","#10b981","#8b5cf6","#f59e0b","#ef4444","#06b6d4","#ec4899","#f97316"];
+const LIST_PALETTE = ["#7DB8E8","#5FB07D","#9B8AFB","#C85A5A","#C85A5A","#7DB8E8","#9B8AFB","#C85A5A"];
 const DEFAULT_LISTS = [
   { name:"Personal", color:"#7DB8E8" },
-  { name:"Work",     color:"#10b981" },
-  { name:"M.A.X.",   color:"#8b5cf6" },
+  { name:"Work",     color:"#5FB07D" },
+  { name:"M.A.X.",   color:"#9B8AFB" },
 ];
 
 /* ── Helpers ── */
@@ -224,8 +224,8 @@ function TaskDetail({ task, lists, onUpdate, onDelete, onBack }: {
         <div style={{ display:"flex",flexDirection:"column",gap:4,marginBottom:8,maxHeight:120,overflowY:"auto" }}>
           {subs.map(s=>(
             <div key={s.id} style={{ display:"flex",alignItems:"center",gap:7 }}>
-              <button onClick={()=>toggleSub(s.id)} style={{ width:13,height:13,borderRadius:3,flexShrink:0,cursor:"pointer",background:s.completed?"rgba(34,197,94,0.15)":"transparent",border:`1px solid ${s.completed?"rgba(34,197,94,0.4)":"var(--border2)"}`,display:"flex",alignItems:"center",justifyContent:"center" }}>
-                {s.completed&&<svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+              <button onClick={()=>toggleSub(s.id)} style={{ width:13,height:13,borderRadius:3,flexShrink:0,cursor:"pointer",background:s.completed?"rgba(95,176,125,0.15)":"transparent",border:`1px solid ${s.completed?"rgba(95,176,125,0.4)":"var(--border2)"}`,display:"flex",alignItems:"center",justifyContent:"center" }}>
+                {s.completed&&<svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#5FB07D" strokeWidth="3.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
               </button>
               <span style={{ flex:1,fontSize:12,color:s.completed?"var(--t4)":"var(--t2)",textDecoration:s.completed?"line-through":"none" }}>{s.text}</span>
               <button onClick={()=>deleteSub(s.id)} style={{ background:"none",border:"none",cursor:"pointer",color:"var(--t4)",padding:2 }}
@@ -243,9 +243,9 @@ function TaskDetail({ task, lists, onUpdate, onDelete, onBack }: {
           <button onClick={addSub} style={{ padding:"6px 10px",borderRadius:5,background:"rgba(125,184,232,0.1)",border:"1px solid rgba(125,184,232,0.2)",color:"var(--blue)",fontSize:11,fontWeight:700,cursor:"pointer" }}>+</button>
         </div>
       </div>
-      <button onClick={()=>{onDelete(task.id);onBack();}} style={{ padding:"9px",borderRadius:6,cursor:"pointer",fontSize:12,fontWeight:600,background:"rgba(239,68,68,0.06)",border:"1px solid rgba(239,68,68,0.15)",color:"var(--red)",width:"100%" }}
-        onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background="rgba(239,68,68,0.12)"}
-        onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background="rgba(239,68,68,0.06)"}
+      <button onClick={()=>{onDelete(task.id);onBack();}} style={{ padding:"9px",borderRadius:6,cursor:"pointer",fontSize:12,fontWeight:600,background:"rgba(200,90,90,0.06)",border:"1px solid rgba(200,90,90,0.15)",color:"var(--red)",width:"100%" }}
+        onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background="rgba(200,90,90,0.12)"}
+        onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background="rgba(200,90,90,0.06)"}
       >Delete Task</button>
     </div>
   );
@@ -285,7 +285,7 @@ function EventModal({ state, onSave, onClose }: {
         <textarea value={desc} onChange={e=>setDesc(e.target.value)} placeholder="Description (optional)…" rows={2} style={{ width:"100%",background:"var(--surface2)",border:"1px solid var(--border2)",borderRadius:6,padding:"8px 12px",fontSize:12,color:"var(--t1)",outline:"none",resize:"none",marginBottom:14,fontFamily:"inherit" }}/>
         <div style={{ display:"flex",gap:8,justifyContent:"flex-end" }}>
           <button onClick={onClose} style={{ padding:"8px 14px",borderRadius:6,cursor:"pointer",fontSize:12,background:"transparent",border:"1px solid var(--border2)",color:"var(--t3)" }}>Cancel</button>
-          <button onClick={save} disabled={saving||!title.trim()} style={{ padding:"8px 16px",borderRadius:6,cursor:"pointer",fontSize:12,fontWeight:700,background:"rgba(34,197,94,0.1)",border:"1px solid rgba(34,197,94,0.25)",color:"var(--green)",opacity:saving?0.6:1 }}>{saving?"Saving…":"Add to Calendar"}</button>
+          <button onClick={save} disabled={saving||!title.trim()} style={{ padding:"8px 16px",borderRadius:6,cursor:"pointer",fontSize:12,fontWeight:700,background:"rgba(95,176,125,0.1)",border:"1px solid rgba(95,176,125,0.25)",color:"var(--green)",opacity:saving?0.6:1 }}>{saving?"Saving…":"Add to Calendar"}</button>
         </div>
       </div>
     </div>
@@ -310,7 +310,7 @@ function NLConfirm({ preview, onConfirm, onCancel }: {
       <p style={{ fontSize:12,color:"var(--t3)",marginBottom:preview.location?4:0 }}>{timeStr}</p>
       {preview.location&&<p style={{ fontSize:11,color:"var(--t3)" }}>📍 {preview.location}</p>}
       <div style={{ display:"flex",gap:8,marginTop:12 }}>
-        <button onClick={onConfirm} style={{ flex:1,padding:"8px",borderRadius:7,cursor:"pointer",fontSize:12,fontWeight:700,background:"rgba(34,197,94,0.12)",border:"1px solid rgba(34,197,94,0.3)",color:"var(--green)" }}>Create Event</button>
+        <button onClick={onConfirm} style={{ flex:1,padding:"8px",borderRadius:7,cursor:"pointer",fontSize:12,fontWeight:700,background:"rgba(95,176,125,0.12)",border:"1px solid rgba(95,176,125,0.3)",color:"var(--green)" }}>Create Event</button>
         <button onClick={onCancel} style={{ padding:"8px 14px",borderRadius:7,cursor:"pointer",fontSize:12,background:"transparent",border:"1px solid var(--border2)",color:"var(--t3)" }}>Cancel</button>
       </div>
     </div>
@@ -496,7 +496,7 @@ export default function CalendarPage() {
         </div>
       )}
       {gcalConnected&&(
-        <div style={{ marginBottom:16,padding:"8px 14px",borderRadius:8,background:"rgba(34,197,94,0.04)",border:"1px solid rgba(34,197,94,0.15)",display:"flex",alignItems:"center",gap:8 }}>
+        <div style={{ marginBottom:16,padding:"8px 14px",borderRadius:8,background:"rgba(95,176,125,0.04)",border:"1px solid rgba(95,176,125,0.15)",display:"flex",alignItems:"center",gap:8 }}>
           <span style={{ width:5,height:5,borderRadius:"50%",background:"var(--green)",display:"inline-block" }}/>
           <p style={{ fontSize:11,color:"var(--green)",fontWeight:600 }}>Google Calendar · {gcalEvents.length} events synced</p>
         </div>
@@ -523,7 +523,7 @@ export default function CalendarPage() {
             <button onClick={()=>setCursor(new Date())} style={{ padding:"6px 12px",borderRadius:6,cursor:"pointer",fontSize:11,fontWeight:700,background:"var(--surface)",border:"1px solid var(--border)",color:"var(--t3)" }}>Today</button>
           </div>
           {gcalConnected&&(
-            <button onClick={()=>setModalState({date:cursor,hour:9})} style={{ display:"flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:8,cursor:"pointer",fontSize:12,fontWeight:700,background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.2)",color:"var(--green)" }}>
+            <button onClick={()=>setModalState({date:cursor,hour:9})} style={{ display:"flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:8,cursor:"pointer",fontSize:12,fontWeight:700,background:"rgba(95,176,125,0.08)",border:"1px solid rgba(95,176,125,0.2)",color:"var(--green)" }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>Event
             </button>
           )}
@@ -628,7 +628,7 @@ export default function CalendarPage() {
                     })}
                     {/* Current time */}
                     {isSameDay(cursor,today)&&(
-                      <div style={{ position:"absolute",top:currentMinutes*HOUR_PX/60,left:0,right:0,height:2,background:"var(--red)",zIndex:5,boxShadow:"0 0 6px rgba(239,68,68,0.5)" }}>
+                      <div style={{ position:"absolute",top:currentMinutes*HOUR_PX/60,left:0,right:0,height:2,background:"var(--red)",zIndex:5,boxShadow:"0 0 6px rgba(200,90,90,0.5)" }}>
                         <div style={{ position:"absolute",width:8,height:8,borderRadius:"50%",background:"var(--red)",top:-3,left:-4 }}/>
                       </div>
                     )}
@@ -708,7 +708,7 @@ export default function CalendarPage() {
                         })}
                         {/* Current time line */}
                         {isToday&&(
-                          <div style={{ position:"absolute",top:currentMinutes*HOUR_PX/60,left:0,right:0,height:2,background:"var(--red)",zIndex:5,boxShadow:"0 0 4px rgba(239,68,68,0.4)" }}>
+                          <div style={{ position:"absolute",top:currentMinutes*HOUR_PX/60,left:0,right:0,height:2,background:"var(--red)",zIndex:5,boxShadow:"0 0 4px rgba(200,90,90,0.4)" }}>
                             <div style={{ position:"absolute",width:7,height:7,borderRadius:"50%",background:"var(--red)",top:-2.5,left:-3.5 }}/>
                           </div>
                         )}
@@ -872,8 +872,8 @@ export default function CalendarPage() {
                     <div style={{ display:"flex",flexDirection:"column",gap:3,maxHeight:100,overflowY:"auto" }}>
                       {doneTasks.map(t=>(
                         <div key={t.id} style={{ display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:4,background:"var(--surface2)",opacity:0.5 }}>
-                          <button onClick={()=>toggleTask(t.id,t.completed)} style={{ width:14,height:14,borderRadius:3,background:"rgba(34,197,94,0.15)",border:"1px solid rgba(34,197,94,0.3)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,cursor:"pointer" }}>
-                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                          <button onClick={()=>toggleTask(t.id,t.completed)} style={{ width:14,height:14,borderRadius:3,background:"rgba(95,176,125,0.15)",border:"1px solid rgba(95,176,125,0.3)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,cursor:"pointer" }}>
+                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#5FB07D" strokeWidth="3.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
                           </button>
                           <span style={{ fontSize:11,color:"var(--t3)",textDecoration:"line-through",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{t.text}</span>
                           <button onClick={()=>deleteTask(t.id)} style={{ background:"none",border:"none",cursor:"pointer",color:"var(--t4)",padding:2 }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>

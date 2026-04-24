@@ -195,7 +195,7 @@ export default function FeedPage() {
       {/* Topic Override Bar */}
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,flexWrap:"wrap"}}>
         {topicOverride ? (
-          <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 14px",borderRadius:8,background:"rgba(245,158,11,0.07)",border:"1px solid rgba(245,158,11,0.2)"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 14px",borderRadius:8,background:"rgba(200,90,90,0.07)",border:"1px solid rgba(200,90,90,0.2)"}}>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
             <span style={{fontSize:12,fontWeight:700,color:"var(--amber)"}}>Today: {topicOverride}</span>
             <button onClick={clearTopic} style={{fontSize:11,color:"var(--t4)",background:"none",border:"none",cursor:"pointer",padding:0,marginLeft:4}}>· Reset →</button>
@@ -206,7 +206,7 @@ export default function FeedPage() {
               placeholder="Override feed topic… (e.g. Claude Code, AI agents)"
               style={{width:280,background:"var(--surface)",border:"1px solid var(--border)",borderRadius:7,padding:"7px 12px",fontSize:12,color:"var(--t1)",outline:"none"}}
               onFocus={e=>(e.target.style.borderColor="var(--amber)")} onBlur={e=>(e.target.style.borderColor="var(--border)")}/>
-            <button onClick={applyTopic} disabled={!topicInput.trim()} style={{padding:"7px 14px",borderRadius:7,cursor:"pointer",fontSize:12,fontWeight:700,background:"rgba(245,158,11,0.08)",border:"1px solid rgba(245,158,11,0.2)",color:"var(--amber)",opacity:topicInput.trim()?1:0.4}}>Apply</button>
+            <button onClick={applyTopic} disabled={!topicInput.trim()} style={{padding:"7px 14px",borderRadius:7,cursor:"pointer",fontSize:12,fontWeight:700,background:"rgba(200,90,90,0.08)",border:"1px solid rgba(200,90,90,0.2)",color:"var(--amber)",opacity:topicInput.trim()?1:0.4}}>Apply</button>
           </div>
         )}
         <span style={{fontSize:11,color:"var(--t4)"}}>Base: {BASE_INTERESTS.join(" · ")}</span>
@@ -214,23 +214,23 @@ export default function FeedPage() {
 
       {/* Rolling Ticker */}
       {tickerItems.length > 0 && (
-        <div style={{display:"flex",alignItems:"center",marginBottom:14,borderRadius:6,overflow:"hidden",border:"1px solid rgba(6,182,212,0.15)",background:"rgba(6,182,212,0.03)",cursor:"default"}}
+        <div style={{display:"flex",alignItems:"center",marginBottom:14,borderRadius:6,overflow:"hidden",border:"1px solid rgba(125,184,232,0.15)",background:"rgba(125,184,232,0.03)",cursor:"default"}}
           onMouseEnter={()=>setTickerHover(true)} onMouseLeave={()=>setTickerHover(false)}>
-          <div style={{padding:"8px 12px",background:"rgba(6,182,212,0.08)",flexShrink:0,borderRight:"1px solid rgba(6,182,212,0.12)"}}>
+          <div style={{padding:"8px 12px",background:"rgba(125,184,232,0.08)",flexShrink:0,borderRight:"1px solid rgba(125,184,232,0.12)"}}>
             <span style={{fontSize:10,fontWeight:800,color:"var(--teal)",letterSpacing:"0.1em"}}>● LIVE</span>
           </div>
           <div style={{flex:1,overflow:"hidden"}}>
             <div style={{display:"flex",width:"200%",animation:"marquee 40s linear infinite",animationPlayState:tickerHover?"paused":"running"}}>
               {[...tickerItems,...tickerItems].map((n,i)=>(
-                <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:10,padding:"8px 24px",flexShrink:0,textDecoration:"none",borderRight:"1px solid rgba(6,182,212,0.08)"}}>
-                  {n.breaking&&<span style={{fontSize:9,fontWeight:800,color:"var(--red)",background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:3,padding:"1px 5px",flexShrink:0}}>LIVE</span>}
+                <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:10,padding:"8px 24px",flexShrink:0,textDecoration:"none",borderRight:"1px solid rgba(125,184,232,0.08)"}}>
+                  {n.breaking&&<span style={{fontSize:9,fontWeight:800,color:"var(--red)",background:"rgba(200,90,90,0.1)",border:"1px solid rgba(200,90,90,0.2)",borderRadius:3,padding:"1px 5px",flexShrink:0}}>LIVE</span>}
                   <span style={{fontSize:12,color:"var(--t2)",whiteSpace:"nowrap",fontWeight:n.breaking?600:400}}>{n.title}</span>
                   <span style={{fontSize:10,color:"var(--t4)",whiteSpace:"nowrap",flexShrink:0}}>— {n.source}</span>
                 </a>
               ))}
             </div>
           </div>
-          {tickerHover&&<div style={{padding:"8px 12px",flexShrink:0,borderLeft:"1px solid rgba(6,182,212,0.08)"}}><span style={{fontSize:10,color:"var(--t4)"}}>⏸ paused</span></div>}
+          {tickerHover&&<div style={{padding:"8px 12px",flexShrink:0,borderLeft:"1px solid rgba(125,184,232,0.08)"}}><span style={{fontSize:10,color:"var(--t4)"}}>⏸ paused</span></div>}
         </div>
       )}
 
@@ -290,7 +290,7 @@ export default function FeedPage() {
                 <div key={i} style={{padding:"16px 0",borderBottom:i<filtered.length-1?"1px solid var(--border)":"none",borderLeft:n.breaking?"2px solid var(--red)":"2px solid transparent",paddingLeft:n.breaking?14:0,position:"relative"}}>
                   <a href={n.link} target="_blank" rel="noopener noreferrer" style={{display:"block",textDecoration:"none"}}>
                     <div style={{display:"flex",alignItems:"flex-start",gap:10,marginBottom:6}}>
-                      {n.breaking&&<span style={{fontSize:9,fontWeight:800,color:"var(--red)",background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:3,padding:"2px 5px",flexShrink:0}}>LIVE</span>}
+                      {n.breaking&&<span style={{fontSize:9,fontWeight:800,color:"var(--red)",background:"rgba(200,90,90,0.1)",border:"1px solid rgba(200,90,90,0.25)",borderRadius:3,padding:"2px 5px",flexShrink:0}}>LIVE</span>}
                       <p style={{fontSize:14,fontWeight:600,color:"var(--t1)",lineHeight:1.5,margin:0}}>{n.title}</p>
                     </div>
                     {n.snippet&&<p style={{fontSize:12,color:"var(--t3)",lineHeight:1.6,marginBottom:8}}>{n.snippet.slice(0,160)}{n.snippet.length>160?"…":""}</p>}

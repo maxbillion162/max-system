@@ -22,9 +22,9 @@ interface Transaction    { id: string; date: string; amount: number; merchant: s
 
 /* ─────────────── Constants ─────────────── */
 const CAT_COLORS: Record<string, string> = {
-  Housing:"#7DB8E8", Food:"#10b981", Transport:"#f59e0b", Entertainment:"#8b5cf6",
-  Subscriptions:"#06b6d4", Savings:"#10b981", Health:"#ef4444", Shopping:"#f97316",
-  Personal:"#ec4899", Investing:"#6366f1", Misc:"#6b7280",
+  Housing:"#7DB8E8", Food:"#5FB07D", Transport:"#C85A5A", Entertainment:"#9B8AFB",
+  Subscriptions:"#7DB8E8", Savings:"#5FB07D", Health:"#C85A5A", Shopping:"#C85A5A",
+  Personal:"#9B8AFB", Investing:"#6366f1", Misc:"#6b7280",
 };
 const ALL_CATEGORIES = Object.keys(CAT_COLORS);
 
@@ -154,7 +154,7 @@ function AllocModal({ alloc, existingCats, onSave, onDelete, onClose }: { alloc?
           </div>
         </div>
         <div style={{ display:"flex",gap:10 }}>
-          {onDelete&&<button onClick={onDelete} style={{ padding:"11px 14px",borderRadius:6,fontSize:13,fontWeight:600,cursor:"pointer",background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.2)",color:"var(--red)" }}>Delete</button>}
+          {onDelete&&<button onClick={onDelete} style={{ padding:"11px 14px",borderRadius:6,fontSize:13,fontWeight:600,cursor:"pointer",background:"rgba(200,90,90,0.08)",border:"1px solid rgba(200,90,90,0.2)",color:"var(--red)" }}>Delete</button>}
           <button onClick={onClose} style={{ flex:1,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:600,cursor:"pointer",background:"transparent",border:"1px solid var(--border2)",color:"var(--t3)" }}>Cancel</button>
           <button onClick={()=>onSave(cat,parseFloat(amt)||0,alloc?.id)} style={{ flex:2,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer",background:"rgba(125,184,232,0.15)",border:"1px solid rgba(125,184,232,0.4)",color:"var(--blue)" }}>Save</button>
         </div>
@@ -526,7 +526,7 @@ export default function FinancePage() {
                   const daysUntil=b.due>=dayOfMonth?b.due-dayOfMonth:b.due+31-dayOfMonth;
                   const urgent=daysUntil<=3;
                   return (
-                    <div key={b.name} style={{ padding:"16px 12px",borderRadius:8,textAlign:"center",background:urgent?"rgba(239,68,68,0.06)":"var(--surface2)",border:`1px solid ${urgent?"rgba(239,68,68,0.2)":"var(--border)"}`}}>
+                    <div key={b.name} style={{ padding:"16px 12px",borderRadius:8,textAlign:"center",background:urgent?"rgba(200,90,90,0.06)":"var(--surface2)",border:`1px solid ${urgent?"rgba(200,90,90,0.2)":"var(--border)"}`}}>
                       <div style={{ fontSize:12,fontWeight:600,color:"var(--t2)",marginBottom:6 }}>{b.name}</div>
                       <div style={{ fontSize:18,fontWeight:800,fontFamily:"monospace",color:urgent?"var(--red)":"var(--t1)",marginBottom:4 }}>${b.amt%1===0?b.amt:b.amt.toFixed(2)}</div>
                       <div style={{ fontSize:10,fontWeight:600,color:urgent?"var(--red)":"var(--t4)" }}>
@@ -567,9 +567,9 @@ export default function FinancePage() {
                   </div>
                 </div>
                 <div style={{ display:"flex",gap:10,flexWrap:"wrap" }}>
-                  <button onClick={runAICategorize} disabled={aiRunning} style={{ padding:"10px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:aiRunning?"not-allowed":"pointer",background:"rgba(139,92,246,0.12)",border:"1px solid rgba(139,92,246,0.3)",color:"#8b5cf6",display:"flex",alignItems:"center",gap:7,transition:"all 0.15s" }}
-                    onMouseEnter={e=>{if(!aiRunning)(e.currentTarget as HTMLElement).style.background="rgba(139,92,246,0.22)";}}
-                    onMouseLeave={e=>{if(!aiRunning)(e.currentTarget as HTMLElement).style.background="rgba(139,92,246,0.12)";}}
+                  <button onClick={runAICategorize} disabled={aiRunning} style={{ padding:"10px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:aiRunning?"not-allowed":"pointer",background:"rgba(155,138,251,0.12)",border:"1px solid rgba(155,138,251,0.3)",color:"#9B8AFB",display:"flex",alignItems:"center",gap:7,transition:"all 0.15s" }}
+                    onMouseEnter={e=>{if(!aiRunning)(e.currentTarget as HTMLElement).style.background="rgba(155,138,251,0.22)";}}
+                    onMouseLeave={e=>{if(!aiRunning)(e.currentTarget as HTMLElement).style.background="rgba(155,138,251,0.12)";}}
                   >
                     <span>✦</span>{aiRunning?"Categorizing…":"Auto-Categorize with M.A.X."}
                   </button>
@@ -588,9 +588,9 @@ export default function FinancePage() {
             {reviewing&&reviewQueue.length>0&&(
               <HudCard style={{ padding:"28px" }} delay={0.06}>
                 <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:24 }}>
-                  <div style={{ width:7,height:7,borderRadius:"50%",background:"#8b5cf6",boxShadow:"0 0 8px #8b5cf6" }}/>
+                  <div style={{ width:7,height:7,borderRadius:"50%",background:"#9B8AFB",boxShadow:"0 0 8px #9B8AFB" }}/>
                   <div style={{ fontSize:14,fontWeight:700,color:"var(--t1)" }}>Review M.A.X. Categorizations</div>
-                  <div style={{ fontSize:11,color:"rgba(139,92,246,0.7)",background:"rgba(139,92,246,0.1)",padding:"2px 9px",borderRadius:20,border:"1px solid rgba(139,92,246,0.2)" }}>
+                  <div style={{ fontSize:11,color:"rgba(155,138,251,0.7)",background:"rgba(155,138,251,0.1)",padding:"2px 9px",borderRadius:20,border:"1px solid rgba(155,138,251,0.2)" }}>
                     {reviewQueue.length} to review
                   </div>
                 </div>

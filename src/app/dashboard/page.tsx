@@ -32,11 +32,11 @@ const NEWS_FALLBACK: NewsItem[] = [
 ];
 
 const GOAL_META: Record<string, { label: string; target: number; unit: string; colorHex: string }> = {
-  "income-100k":    { label: "$100K Income",    target: 100000, unit: "$",       colorHex: "#22c55e" },
-  "emergency-fund": { label: "Emergency Fund",  target: 10000,  unit: "$",       colorHex: "#8b5cf6" },
-  "gym-52weeks":    { label: "Gym Streak",       target: 52,     unit: "weeks",   colorHex: "#06b6d4" },
-  "ai-learning":    { label: "AI Learning",      target: 30,     unit: "sessions",colorHex: "#f97316" },
-  "morning-routine":{ label: "Morning Routine",  target: 30,     unit: "days",    colorHex: "#ec4899" },
+  "income-100k":    { label: "$100K Income",    target: 100000, unit: "$",       colorHex: "#5FB07D" },
+  "emergency-fund": { label: "Emergency Fund",  target: 10000,  unit: "$",       colorHex: "#9B8AFB" },
+  "gym-52weeks":    { label: "Gym Streak",       target: 52,     unit: "weeks",   colorHex: "#7DB8E8" },
+  "ai-learning":    { label: "AI Learning",      target: 30,     unit: "sessions",colorHex: "#C85A5A" },
+  "morning-routine":{ label: "Morning Routine",  target: 30,     unit: "days",    colorHex: "#9B8AFB" },
 };
 
 // ── Inline editable field ─────────────────────────────────────────────────────
@@ -439,8 +439,8 @@ export default function Dashboard() {
         <div className="afu" style={{
           display: "flex", alignItems: "center", gap: 12,
           padding: "10px 16px", marginBottom: 16, borderRadius: 8,
-          background: cryptoAlerts.some(a => !a.up) ? "rgba(239,68,68,0.07)" : "rgba(34,197,94,0.07)",
-          border: `1px solid ${cryptoAlerts.some(a => !a.up) ? "rgba(239,68,68,0.2)" : "rgba(34,197,94,0.2)"}`,
+          background: cryptoAlerts.some(a => !a.up) ? "rgba(200,90,90,0.07)" : "rgba(95,176,125,0.07)",
+          border: `1px solid ${cryptoAlerts.some(a => !a.up) ? "rgba(200,90,90,0.2)" : "rgba(95,176,125,0.2)"}`,
         }}>
           <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", color: cryptoAlerts.some(a => !a.up) ? "var(--red)" : "var(--green)", flexShrink: 0 }}>
             M.A.X. ALERT
@@ -520,8 +520,8 @@ export default function Dashboard() {
             {/* Privacy toggle */}
             <button onClick={() => setPriv(p => !p)} title={priv ? "Show financial data" : "Hide financial data"} style={{
               display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 4, cursor: "pointer",
-              background: priv ? "rgba(245,158,11,0.08)" : "rgba(255,255,255,0.03)",
-              border: `1px solid ${priv ? "rgba(245,158,11,0.25)" : "rgba(255,255,255,0.06)"}`,
+              background: priv ? "rgba(200,90,90,0.08)" : "rgba(255,255,255,0.03)",
+              border: `1px solid ${priv ? "rgba(200,90,90,0.25)" : "rgba(255,255,255,0.06)"}`,
               color: priv ? "var(--amber)" : "var(--t4)", fontSize: 11, fontWeight: 600, transition: "all .2s",
             }}>
               {priv ? (
@@ -685,16 +685,16 @@ export default function Dashboard() {
                   background: "var(--surface2)", border: "1px solid transparent", cursor: "pointer",
                   textAlign: "left", width: "100%", transition: "border-color .15s",
                 }}
-                  onMouseEnter={e => (e.currentTarget.style.borderColor = hb.completed ? "rgba(34,197,94,0.25)" : "var(--border)")}
+                  onMouseEnter={e => (e.currentTarget.style.borderColor = hb.completed ? "rgba(95,176,125,0.25)" : "var(--border)")}
                   onMouseLeave={e => (e.currentTarget.style.borderColor = "transparent")}
                 >
                   <div style={{
                     width: 14, height: 14, borderRadius: 3, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                    background: hb.completed ? "rgba(34,197,94,0.15)" : "transparent",
-                    border: `1px solid ${hb.completed ? "rgba(34,197,94,0.5)" : "var(--border2)"}`,
+                    background: hb.completed ? "rgba(95,176,125,0.15)" : "transparent",
+                    border: `1px solid ${hb.completed ? "rgba(95,176,125,0.5)" : "var(--border2)"}`,
                     transition: "all .15s",
                   }}>
-                    {hb.completed && <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3.5"><polyline points="20 6 9 17 4 12" /></svg>}
+                    {hb.completed && <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#5FB07D" strokeWidth="3.5"><polyline points="20 6 9 17 4 12" /></svg>}
                   </div>
                   <span style={{ fontSize: 12, flex: 1, color: hb.completed ? "var(--t1)" : "var(--t3)", fontWeight: hb.completed ? 500 : 400, textDecoration: hb.completed ? "line-through" : "none" }}>{hb.name}</span>
                 </button>
@@ -845,16 +845,16 @@ export default function Dashboard() {
                 display: "block", padding: "13px 10px", textDecoration: "none",
                 borderLeft: n.breaking ? "2px solid var(--red)" : "2px solid transparent",
                 borderBottom: i < displayNews.slice(0, 20).length - 1 ? "1px solid var(--border)" : "none",
-                background: n.breaking ? "rgba(239,68,68,0.02)" : "transparent",
+                background: n.breaking ? "rgba(200,90,90,0.02)" : "transparent",
                 borderRadius: n.breaking ? "0 4px 4px 0" : 0,
                 transition: "background .15s",
               }}
                 onMouseEnter={e => (e.currentTarget.style.background = "var(--surface2)")}
-                onMouseLeave={e => (e.currentTarget.style.background = n.breaking ? "rgba(239,68,68,0.02)" : "transparent")}
+                onMouseLeave={e => (e.currentTarget.style.background = n.breaking ? "rgba(200,90,90,0.02)" : "transparent")}
               >
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 5 }}>
                   {n.breaking && (
-                    <span style={{ fontSize: 9, fontWeight: 800, color: "var(--red)", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 3, padding: "2px 5px", flexShrink: 0, marginTop: 1, letterSpacing: "0.05em" }}>LIVE</span>
+                    <span style={{ fontSize: 9, fontWeight: 800, color: "var(--red)", background: "rgba(200,90,90,0.1)", border: "1px solid rgba(200,90,90,0.25)", borderRadius: 3, padding: "2px 5px", flexShrink: 0, marginTop: 1, letterSpacing: "0.05em" }}>LIVE</span>
                   )}
                   <p style={{ fontSize: 13, fontWeight: 500, color: "var(--t1)", lineHeight: 1.5, margin: 0 }}>{n.title}</p>
                 </div>
@@ -975,11 +975,11 @@ export default function Dashboard() {
                   }}>
                     <button onClick={() => toggleTask(task.id, task.completed)} style={{
                       width: 15, height: 15, borderRadius: 3, flexShrink: 0, cursor: "pointer",
-                      background: task.completed ? "rgba(34,197,94,0.15)" : "transparent",
-                      border: `1px solid ${task.completed ? "rgba(34,197,94,0.4)" : "var(--border2)"}`,
+                      background: task.completed ? "rgba(95,176,125,0.15)" : "transparent",
+                      border: `1px solid ${task.completed ? "rgba(95,176,125,0.4)" : "var(--border2)"}`,
                       display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s",
                     }}>
-                      {task.completed && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>}
+                      {task.completed && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#5FB07D" strokeWidth="3.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>}
                     </button>
                     {task.priority && !task.completed && (
                       <div style={{ width: 5, height: 5, borderRadius: "50%", background: prioColor, flexShrink: 0 }} title={task.priority} />

@@ -16,17 +16,17 @@ interface Achievement {
 
 /* ── Constants ── */
 const CATS   = ["Morning","Health","Nutrition","Learning","Sleep","Mindset","Work","Other"];
-const COLORS = ["#7DB8E8","#10b981","#f97316","#ec4899","#8b5cf6","#06b6d4","#ef4444","#f59e0b"];
+const COLORS = ["#7DB8E8","#5FB07D","#C85A5A","#9B8AFB","#9B8AFB","#7DB8E8","#C85A5A","#C85A5A"];
 const PPL_DEFAULT: PPLDay[] = [
-  { name:"Push", detail:"Chest · Triceps · Shoulders", color:"#06b6d4", days:"Mon / Thu" },
-  { name:"Pull", detail:"Back · Biceps",               color:"#10b981", days:"Tue / Fri" },
-  { name:"Legs", detail:"Quads · Hamstrings · Glutes", color:"#8b5cf6", days:"Wed / Sat" },
+  { name:"Push", detail:"Chest · Triceps · Shoulders", color:"#7DB8E8", days:"Mon / Thu" },
+  { name:"Pull", detail:"Back · Biceps",               color:"#5FB07D", days:"Tue / Fri" },
+  { name:"Legs", detail:"Quads · Hamstrings · Glutes", color:"#9B8AFB", days:"Wed / Sat" },
 ];
 const LEVEL_DEFS = [
   { name:"Recruit",     min:0,  max:6,   color:"var(--t3)",    glow:"rgba(148,163,184,0.3)"  },
   { name:"Consistent",  min:7,  max:20,  color:"var(--blue)",   glow:"rgba(125,184,232,0.4)"  },
-  { name:"Machine",     min:21, max:59,  color:"var(--amber)",  glow:"rgba(245,158,11,0.4)"  },
-  { name:"Untouchable", min:60, max:Infinity, color:"var(--green)", glow:"rgba(34,197,94,0.4)" },
+  { name:"Machine",     min:21, max:59,  color:"var(--amber)",  glow:"rgba(200,90,90,0.4)"  },
+  { name:"Untouchable", min:60, max:Infinity, color:"var(--green)", glow:"rgba(95,176,125,0.4)" },
 ];
 const DAY_NAMES = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
@@ -151,7 +151,7 @@ function HabitModal({ habit, onSave, onClose, onDelete }: {
           </div>
         </div>
         <div style={{ display:"flex",gap:10 }}>
-          {!isNew&&onDelete&&<button onClick={()=>{onDelete();onClose();}} style={{ padding:"11px 16px",borderRadius:6,fontSize:13,fontWeight:600,cursor:"pointer",background:"rgba(239,68,68,0.06)",border:"1px solid rgba(239,68,68,0.2)",color:"var(--red)" }}>Delete</button>}
+          {!isNew&&onDelete&&<button onClick={()=>{onDelete();onClose();}} style={{ padding:"11px 16px",borderRadius:6,fontSize:13,fontWeight:600,cursor:"pointer",background:"rgba(200,90,90,0.06)",border:"1px solid rgba(200,90,90,0.2)",color:"var(--red)" }}>Delete</button>}
           <button onClick={onClose} style={{ flex:1,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:600,cursor:"pointer",background:"transparent",border:"1px solid var(--border2)",color:"var(--t3)" }}>Cancel</button>
           <button onClick={save} disabled={!label.trim()} style={{ flex:2,padding:"11px 0",borderRadius:6,fontSize:13,fontWeight:700,cursor:"pointer",background:"rgba(125,184,232,0.15)",border:"1px solid rgba(125,184,232,0.4)",color:"var(--blue)",opacity:label.trim()?1:0.4 }}>Save</button>
         </div>
@@ -483,7 +483,7 @@ export default function HabitsPage() {
               <p style={{ fontSize:10,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",color:"var(--t3)",marginBottom:5 }}>Streak Shields</p>
               <div style={{ display:"flex",gap:4,alignItems:"center" }}>
                 {Array.from({length:3},(_,i)=>(
-                  <span key={i} style={{ fontSize:18,opacity:i<shields?1:0.2,filter:i<shields?"drop-shadow(0 0 4px rgba(245,158,11,0.6))":"none" }}>🛡</span>
+                  <span key={i} style={{ fontSize:18,opacity:i<shields?1:0.2,filter:i<shields?"drop-shadow(0 0 4px rgba(200,90,90,0.6))":"none" }}>🛡</span>
                 ))}
                 <span style={{ fontSize:11,color:"var(--t4)",marginLeft:4 }}>{shields}/3</span>
               </div>
@@ -503,7 +503,7 @@ export default function HabitsPage() {
         <div style={{ display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10 }}>
           {achievements.map(a=>(
             <div key={a.id} style={{ padding:"14px 12px",borderRadius:10,textAlign:"center",background:a.earned?"var(--surface2)":"transparent",border:`1px solid ${a.earned?"var(--border2)":"var(--border)"}`,opacity:a.earned?1:0.45,transition:"all .2s" }}>
-              <div style={{ fontSize:24,marginBottom:6,filter:a.earned?"drop-shadow(0 0 8px rgba(245,158,11,0.5))":"none" }}>{a.icon}</div>
+              <div style={{ fontSize:24,marginBottom:6,filter:a.earned?"drop-shadow(0 0 8px rgba(200,90,90,0.5))":"none" }}>{a.icon}</div>
               <p style={{ fontSize:11,fontWeight:700,color:"var(--t1)",marginBottom:3 }}>{a.label}</p>
               <p style={{ fontSize:9,color:"var(--t4)",lineHeight:1.4 }}>{a.desc}</p>
               {a.progress&&!a.earned&&<p style={{ fontSize:10,fontWeight:700,color:"var(--blue)",marginTop:5 }}>{a.progress}</p>}
@@ -554,7 +554,7 @@ export default function HabitsPage() {
                     <div>
                       <p style={{ fontSize:13,fontWeight:600,color:"var(--t1)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:150 }}>{habit.label}</p>
                       {atRisk&&shields>0&&(
-                        <button onClick={()=>useShield(habit.id)} style={{ fontSize:9,fontWeight:700,color:"var(--amber)",background:"none",border:"1px solid rgba(245,158,11,0.3)",borderRadius:4,padding:"2px 6px",cursor:"pointer",marginTop:2 }}>🛡 Use Shield</button>
+                        <button onClick={()=>useShield(habit.id)} style={{ fontSize:9,fontWeight:700,color:"var(--amber)",background:"none",border:"1px solid rgba(200,90,90,0.3)",borderRadius:4,padding:"2px 6px",cursor:"pointer",marginTop:2 }}>🛡 Use Shield</button>
                       )}
                     </div>
                   </div>

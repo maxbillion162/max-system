@@ -44,7 +44,7 @@ export default function PlaidLinkButton({ onConnected }: Props) {
 
   if (error) {
     return (
-      <div style={{ fontSize: 11, color: "var(--red)", padding: "8px 14px", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 6 }}>
+      <div style={{ fontSize: 11, color: "var(--red)", padding: "8px 14px", background: "rgba(200,90,90,0.08)", border: "1px solid rgba(200,90,90,0.2)", borderRadius: 6 }}>
         {error}
       </div>
     );
