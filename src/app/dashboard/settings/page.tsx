@@ -24,6 +24,15 @@ interface Preferences {
   calendar_default_view: "day" | "week" | "month";
   tasks_in_calendar:     boolean;
 }
+interface PrivacyPrefs {
+  blur_net_worth:    boolean;
+  blur_transactions: boolean;
+  blur_income:       boolean;
+}
+interface BudgetPrefs {
+  period_reset_day: number;      // 1-28 — day of month budget resets
+  default_rollover: boolean;     // whether new categories roll unspent to next period
+}
 
 /** DEFAULT ALL OFF — opt-in model. Nothing fires until Max explicitly enables. */
 const DEFAULT_NOTIF: NotifPrefs = {
@@ -31,15 +40,20 @@ const DEFAULT_NOTIF: NotifPrefs = {
   max_insight:false, budget_alerts:false, goal_milestone:false, market_update:false,
   weekly_recap:false, evening_checkin:false, goal_checkin:false,
 };
-const DEFAULT_PREFS: Preferences   = { calendar_default_view:"week", tasks_in_calendar:true };
-const DEFAULT_INTERESTS            = ["Crypto","AI","Sales","Entrepreneurship","Investing","Orlando"];
+const DEFAULT_PREFS:    Preferences   = { calendar_default_view:"week", tasks_in_calendar:true };
+const DEFAULT_PRIVACY:  PrivacyPrefs  = { blur_net_worth:false, blur_transactions:false, blur_income:false };
+const DEFAULT_BUDGET:   BudgetPrefs   = { period_reset_day:1, default_rollover:false };
+const DEFAULT_INTERESTS                = ["Crypto","AI","Sales","Entrepreneurship","Investing","Orlando"];
 
 const SECTIONS = [
   { id:"feed",     icon:"◎", label:"Feed Interests"      },
   { id:"notif",    icon:"◆", label:"Notifications"       },
   { id:"integr",   icon:"⬡", label:"Integrations"        },
+  { id:"budget",   icon:"◐", label:"Budget"              },
+  { id:"privacy",  icon:"◑", label:"Privacy"             },
   { id:"prefs",    icon:"◷", label:"Preferences"         },
   { id:"intel",    icon:"◈", label:"M.A.X. Intelligence" },
+  { id:"behind",   icon:"▦", label:"Behind the Scenes"   },
   { id:"data",     icon:"▤", label:"Data"                },
 ];
 
@@ -386,6 +400,228 @@ function IntelSection() {
   );
 }
 
+/* ─── Section: Privacy ───────────────────────────────────────────── */
+function PrivacySection({ prefs, onSave }: { prefs:PrivacyPrefs; onSave:(v:PrivacyPrefs)=>Promise<void> }) {
+  const [local,  setLocal]    = useState<PrivacyPrefs>(prefs);
+  const [saving, setSaving]   = useState(false);
+  const [saved,  setSavedMsg] = useState(false);
+
+  async function save() {
+    setSaving(true);
+    await onSave(local);
+    setSaving(false);
+    setSavedMsg(true);
+    setTimeout(()=>setSavedMsg(false),2000);
+  }
+
+  return (
+    <div>
+      <p style={{fontSize:12,color:"var(--t3)",marginBottom:20,lineHeight:1.6}}>
+        Hide sensitive financial figures by default. Click-to-reveal remains available on the actual pages.
+      </p>
+      <SettingRow label="Blur Net Worth" desc="Dashboard and Finance hub figures obscured until revealed">
+        <Toggle value={local.blur_net_worth} onChange={v=>setLocal(p=>({...p,blur_net_worth:v}))}/>
+      </SettingRow>
+      <SettingRow label="Blur Transactions" desc="Transaction amounts hidden in Finance → Transactions">
+        <Toggle value={local.blur_transactions} onChange={v=>setLocal(p=>({...p,blur_transactions:v}))}/>
+      </SettingRow>
+      <SettingRow label="Blur Income" desc="Monthly income figure obscured on Finance">
+        <Toggle value={local.blur_income} onChange={v=>setLocal(p=>({...p,blur_income:v}))}/>
+      </SettingRow>
+      <div style={{marginTop:20}}>
+        <button onClick={save} disabled={saving}
+          style={{padding:"9px 20px",borderRadius:2,background:"rgba(125,184,232,0.1)",border:"1px solid rgba(125,184,232,0.3)",cursor:"pointer",fontSize:12,fontWeight:700,letterSpacing:"0.08em",color:saved?"var(--green)":"var(--blue)",transition:"color .2s"}}>
+          {saving?"Saving…":saved?"✓ Saved":"Save Privacy"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Section: Budget ────────────────────────────────────────────── */
+function BudgetSection({ prefs, onSave }: { prefs:BudgetPrefs; onSave:(v:BudgetPrefs)=>Promise<void> }) {
+  const [local,  setLocal]    = useState<BudgetPrefs>(prefs);
+  const [saving, setSaving]   = useState(false);
+  const [saved,  setSavedMsg] = useState(false);
+
+  async function save() {
+    setSaving(true);
+    await onSave(local);
+    setSaving(false);
+    setSavedMsg(true);
+    setTimeout(()=>setSavedMsg(false),2000);
+  }
+
+  return (
+    <div>
+      <p style={{fontSize:12,color:"var(--t3)",marginBottom:20,lineHeight:1.6}}>
+        How your monthly budget behaves. These apply globally across the Finance hub.
+      </p>
+      <SettingRow label="Period Reset Day" desc="Day of month when the new budget period starts (1st–28th)">
+        <select value={local.period_reset_day} onChange={e=>setLocal(p=>({...p,period_reset_day:parseInt(e.target.value,10)}))}
+          style={{background:"var(--surface2)",border:"1px solid var(--border2)",borderRadius:2,padding:"7px 10px",color:"var(--t1)",fontSize:12,fontWeight:600,outline:"none",cursor:"pointer",fontFamily:"monospace"}}>
+          {Array.from({length:28},(_,i)=>i+1).map(d=>(
+            <option key={d} value={d}>{d}{d===1?"st":d===2?"nd":d===3?"rd":"th"}</option>
+          ))}
+        </select>
+      </SettingRow>
+      <SettingRow label="Default Rollover" desc="New categories start with unspent funds rolling into the next period">
+        <Toggle value={local.default_rollover} onChange={v=>setLocal(p=>({...p,default_rollover:v}))}/>
+      </SettingRow>
+      <div style={{marginTop:20}}>
+        <button onClick={save} disabled={saving}
+          style={{padding:"9px 20px",borderRadius:2,background:"rgba(125,184,232,0.1)",border:"1px solid rgba(125,184,232,0.3)",cursor:"pointer",fontSize:12,fontWeight:700,letterSpacing:"0.08em",color:saved?"var(--green)":"var(--blue)",transition:"color .2s"}}>
+          {saving?"Saving…":saved?"✓ Saved":"Save Budget"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Section: Behind the Scenes ────────────────────────────────── */
+interface ActivityRow { id:string; type:string; description:string; created_at:string }
+interface MemoryRow   { id:string; content:string; tags?:string[] | null; created_at:string }
+interface NotifRow    { id:string; type:string; title:string; body:string; read:boolean; created_at:string }
+
+function BehindSection() {
+  const [activity,  setActivity]      = useState<ActivityRow[]|null>(null);
+  const [memories,  setMemories]      = useState<MemoryRow[]|null>(null);
+  const [notifs,    setNotifs]        = useState<NotifRow[]|null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const [actRes, memRes, notifRes] = await Promise.allSettled([
+        supabase.from("activity_log").select("id,type,description,created_at").order("created_at",{ascending:false}).limit(15),
+        supabase.from("memories").select("id,content,tags,created_at").order("created_at",{ascending:false}).limit(10),
+        supabase.from("notifications").select("id,type,title,body,read,created_at").order("created_at",{ascending:false}).limit(10),
+      ]);
+      setActivity( actRes.status   === "fulfilled" && actRes.value.data   ? actRes.value.data   as ActivityRow[] : []);
+      setMemories( memRes.status   === "fulfilled" && memRes.value.data   ? memRes.value.data   as MemoryRow[]   : []);
+      setNotifs(   notifRes.status === "fulfilled" && notifRes.value.data ? notifRes.value.data as NotifRow[]    : []);
+    })();
+  }, []);
+
+  const cronSchedules = [
+    { name: "Morning email briefing",  schedule: "7:00 ET daily" },
+    { name: "Daily bank sync",         schedule: "6:00 ET daily" },
+    { name: "Wealth snapshot",         schedule: "19:00 ET daily" },
+    { name: "Market update push",      schedule: "10:00 ET daily" },
+    { name: "Bill due scan",           schedule: "7:00 ET daily" },
+    { name: "Habit nudge",             schedule: "21:00 ET daily" },
+    { name: "Evening check-in",        schedule: "20:00 ET daily" },
+    { name: "Weekly recap",            schedule: "Sunday 8:00 ET" },
+    { name: "Quarterly goal check-in", schedule: "Jan / Apr / Jul / Oct 1st" },
+  ];
+
+  return (
+    <div>
+      <div style={{padding:"12px 14px",borderRadius:6,background:"rgba(125,184,232,0.04)",border:"1px solid rgba(125,184,232,0.12)",marginBottom:24}}>
+        <p style={{fontSize:12,color:"var(--t1b)",lineHeight:1.6,marginBottom:4,fontWeight:600}}>What M.A.X. does invisibly.</p>
+        <p style={{fontSize:11,color:"var(--t3)",lineHeight:1.6}}>Observability surface — recent agent activity, stored memories, delivered notifications, and scheduled jobs.</p>
+      </div>
+
+      <Panel title="Recent Agent Activity" count={activity?.length ?? 0}>
+        {activity === null ? (
+          <LoadingDots/>
+        ) : activity.length === 0 ? (
+          <Empty text="No agent activity logged yet."/>
+        ) : (
+          <div style={{display:"flex",flexDirection:"column"}}>
+            {activity.map(a => (
+              <div key={a.id} style={{display:"flex",gap:12,padding:"9px 0",borderBottom:"1px solid var(--border)",alignItems:"flex-start"}}>
+                <span style={{fontSize:9,fontFamily:"monospace",color:"var(--t4)",letterSpacing:"0.1em",textTransform:"uppercase",flexShrink:0,paddingTop:2,minWidth:72}}>{a.type}</span>
+                <span style={{fontSize:12,color:"var(--t1b)",flex:1,lineHeight:1.5}}>{a.description}</span>
+                <span style={{fontSize:10,color:"var(--t4)",fontFamily:"monospace",flexShrink:0,paddingTop:2}}>{timeAgo(a.created_at)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Panel>
+
+      <Panel title="Memory Writes" count={memories?.length ?? 0}>
+        {memories === null ? (
+          <LoadingDots/>
+        ) : memories.length === 0 ? (
+          <Empty text="M.A.X. hasn't stored any memories yet."/>
+        ) : (
+          <div style={{display:"flex",flexDirection:"column"}}>
+            {memories.map(m => (
+              <div key={m.id} style={{padding:"9px 0",borderBottom:"1px solid var(--border)"}}>
+                <p style={{fontSize:12,color:"var(--t1b)",lineHeight:1.5,marginBottom:3}}>{m.content}</p>
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                  <span style={{fontSize:10,color:"var(--t4)",fontFamily:"monospace"}}>{timeAgo(m.created_at)}</span>
+                  {Array.isArray(m.tags) && m.tags.length > 0 && (
+                    <span style={{fontSize:10,color:"var(--t3)"}}>· {m.tags.join(", ")}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Panel>
+
+      <Panel title="Recent Notifications" count={notifs?.length ?? 0}>
+        {notifs === null ? (
+          <LoadingDots/>
+        ) : notifs.length === 0 ? (
+          <Empty text="Nothing delivered yet. Enable categories in Notifications to start seeing history here."/>
+        ) : (
+          <div style={{display:"flex",flexDirection:"column"}}>
+            {notifs.map(n => (
+              <div key={n.id} style={{display:"flex",gap:12,padding:"9px 0",borderBottom:"1px solid var(--border)",alignItems:"flex-start"}}>
+                <span style={{fontSize:9,fontFamily:"monospace",color:"var(--t4)",letterSpacing:"0.1em",textTransform:"uppercase",flexShrink:0,paddingTop:2,minWidth:86}}>{n.type}</span>
+                <div style={{flex:1}}>
+                  <p style={{fontSize:12,color:"var(--t1b)",fontWeight:600,marginBottom:2}}>{n.title}</p>
+                  <p style={{fontSize:11,color:"var(--t3)",lineHeight:1.5}}>{n.body}</p>
+                </div>
+                <span style={{fontSize:10,color:"var(--t4)",fontFamily:"monospace",flexShrink:0,paddingTop:2}}>{timeAgo(n.created_at)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Panel>
+
+      <Panel title="Scheduled Jobs" count={cronSchedules.length}>
+        <div style={{display:"flex",flexDirection:"column"}}>
+          {cronSchedules.map(c => (
+            <div key={c.name} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid var(--border)"}}>
+              <span style={{fontSize:12,color:"var(--t1b)"}}>{c.name}</span>
+              <span style={{fontSize:11,color:"var(--t3)",fontFamily:"monospace"}}>{c.schedule}</span>
+            </div>
+          ))}
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+function Panel({ title, count, children }: { title:string; count:number; children:React.ReactNode }) {
+  return (
+    <div style={{marginBottom:24}}>
+      <div style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",marginBottom:10}}>
+        <p style={{fontSize:10,fontWeight:700,letterSpacing:"0.22em",textTransform:"uppercase",color:"var(--t2)"}}>{title}</p>
+        <span style={{fontSize:10,color:"var(--t4)",fontFamily:"monospace"}}>{count}</span>
+      </div>
+      <div style={{padding:"4px 14px",borderRadius:3,background:"var(--surface)",border:"1px solid var(--border)"}}>{children}</div>
+    </div>
+  );
+}
+function LoadingDots() {
+  return <div style={{display:"flex",gap:5,padding:"14px 0"}}>{[0,1,2].map(i=><div key={i} style={{width:5,height:5,borderRadius:"50%",background:"var(--blue)",opacity:0.4}}/>)}</div>;
+}
+function Empty({ text }: { text:string }) {
+  return <p style={{fontSize:11,color:"var(--t4)",padding:"14px 0"}}>{text}</p>;
+}
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1)  return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
 /* ─── Section: Data ──────────────────────────────────────────────── */
 function DataSection() {
   const [exportingGoals, setExportingGoals] = useState(false);
@@ -462,19 +698,23 @@ function DataSection() {
 
 /* ─── Main Page ──────────────────────────────────────────────────── */
 export default function SettingsPage() {
-  const [active,    setActive]    = useState("feed");
-  const [interests, setInterests] = useState<string[]>(DEFAULT_INTERESTS);
-  const [notifPrefs,setNotifPrefs]= useState<NotifPrefs>(DEFAULT_NOTIF);
-  const [userPrefs, setUserPrefs] = useState<Preferences>(DEFAULT_PREFS);
-  const [loading,   setLoading]   = useState(true);
+  const [active,      setActive]      = useState("feed");
+  const [interests,   setInterests]   = useState<string[]>(DEFAULT_INTERESTS);
+  const [notifPrefs,  setNotifPrefs]  = useState<NotifPrefs>(DEFAULT_NOTIF);
+  const [userPrefs,   setUserPrefs]   = useState<Preferences>(DEFAULT_PREFS);
+  const [privacyPrefs,setPrivacyPrefs]= useState<PrivacyPrefs>(DEFAULT_PRIVACY);
+  const [budgetPrefs, setBudgetPrefs] = useState<BudgetPrefs>(DEFAULT_BUDGET);
+  const [loading,     setLoading]     = useState(true);
 
   const loadSettings = useCallback(async () => {
     const { data } = await supabase.from("settings").select("key,value");
     if (!data) { setLoading(false); return; }
     for (const row of data) {
       if (row.key==="feed_interests" && Array.isArray(row.value)) setInterests(row.value as string[]);
-      if (row.key==="notification_prefs" && row.value) setNotifPrefs(row.value as NotifPrefs);
-      if (row.key==="preferences" && row.value) setUserPrefs(row.value as Preferences);
+      if (row.key==="notification_prefs" && row.value) setNotifPrefs({ ...DEFAULT_NOTIF, ...(row.value as Partial<NotifPrefs>) });
+      if (row.key==="preferences" && row.value) setUserPrefs({ ...DEFAULT_PREFS, ...(row.value as Partial<Preferences>) });
+      if (row.key==="privacy_prefs" && row.value) setPrivacyPrefs({ ...DEFAULT_PRIVACY, ...(row.value as Partial<PrivacyPrefs>) });
+      if (row.key==="budget_prefs" && row.value) setBudgetPrefs({ ...DEFAULT_BUDGET, ...(row.value as Partial<BudgetPrefs>) });
     }
     setLoading(false);
   }, []);
@@ -537,12 +777,15 @@ export default function SettingsPage() {
             </div>
 
             {/* Section body */}
-            {active==="feed"   && <FeedSection  interests={interests} onSave={async v=>{ setInterests(v); await saveSetting("feed_interests",v); }}/>}
-            {active==="notif"  && <NotifSection prefs={notifPrefs}    onSave={async v=>{ setNotifPrefs(v); await saveSetting("notification_prefs",v); }}/>}
-            {active==="integr" && <IntegrSection/>}
-            {active==="prefs"  && <PrefsSection prefs={userPrefs}     onSave={async v=>{ setUserPrefs(v); await saveSetting("preferences",v); }}/>}
-            {active==="intel"  && <IntelSection/>}
-            {active==="data"   && <DataSection/>}
+            {active==="feed"    && <FeedSection    interests={interests} onSave={async v=>{ setInterests(v); await saveSetting("feed_interests",v); }}/>}
+            {active==="notif"   && <NotifSection   prefs={notifPrefs}    onSave={async v=>{ setNotifPrefs(v); await saveSetting("notification_prefs",v); }}/>}
+            {active==="integr"  && <IntegrSection/>}
+            {active==="budget"  && <BudgetSection  prefs={budgetPrefs}   onSave={async v=>{ setBudgetPrefs(v); await saveSetting("budget_prefs",v); }}/>}
+            {active==="privacy" && <PrivacySection prefs={privacyPrefs}  onSave={async v=>{ setPrivacyPrefs(v); await saveSetting("privacy_prefs",v); }}/>}
+            {active==="prefs"   && <PrefsSection   prefs={userPrefs}     onSave={async v=>{ setUserPrefs(v); await saveSetting("preferences",v); }}/>}
+            {active==="intel"   && <IntelSection/>}
+            {active==="behind"  && <BehindSection/>}
+            {active==="data"    && <DataSection/>}
           </>
         )}
       </div>
