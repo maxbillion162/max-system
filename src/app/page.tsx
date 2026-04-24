@@ -3,384 +3,585 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
-export default function LoginPage() {
-  const router   = useRouter();
-  const titleRef = useRef<HTMLHeadingElement>(null);
+/* ── Design tokens — locked to the v2 Quant Terminal system ── */
+const C = {
+  bg0: "#000000",
+  bg1: "#060708",
+  surf1: "#0a0c10",
+  surf2: "#0e1218",
+  surf3: "#131821",
+  hair: "rgba(125,170,220,0.10)",
+  hair2: "rgba(125,170,220,0.20)",
+  hair3: "rgba(125,170,220,0.35)",
+  accent: "#7DB8E8",
+  accentHi: "#9DD4FF",
+  accentLo: "#3B6E9C",
+  t1: "#E8EEF5",
+  t1b: "#B4C0D0",
+  t2: "#8A98AD",
+  t3: "#4A5566",
+  t4: "#2A3140",
+  up: "#4ADE80",
+  down: "#F87171",
+};
+const MONO = `ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace`;
+
+type Crypto = { symbol: string; price: number; change24h: number };
+
+export default function AccessPage() {
+  const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const [mouse,    setMouse]    = useState({ x: 0, y: 0 });
-  const [glow,     setGlow]     = useState(0.15);
+  const [now, setNow] = useState<Date | null>(null);
+  const [mounted, setMounted] = useState<number>(0);
+  const [uptime, setUptime] = useState(0);
+  const [crypto, setCrypto] = useState<Crypto[] | null>(null);
+  const [showPass, setShowPass] = useState(false);
   const [password, setPassword] = useState("");
-  const [status,   setStatus]   = useState<"idle" | "loading" | "error" | "ok">("idle");
-  const [shake,    setShake]    = useState(false);
-  const [dots,     setDots]     = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "error" | "ok">("idle");
+  const [shake, setShake] = useState(false);
+  const [clientMeta, setClientMeta] = useState<{ platform: string; tz: string; ua: string } | null>(null);
 
-  /* ── Check if already authenticated ── */
+  /* Bounce if already authenticated */
   useEffect(() => {
     try {
       if (sessionStorage.getItem("max-auth") === "1") router.replace("/dashboard");
     } catch {}
   }, [router]);
 
-  /* ── Mouse tracking ── */
+  /* Live clock — updates every second */
   useEffect(() => {
-    function onMove(e: MouseEvent) { setMouse({ x: e.clientX, y: e.clientY }); }
-    window.addEventListener("mousemove", onMove);
-    return () => window.removeEventListener("mousemove", onMove);
+    setNow(new Date());
+    setMounted(Date.now());
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
   }, []);
 
-  /* ── Compute glow intensity from mouse → title (no direction, just proximity) ── */
+  /* Uptime ticker */
   useEffect(() => {
-    const el = titleRef.current;
-    if (!el) return;
-    const r  = el.getBoundingClientRect();
-    const cx = r.left + r.width  / 2;
-    const cy = r.top  + r.height / 2;
-    const dist = Math.hypot(mouse.x - cx, mouse.y - cy);
-    setGlow(Math.max(0, Math.min(0.3, 0.3 - dist / 780)));
-  }, [mouse]);
-
-  /* ── Loading dots animation ── */
-  useEffect(() => {
-    if (status !== "loading") { setDots(""); return; }
-    const id = setInterval(() => setDots(d => d.length >= 3 ? "" : d + "."), 340);
+    if (!mounted) return;
+    const id = setInterval(() => setUptime(Math.floor((Date.now() - mounted) / 1000)), 1000);
     return () => clearInterval(id);
-  }, [status]);
+  }, [mounted]);
 
-  /* ── Login ── */
+  /* Client metadata — real values only */
+  useEffect(() => {
+    setClientMeta({
+      platform: navigator.platform || "—",
+      tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "—",
+      ua: /Chrome/.test(navigator.userAgent) ? "Chrome" : /Safari/.test(navigator.userAgent) ? "Safari" : /Firefox/.test(navigator.userAgent) ? "Firefox" : "Browser",
+    });
+  }, []);
+
+  /* Live market data (public — safe to fetch pre-auth) */
+  useEffect(() => {
+    let alive = true;
+    async function load() {
+      try {
+        const r = await fetch("/api/crypto", { cache: "no-store" });
+        if (!r.ok) return;
+        const j = await r.json();
+        if (alive && Array.isArray(j.data)) setCrypto(j.data);
+      } catch {}
+    }
+    load();
+    const id = setInterval(load, 60_000);
+    return () => { alive = false; clearInterval(id); };
+  }, []);
+
   const handleLogin = useCallback(async () => {
     if (!password.trim() || status === "loading") return;
     setStatus("loading");
     try {
       const res = await fetch("/api/auth/login", {
-        method:  "POST",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ password }),
+        body: JSON.stringify({ password }),
       });
       if (res.ok) {
         setStatus("ok");
         try { sessionStorage.setItem("max-auth", "1"); } catch {}
-        setTimeout(() => router.replace("/dashboard"), 600);
+        setTimeout(() => router.replace("/dashboard"), 500);
       } else {
         setStatus("error");
         setShake(true);
-        setTimeout(() => { setShake(false); setStatus("idle"); setPassword(""); }, 1500);
+        setTimeout(() => { setShake(false); setStatus("idle"); setPassword(""); }, 1400);
       }
     } catch {
       setStatus("error");
-      setTimeout(() => { setStatus("idle"); }, 1500);
+      setTimeout(() => setStatus("idle"), 1400);
     }
   }, [password, status, router]);
 
-  /* ── Derived glow values — deep navy, low opacity, no directional jitter ── */
-  const titleShadow = [
-    `0 0 ${Math.round(24 + glow * 36)}px rgba(18,50,120,${(glow * 0.65).toFixed(2)})`,
-    `0 0 ${Math.round(55 + glow * 60)}px rgba(10,30,80,${(glow * 0.4).toFixed(2)})`,
-    `0 0 90px rgba(6,18,55,0.07)`,
-  ].join(", ");
+  const timeStr = now ? now.toLocaleTimeString("en-US", { hour12: false, timeZone: "America/New_York" }) : "--:--:--";
+  const dateStr = now ? now.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "2-digit", year: "numeric" }).toUpperCase() : "";
+  const doy = now ? Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86_400_000) : 0;
+  const upStr = `${String(Math.floor(uptime / 3600)).padStart(2, "0")}:${String(Math.floor((uptime % 3600) / 60)).padStart(2, "0")}:${String(uptime % 60).padStart(2, "0")}`;
 
-  const borderGlow = status === "error"
-    ? "rgba(239,68,68,0.35)"
-    : status === "ok"
-    ? "rgba(34,197,94,0.35)"
-    : `rgba(30,60,130,${(0.18 + glow * 0.32).toFixed(2)})`;
+  const nyMarketOpen = (() => {
+    if (!now) return false;
+    const ny = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+    const day = ny.getDay();
+    const mins = ny.getHours() * 60 + ny.getMinutes();
+    return day >= 1 && day <= 5 && mins >= 570 && mins < 960;
+  })();
 
   return (
     <div style={{
-      minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
-      background: "linear-gradient(180deg, #040507 0%, #05060a 50%, #040507 100%)",
-      position: "relative", overflow: "hidden", fontFamily: "'Inter', 'SF Pro Display', sans-serif",
+      minHeight: "100vh",
+      background: `radial-gradient(1200px 600px at 50% 110%, rgba(61,107,160,0.08), transparent 70%), linear-gradient(180deg, ${C.bg0} 0%, ${C.bg1} 100%)`,
+      color: C.t1,
+      fontFamily: "'Inter', system-ui, sans-serif",
+      display: "grid",
+      gridTemplateRows: "44px 1fr 28px",
+      overflow: "hidden",
     }}>
-
-      {/* ── CSS animations ── */}
       <style>{`
-        @keyframes scanline {
-          0%   { transform: translateY(-8px); opacity: 0; }
-          50%  { opacity: 1; }
-          100% { transform: translateY(100vh); opacity: 0; }
-        }
-        @keyframes corner-pulse {
-          0%,100% { opacity: 0.18; }
-          50%     { opacity: 0.35; }
-        }
-        @keyframes boot-in {
-          0%   { opacity: 0; transform: translateY(18px) scale(0.98); }
-          100% { opacity: 1; transform: translateY(0)    scale(1); }
-        }
-        @keyframes shake {
-          0%,100% { transform: translateX(0); }
-          20%     { transform: translateX(-8px); }
-          40%     { transform: translateX(8px); }
-          60%     { transform: translateX(-5px); }
-          80%     { transform: translateX(5px); }
-        }
-        @keyframes cursor-blink {
-          0%,100% { opacity: 1; }
-          50%     { opacity: 0; }
-        }
+        @keyframes boot { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: translateY(0);} }
+        @keyframes pulse { 0%,100% { opacity: 0.55; } 50% { opacity: 1; } }
+        @keyframes shake { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-6px);} 75%{transform:translateX(6px);} }
+        @keyframes sweep { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        *::selection { background: ${C.accent}; color: ${C.bg0}; }
+        input::placeholder { color: ${C.t3}; }
       `}</style>
 
-      {/* ── Fine grid ── */}
+      {/* ═══ TOP BAR ═══ */}
       <div style={{
-        position: "absolute", inset: 0, pointerEvents: "none",
-        backgroundImage: [
-          "linear-gradient(rgba(30,50,100,0.008) 1px, transparent 1px)",
-          "linear-gradient(90deg, rgba(30,50,100,0.008) 1px, transparent 1px)",
-        ].join(","),
-        backgroundSize: "44px 44px",
-      }} />
-
-      {/* ── Scan line ── */}
-      <div style={{
-        position: "absolute", left: 0, right: 0, height: 1, pointerEvents: "none",
-        background: "linear-gradient(90deg, transparent 0%, rgba(20,45,100,0.06) 30%, rgba(20,45,100,0.1) 50%, rgba(20,45,100,0.06) 70%, transparent 100%)",
-        animation: "scanline 14s linear infinite",
-        zIndex: 2,
-      }} />
-
-      {/* ── Subtle static ambient glow behind center ── */}
-      <div style={{
-        position: "absolute", top: "38%", left: "50%",
-        transform: "translate(-50%, -50%)",
-        width: 700, height: 400, borderRadius: "50%",
-        background: "radial-gradient(ellipse, rgba(8,22,65,0.18) 0%, transparent 68%)",
-        pointerEvents: "none", zIndex: 1,
-      }} />
-
-      {/* ── Corner HUD decorations ── */}
-      {([
-        { pos: { top: 20, left: 20 } as React.CSSProperties,     border: { borderLeft: "1px solid rgba(20,45,100,0.25)", borderTop: "1px solid rgba(20,45,100,0.25)" } },
-        { pos: { top: 20, right: 20 } as React.CSSProperties,    border: { borderRight:"1px solid rgba(20,45,100,0.25)", borderTop: "1px solid rgba(20,45,100,0.25)" } },
-        { pos: { bottom:20,left: 20 } as React.CSSProperties,    border: { borderLeft: "1px solid rgba(20,45,100,0.25)", borderBottom:"1px solid rgba(20,45,100,0.25)" } },
-        { pos: { bottom:20,right: 20 } as React.CSSProperties,   border: { borderRight:"1px solid rgba(20,45,100,0.25)", borderBottom:"1px solid rgba(20,45,100,0.25)" } },
-      ] as { pos: React.CSSProperties; border: React.CSSProperties }[]).map(({ pos, border }, i) => (
-        <div key={i} style={{
-          position: "absolute", width: 20, height: 20,
-          animation: "corner-pulse 3s ease-in-out infinite",
-          animationDelay: `${i * 0.4}s`,
-          ...border, ...pos,
-        }} />
-      ))}
-
-      {/* ── System metadata top-left ── */}
-      <div style={{
-        position: "absolute", top: 32, left: 40,
-        fontFamily: "monospace", fontSize: 10, color: "rgba(40,60,100,0.45)",
-        letterSpacing: "0.12em", lineHeight: 1.8, zIndex: 5,
-        animation: "boot-in .6s ease .2s both",
+        display: "grid",
+        gridTemplateColumns: "1fr auto 1fr",
+        alignItems: "center",
+        padding: "0 20px",
+        borderBottom: `1px solid ${C.hair}`,
+        background: C.bg1,
+        fontFamily: MONO,
+        fontSize: 11,
+        color: C.t2,
+        letterSpacing: "0.08em",
       }}>
-        <div>SYS // MAX-OS v3.2.1</div>
-        <div>ENCRYPTION // AES-256</div>
-        <div>NODE // SECURE-01</div>
-      </div>
-
-      {/* ── Timestamp top-right ── */}
-      <div style={{
-        position: "absolute", top: 32, right: 40,
-        fontFamily: "monospace", fontSize: 10, color: "rgba(40,60,100,0.45)",
-        letterSpacing: "0.12em", textAlign: "right", zIndex: 5,
-        animation: "boot-in .6s ease .2s both",
-      }}>
-        <div>{new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}</div>
-        <div style={{ color: "rgba(30,70,50,0.5)" }}>● SYSTEM NOMINAL</div>
-      </div>
-
-      {/* ── MAIN CARD ── */}
-      <div style={{
-        position: "relative", zIndex: 10,
-        display: "flex", flexDirection: "column", alignItems: "center",
-        animation: "boot-in .7s ease .1s both",
-      }}>
-
-        {/* Access classification badge */}
-        <div style={{
-          display: "inline-flex", alignItems: "center", gap: 8,
-          padding: "5px 16px", borderRadius: 2, marginBottom: 32,
-          background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)",
-          letterSpacing: "0.2em", fontSize: 10, fontWeight: 700,
-          color: "rgba(239,68,68,0.7)", textTransform: "uppercase",
-        }}>
-          <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#ef4444", boxShadow: "0 0 6px #ef4444", display: "inline-block", animation: "pulse-dot 1.5s ease-in-out infinite" }} />
-          Restricted Access — Authorized Personnel Only
+        <div style={{ display: "flex", gap: 18, alignItems: "center" }}>
+          <span style={{ color: C.accent, fontWeight: 700, fontSize: 10, letterSpacing: "0.24em" }}>M.A.X.</span>
+          <span style={{ color: C.t3 }}>MAXIMUM ADAPTIVE EXECUTIVE</span>
         </div>
+        <div style={{ display: "flex", gap: 22, alignItems: "center", justifyContent: "center", color: C.t1 }}>
+          <span style={{ fontVariantNumeric: "tabular-nums" }}>{timeStr}</span>
+          <span style={{ color: C.t3 }}>ET</span>
+          <span style={{ color: C.t2 }}>{dateStr}</span>
+          <span style={{ color: C.t3 }}>DOY {String(doy).padStart(3, "0")}</span>
+        </div>
+        <div style={{ display: "flex", gap: 14, justifyContent: "flex-end", alignItems: "center" }}>
+          <StatusDot color={nyMarketOpen ? C.up : C.t3} />
+          <span style={{ color: nyMarketOpen ? C.t1b : C.t2 }}>NYSE {nyMarketOpen ? "OPEN" : "CLOSED"}</span>
+          <span style={{ color: C.t3 }}>|</span>
+          <StatusDot color={C.up} />
+          <span style={{ color: C.t1b }}>CRYPTO 24/7</span>
+        </div>
+      </div>
 
-        {/* ── M.A.X. TITLE ── */}
-        <h1
-          ref={titleRef}
-          style={{
-            fontSize: "clamp(64px, 12vw, 112px)",
-            fontWeight: 900,
-            letterSpacing: "-0.01em",
-            color: "#4a5c78",
-            lineHeight: 1,
-            marginBottom: 14,
-            userSelect: "none",
-            textShadow: titleShadow,
-            transition: "text-shadow .55s cubic-bezier(0.4,0,0.2,1)",
-          }}
-        >
-          M.A.X.
-        </h1>
+      {/* ═══ MAIN GRID ═══ */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "320px 1fr 320px",
+        gap: 16,
+        padding: 16,
+        minHeight: 0,
+      }}>
 
-        {/* Subtitle */}
-        <p style={{
-          fontSize: 11, fontWeight: 700, letterSpacing: "0.28em",
-          textTransform: "uppercase", color: "rgba(40,65,110,0.55)",
-          marginBottom: 6, fontFamily: "monospace",
-        }}>
-          Maximum Adaptive eXecutive
-        </p>
-        <p style={{
-          fontSize: 11, fontWeight: 600, letterSpacing: "0.18em",
-          textTransform: "uppercase", color: "rgba(148,163,184,0.25)",
-          marginBottom: 52, fontFamily: "monospace",
-        }}>
-          Personal AI · Secure Terminal
-        </p>
-
-        {/* ── AUTH PANEL ── */}
-        <div style={{
-          width: 380, maxWidth: "90vw",
-          background: "rgba(8,11,22,0.85)",
-          border: `1px solid ${borderGlow}`,
-          borderRadius: 4,
-          padding: "28px 32px",
-          backdropFilter: "blur(12px)",
-          boxShadow: `0 0 60px rgba(8,20,60,${(glow * 0.5).toFixed(2)}), 0 24px 60px rgba(0,0,0,0.7)`,
-          transition: "border-color .2s ease, box-shadow .2s ease",
-          animation: shake ? "shake 0.35s ease" : "none",
-        }}>
-
-          {/* Panel header */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(69,137,255,0.5)", fontFamily: "monospace" }}>
-              SECURE ACCESS PORTAL
-            </span>
-            <div style={{ display: "flex", gap: 5 }}>
-              {[0, 1, 2].map(i => (
-                <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: ["#ef4444","#f59e0b","#22c55e"][i], opacity: 0.5 }} />
+        {/* ── LEFT RAIL ── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, animation: "boot .5s ease .05s both" }}>
+          <Panel label="MARKETS / LIVE">
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {(crypto ?? [{ symbol: "BTC", price: 0, change24h: 0 }, { symbol: "XRP", price: 0, change24h: 0 }]).map((a, i) => (
+                <TickerRow key={a.symbol} symbol={a.symbol} price={a.price} change={a.change24h} loading={!crypto} divider={i < 1} />
               ))}
             </div>
-          </div>
+          </Panel>
 
-          <div style={{ height: 1, background: "rgba(69,137,255,0.08)", marginBottom: 24 }} />
+          <Panel label="LOCAL">
+            <KV label="TIMEZONE" value={clientMeta?.tz ?? "—"} />
+            <KV label="CLIENT" value={clientMeta?.ua ?? "—"} />
+            <KV label="PLATFORM" value={clientMeta?.platform ?? "—"} />
+          </Panel>
 
-          {/* Prompt */}
-          <div style={{ fontFamily: "monospace", fontSize: 11, color: "rgba(69,137,255,0.4)", marginBottom: 12, letterSpacing: "0.08em" }}>
-            {`> ENTER PASSPHRASE TO AUTHENTICATE`}
-          </div>
+          <Panel label="SESSION">
+            <KV label="UPTIME" value={upStr} mono />
+            <KV label="STATUS" value={<span style={{ color: C.up }}>● READY</span>} />
+            <KV label="PROTOCOL" value="HTTPS / TLS 1.3" />
+          </Panel>
+        </div>
 
-          {/* Input */}
-          <div style={{ position: "relative", marginBottom: 16 }}>
+        {/* ── CENTER / AUTH ── */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          position: "relative",
+          animation: "boot .6s ease 0s both",
+        }}>
+          <div style={{
+            width: "100%",
+            maxWidth: 440,
+            background: `linear-gradient(180deg, ${C.surf2} 0%, ${C.surf1} 100%)`,
+            border: `1px solid ${status === "error" ? "rgba(248,113,113,0.35)" : status === "ok" ? "rgba(74,222,128,0.35)" : C.hair2}`,
+            borderRadius: 2,
+            boxShadow: `inset 0 1px 0 rgba(125,170,220,0.06), 0 24px 60px rgba(0,0,0,0.6)`,
+            padding: "28px 32px 24px",
+            animation: shake ? "shake 0.35s ease" : undefined,
+          }}>
+            {/* Panel header */}
             <div style={{
-              display: "flex", alignItems: "center",
-              background: "rgba(69,137,255,0.04)",
-              border: `1px solid ${status === "error" ? "rgba(239,68,68,0.5)" : status === "ok" ? "rgba(34,197,94,0.5)" : "rgba(69,137,255,0.15)"}`,
-              borderRadius: 3, padding: "11px 14px", gap: 8,
-              transition: "border-color .2s",
-            }}
-              onFocus={() => (inputRef.current?.focus())}
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              fontFamily: MONO,
+              fontSize: 10,
+              letterSpacing: "0.22em",
+              color: C.t2,
+              marginBottom: 28,
+            }}>
+              <span>AUTHENTICATION</span>
+              <span style={{ color: C.t3 }}>v2.0</span>
+            </div>
+
+            {/* Hero mark */}
+            <div style={{ textAlign: "center", marginBottom: 32 }}>
+              <div style={{
+                fontSize: 52,
+                fontWeight: 800,
+                letterSpacing: "-0.02em",
+                color: C.t1,
+                lineHeight: 1,
+                marginBottom: 10,
+              }}>
+                M.A.X.
+              </div>
+              <div style={{
+                fontFamily: MONO,
+                fontSize: 10,
+                letterSpacing: "0.28em",
+                color: C.t3,
+              }}>
+                PERSONAL OPERATING SYSTEM
+              </div>
+            </div>
+
+            {/* Touch ID — primary */}
+            <button
+              disabled
+              title="Enable in Settings after first login"
+              style={{
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 12,
+                padding: "14px 16px",
+                marginBottom: 10,
+                background: C.surf3,
+                border: `1px solid ${C.hair}`,
+                borderRadius: 2,
+                color: C.t2,
+                fontFamily: MONO,
+                fontSize: 12,
+                letterSpacing: "0.16em",
+                cursor: "not-allowed",
+                opacity: 0.75,
+              }}
             >
-              <span style={{ fontFamily: "monospace", fontSize: 12, color: "rgba(69,137,255,0.3)" }}>_</span>
-              <input
-                ref={inputRef}
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && handleLogin()}
-                autoFocus
-                placeholder="••••••••••••"
-                disabled={status === "loading" || status === "ok"}
+              <TouchIdIcon />
+              <span>SIGN IN WITH TOUCH ID</span>
+              <span style={{ color: C.t3, fontSize: 9, letterSpacing: "0.2em", marginLeft: 6 }}>SETUP REQUIRED</span>
+            </button>
+
+            {/* Divider */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "14px 0" }}>
+              <div style={{ flex: 1, height: 1, background: C.hair }} />
+              <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.24em", color: C.t3 }}>OR</span>
+              <div style={{ flex: 1, height: 1, background: C.hair }} />
+            </div>
+
+            {/* Passphrase */}
+            {!showPass ? (
+              <button
+                onClick={() => { setShowPass(true); setTimeout(() => inputRef.current?.focus(), 50); }}
                 style={{
-                  flex: 1, background: "none", border: "none", outline: "none",
-                  fontFamily: "monospace", fontSize: 14, color: "#e8f0ff",
-                  letterSpacing: "0.1em",
+                  width: "100%",
+                  padding: "14px 16px",
+                  background: "transparent",
+                  border: `1px solid ${C.hair2}`,
+                  borderRadius: 2,
+                  color: C.t1b,
+                  fontFamily: MONO,
+                  fontSize: 12,
+                  letterSpacing: "0.16em",
+                  cursor: "pointer",
+                  transition: "border-color .15s, color .15s, background .15s",
                 }}
-              />
-              {status === "loading" && (
-                <span style={{ fontFamily: "monospace", fontSize: 12, color: "rgba(69,137,255,0.5)", width: 24 }}>{dots}</span>
-              )}
-              {status === "ok" && (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-              )}
-              {status === "error" && (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              )}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = C.hair3;
+                  (e.currentTarget as HTMLButtonElement).style.color = C.t1;
+                  (e.currentTarget as HTMLButtonElement).style.background = "rgba(125,170,220,0.03)";
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = C.hair2;
+                  (e.currentTarget as HTMLButtonElement).style.color = C.t1b;
+                  (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                }}
+              >
+                ENTER PASSPHRASE
+              </button>
+            ) : (
+              <div>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  background: C.bg1,
+                  border: `1px solid ${status === "error" ? "rgba(248,113,113,0.5)" : status === "ok" ? "rgba(74,222,128,0.5)" : C.hair2}`,
+                  borderRadius: 2,
+                  padding: "12px 14px",
+                  marginBottom: 10,
+                  transition: "border-color .15s",
+                }}>
+                  <span style={{ fontFamily: MONO, fontSize: 12, color: C.t3, marginRight: 10 }}>›</span>
+                  <input
+                    ref={inputRef}
+                    type="password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && handleLogin()}
+                    placeholder="passphrase"
+                    disabled={status === "loading" || status === "ok"}
+                    style={{
+                      flex: 1,
+                      background: "transparent",
+                      border: "none",
+                      outline: "none",
+                      fontFamily: MONO,
+                      fontSize: 13,
+                      color: C.t1,
+                      letterSpacing: "0.08em",
+                    }}
+                  />
+                </div>
+                <button
+                  onClick={handleLogin}
+                  disabled={!password.trim() || status === "loading" || status === "ok"}
+                  style={{
+                    width: "100%",
+                    padding: "13px 16px",
+                    background: password.trim() && status === "idle"
+                      ? `linear-gradient(180deg, ${C.accent}, ${C.accentLo})`
+                      : C.surf3,
+                    border: `1px solid ${password.trim() && status === "idle" ? C.accent : C.hair}`,
+                    borderRadius: 2,
+                    color: password.trim() && status === "idle" ? C.bg0 : C.t3,
+                    fontFamily: MONO,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    letterSpacing: "0.2em",
+                    cursor: password.trim() && status === "idle" ? "pointer" : "not-allowed",
+                    transition: "all .15s",
+                  }}
+                >
+                  {status === "loading" ? "AUTHENTICATING…" : status === "ok" ? "ACCESS GRANTED" : status === "error" ? "REJECTED" : "AUTHENTICATE"}
+                </button>
+              </div>
+            )}
+
+            {/* Footer strip */}
+            <div style={{
+              display: "flex",
+              justifyContent: "space-between",
+              marginTop: 24,
+              paddingTop: 14,
+              borderTop: `1px solid ${C.hair}`,
+              fontFamily: MONO,
+              fontSize: 9,
+              letterSpacing: "0.2em",
+              color: C.t3,
+            }}>
+              <span>SINGLE-OPERATOR TERMINAL</span>
+              <span>ENCRYPTED SESSION</span>
             </div>
           </div>
+        </div>
 
-          {/* Error message */}
-          {status === "error" && (
-            <div style={{
-              fontFamily: "monospace", fontSize: 11, color: "rgba(239,68,68,0.8)",
-              marginBottom: 14, letterSpacing: "0.06em",
-            }}>
-              &gt; ACCESS DENIED — INVALID CREDENTIALS
-            </div>
-          )}
-          {status === "ok" && (
-            <div style={{
-              fontFamily: "monospace", fontSize: 11, color: "rgba(34,197,94,0.8)",
-              marginBottom: 14, letterSpacing: "0.06em",
-            }}>
-              &gt; IDENTITY CONFIRMED — LOADING SYSTEM
-            </div>
-          )}
+        {/* ── RIGHT RAIL ── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, animation: "boot .5s ease .1s both" }}>
+          <Panel label="SYSTEM">
+            <KV label="BUILD" value="v2.0.0" />
+            <KV label="ENV" value="PRODUCTION" />
+            <KV label="REGION" value="US-EAST" />
+            <KV label="NODE" value="ACTIVE" valueColor={C.up} />
+          </Panel>
 
-          {/* Submit */}
-          <button
-            onClick={handleLogin}
-            disabled={status === "loading" || status === "ok" || !password.trim()}
-            style={{
-              width: "100%", padding: "11px 0", borderRadius: 3,
-              fontFamily: "monospace", fontSize: 12, fontWeight: 700,
-              letterSpacing: "0.18em", textTransform: "uppercase",
-              cursor: password.trim() && status === "idle" ? "pointer" : "default",
-              background: status === "ok"
-                ? "rgba(34,197,94,0.12)"
-                : `rgba(69,137,255,${password.trim() ? "0.1" : "0.04"})`,
-              border: status === "ok"
-                ? "1px solid rgba(34,197,94,0.4)"
-                : `1px solid rgba(69,137,255,${password.trim() ? "0.3" : "0.1"})`,
-              color: status === "ok"
-                ? "rgba(34,197,94,0.9)"
-                : password.trim() ? "#e8f0ff" : "rgba(148,163,184,0.3)",
-              transition: "all .15s ease",
-            }}
-          >
-            {status === "loading" ? `Authenticating${dots}` : status === "ok" ? "Access Granted" : "Authenticate →"}
-          </button>
+          <Panel label="INTELLIGENCE">
+            <KV label="MODEL" value="HAIKU 4.5" />
+            <KV label="CONTEXT" value="200K" />
+            <KV label="TOOLS" value="35 ONLINE" valueColor={C.accent} />
+          </Panel>
 
-          {/* Footer */}
-          <div style={{ marginTop: 20, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(148,163,184,0.2)", letterSpacing: "0.12em" }}>
-              SESSION ENCRYPTED
-            </span>
-            <span style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(148,163,184,0.2)", letterSpacing: "0.12em" }}>
-              M.A.X. OS
-            </span>
-          </div>
+          <Panel label="SURFACES">
+            <SurfaceRow label="WEB" active />
+            <SurfaceRow label="CHAT BUBBLE" active />
+            <SurfaceRow label="TELEGRAM" active />
+            <SurfaceRow label="VOICE" active={false} />
+          </Panel>
         </div>
       </div>
 
-      {/* ── Bottom status bar ── */}
+      {/* ═══ BOTTOM BAR ═══ */}
       <div style={{
-        position: "absolute", bottom: 28, left: 0, right: 0,
-        display: "flex", justifyContent: "center", gap: 32,
-        animation: "boot-in .6s ease .4s both",
-        zIndex: 5,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: "0 20px",
+        borderTop: `1px solid ${C.hair}`,
+        background: C.bg1,
+        fontFamily: MONO,
+        fontSize: 10,
+        letterSpacing: "0.16em",
+        color: C.t3,
       }}>
-        {[
-          { dot: "rgba(30,80,60,0.5)",    label: "NEURAL CORE ACTIVE" },
-          { dot: "rgba(20,50,110,0.5)",   label: "256-BIT ENCRYPTED" },
-          { dot: "rgba(80,60,20,0.5)",    label: "REAL-TIME DATA FEEDS" },
-        ].map(s => (
-          <div key={s.label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ width: 4, height: 4, borderRadius: "50%", background: s.dot, display: "inline-block", boxShadow: `0 0 4px ${s.dot}` }} />
-            <span style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(148,163,184,0.2)", letterSpacing: "0.14em" }}>{s.label}</span>
-          </div>
-        ))}
+        <span>© MAXWELL OPERATING SYSTEM · ALL RIGHTS RESERVED</span>
+        <span style={{ display: "flex", gap: 18 }}>
+          <span>VERCEL / EDGE</span>
+          <span style={{ color: C.t2 }}>{now ? `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, "0")}.${String(now.getDate()).padStart(2, "0")}` : ""}</span>
+        </span>
       </div>
     </div>
+  );
+}
+
+/* ══════════════ Subcomponents ══════════════ */
+
+function Panel({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{
+      background: C.surf1,
+      border: `1px solid ${C.hair}`,
+      borderRadius: 2,
+      boxShadow: `inset 0 1px 0 rgba(125,170,220,0.04)`,
+    }}>
+      <div style={{
+        padding: "9px 14px",
+        borderBottom: `1px solid ${C.hair}`,
+        fontFamily: MONO,
+        fontSize: 10,
+        letterSpacing: "0.24em",
+        color: C.t2,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+      }}>
+        <span>{label}</span>
+        <span style={{ color: C.t4 }}>●</span>
+      </div>
+      <div style={{ padding: "10px 14px" }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function KV({ label, value, mono, valueColor }: { label: string; value: React.ReactNode; mono?: boolean; valueColor?: string }) {
+  return (
+    <div style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "baseline",
+      padding: "6px 0",
+      fontSize: 11,
+    }}>
+      <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.18em", color: C.t3 }}>{label}</span>
+      <span style={{
+        fontFamily: mono ? MONO : "'Inter', sans-serif",
+        fontVariantNumeric: "tabular-nums",
+        color: valueColor ?? C.t1b,
+        fontSize: mono ? 11 : 12,
+      }}>{value}</span>
+    </div>
+  );
+}
+
+function TickerRow({ symbol, price, change, loading, divider }: { symbol: string; price: number; change: number; loading: boolean; divider: boolean }) {
+  const up = change >= 0;
+  return (
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: "auto 1fr auto",
+      alignItems: "center",
+      gap: 10,
+      padding: "10px 0",
+      borderBottom: divider ? `1px solid ${C.hair}` : undefined,
+    }}>
+      <span style={{ fontFamily: MONO, fontSize: 11, letterSpacing: "0.12em", color: C.t1, fontWeight: 600 }}>{symbol}</span>
+      <span style={{
+        fontFamily: MONO,
+        fontSize: 13,
+        color: loading ? C.t3 : C.t1,
+        fontVariantNumeric: "tabular-nums",
+        textAlign: "right",
+      }}>
+        {loading ? "—" : `$${price.toLocaleString(undefined, { maximumFractionDigits: price < 10 ? 4 : 2 })}`}
+      </span>
+      <span style={{
+        fontFamily: MONO,
+        fontSize: 10,
+        color: loading ? C.t3 : up ? C.up : C.down,
+        fontVariantNumeric: "tabular-nums",
+        minWidth: 56,
+        textAlign: "right",
+      }}>
+        {loading ? "—" : `${up ? "+" : ""}${change.toFixed(2)}%`}
+      </span>
+    </div>
+  );
+}
+
+function SurfaceRow({ label, active }: { label: string; active: boolean }) {
+  return (
+    <div style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: "6px 0",
+    }}>
+      <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.2em", color: C.t2 }}>{label}</span>
+      <span style={{
+        fontFamily: MONO,
+        fontSize: 9,
+        letterSpacing: "0.22em",
+        color: active ? C.up : C.t3,
+      }}>
+        {active ? "● ONLINE" : "○ OFFLINE"}
+      </span>
+    </div>
+  );
+}
+
+function StatusDot({ color }: { color: string }) {
+  return (
+    <span style={{
+      width: 6,
+      height: 6,
+      borderRadius: "50%",
+      background: color,
+      boxShadow: `0 0 6px ${color}`,
+      display: "inline-block",
+      animation: "pulse 2.4s ease-in-out infinite",
+    }} />
+  );
+}
+
+function TouchIdIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2a9 9 0 0 0-9 9" />
+      <path d="M21 11a9 9 0 0 0-3.5-7.1" />
+      <path d="M7 13c0-2.8 2.2-5 5-5s5 2.2 5 5v2" />
+      <path d="M12 13v5" />
+      <path d="M7 17c0 1.7.4 3 1 4" />
+      <path d="M17 19v2" />
+    </svg>
   );
 }
