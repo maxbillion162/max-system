@@ -751,7 +751,7 @@ export async function buildContextHeader(): Promise<string> {
     readWeather(),
     sb.from("goals").select("label,current,target,unit,deadline").order("deadline").limit(5),
     readWealth(),
-    sb.from("memories").select("content").order("created_at", { ascending: false }).limit(8),
+    sb.from("memories").select("content,tags").order("created_at", { ascending: false }).limit(14),
     sb.from("bills").select("name,amt,due_day").order("due_day"),
     sb.from("transactions").select("amount,budget_category,pending").gte("date", periodStart).gt("amount", 0),
     sb.from("budget_allocations").select("category,budgeted").eq("period_start", periodStart),
@@ -846,10 +846,19 @@ export async function buildContextHeader(): Promise<string> {
     }
   }
 
-  // Recent memories
+  // Memories — split into learned preferences (treated as rules) and general memories
   if (memoriesRes.status === "fulfilled" && memoriesRes.value.data?.length) {
-    const mems = (memoriesRes.value.data as { content: string }[]).map(m => m.content.slice(0, 240));
-    ctx += `[RECENT MEMORY: ${mems.join(" | ")}]\n`;
+    const rows = memoriesRes.value.data as { content: string; tags: string[] | null }[];
+    const learned = rows.filter(m => Array.isArray(m.tags) && m.tags.includes("learned_preference"));
+    const general = rows.filter(m => !Array.isArray(m.tags) || !m.tags.includes("learned_preference"));
+    if (learned.length > 0) {
+      const prefs = learned.slice(0, 6).map(m => m.content.slice(0, 240));
+      ctx += `[LEARNED PREFERENCES (follow these — derived from Max's thumbs-up/thumbs-down feedback): ${prefs.join(" | ")}]\n`;
+    }
+    if (general.length > 0) {
+      const mems = general.slice(0, 8).map(m => m.content.slice(0, 240));
+      ctx += `[RECENT MEMORY: ${mems.join(" | ")}]\n`;
+    }
   }
 
   // Writing style
