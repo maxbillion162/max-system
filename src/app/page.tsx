@@ -3,21 +3,21 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
-/* Darker, quieter palette — greys pushed down per feedback */
+/* Palette — darker surfaces, but text tiers bumped for readability */
 const C = {
   bg: "#000000",
-  bgSoft: "#030406",
-  surf: "#07090d",
-  surfHi: "#0b0e14",
-  hair: "rgba(125,170,220,0.06)",
-  hair2: "rgba(125,170,220,0.14)",
-  hair3: "rgba(125,170,220,0.28)",
+  bgSoft: "#040608",
+  surf: "#0a0d12",
+  surfHi: "#10141c",
+  hair: "rgba(125,170,220,0.08)",
+  hair2: "rgba(125,170,220,0.18)",
+  hair3: "rgba(125,170,220,0.35)",
   accent: "#7DB8E8",
   accentDim: "rgba(125,184,232,0.55)",
-  t1: "#D4DCE6",
-  t2: "#5A6472",
-  t3: "#2E3440",
-  t4: "#1A1E24",
+  t1: "#E4EAF2",
+  t2: "#8794A6",
+  t3: "#525C6B",
+  t4: "#2E3440",
   err: "#C85A5A",
   ok: "#5FB07D",
 };
@@ -107,9 +107,10 @@ export default function AccessPage() {
     <div style={{
       minHeight: "100vh",
       background: `
-        radial-gradient(900px 500px at 50% 120%, rgba(125,184,232,0.045), transparent 70%),
-        radial-gradient(1200px 700px at 50% -10%, rgba(125,184,232,0.025), transparent 60%),
-        linear-gradient(180deg, ${C.bg} 0%, ${C.bgSoft} 100%)
+        radial-gradient(700px 520px at 50% 42%, rgba(125,184,232,0.12), transparent 65%),
+        radial-gradient(1400px 800px at 50% 120%, rgba(125,184,232,0.09), transparent 70%),
+        radial-gradient(1600px 900px at 50% -15%, rgba(30,60,100,0.18), transparent 60%),
+        linear-gradient(180deg, ${C.bg} 0%, ${C.bgSoft} 60%, ${C.bg} 100%)
       `,
       color: C.t1,
       fontFamily: "'Inter', system-ui, sans-serif",
@@ -134,14 +135,39 @@ export default function AccessPage() {
         input::placeholder { color: ${C.t3}; }
       `}</style>
 
-      {/* Grain overlay — gives the black real depth */}
+      {/* Grain overlay — coarser, brighter, actually visible */}
       <div style={{
         position: "absolute", inset: 0, pointerEvents: "none",
-        backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.49  0 0 0 0 0.72  0 0 0 0 0.91  0 0 0 0.5 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")`,
-        opacity: 0.06,
-        mixBlendMode: "overlay",
+        backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.6  0 0 0 0 0.78  0 0 0 0 0.95  0 0 0 0.9 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")`,
+        opacity: 0.22,
+        mixBlendMode: "screen",
         zIndex: 1,
       }} />
+
+      {/* Vignette — dark edges, bright center — pronounces the composition */}
+      <div style={{
+        position: "absolute", inset: 0, pointerEvents: "none",
+        background: "radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.75) 100%)",
+        zIndex: 2,
+      }} />
+
+      {/* Camera framing marks — precision instrument cue, not hacker UI */}
+      {[
+        { top: 24, left: 24, rot: 0 },
+        { top: 24, right: 24, rot: 90 },
+        { bottom: 24, right: 24, rot: 180 },
+        { bottom: 24, left: 24, rot: 270 },
+      ].map((m, i) => (
+        <div key={i} style={{
+          position: "absolute", width: 14, height: 14, ...m,
+          zIndex: 3, opacity: 0.22,
+          animation: `fade 1.2s ease ${1.2 + i * 0.08}s both`,
+        }}>
+          <svg viewBox="0 0 14 14" style={{ transform: `rotate(${m.rot}deg)` }}>
+            <path d="M0 0 L14 0 M0 0 L0 14" stroke={C.accent} strokeWidth="1" fill="none" />
+          </svg>
+        </div>
+      ))}
 
       {/* Ultra-subtle grid texture */}
       <div style={{
@@ -158,7 +184,7 @@ export default function AccessPage() {
 
       {/* Quiet timestamp — top-right, almost invisible */}
       <div style={{
-        position: "absolute", top: 28, right: 32,
+        position: "absolute", top: 28, right: 32, zIndex: 5,
         fontFamily: MONO, fontSize: 10, letterSpacing: "0.2em", color: C.t3,
         animation: "fade .8s ease .3s both",
       }}>
@@ -167,6 +193,7 @@ export default function AccessPage() {
 
       {/* Main composition */}
       <div style={{
+        position: "relative", zIndex: 5,
         display: "flex", flexDirection: "column", alignItems: "center",
         width: "100%", maxWidth: 360, padding: "0 24px",
         animation: shake ? "shake 0.35s ease" : "fade-up .8s ease .1s both",
@@ -186,22 +213,25 @@ export default function AccessPage() {
         >
           {WORD.map((ch, i) => {
             const p = proximity[i] ?? 0;
-            const weight = Math.round(700 + p * 200);           // 700 → 900
-            const tint = `rgba(125, 184, 232, ${p * 0.9})`;      // ice-blue overlay via text-shadow
-            const lift = -p * 2;
+            /* Spotlight: letters under cursor wash ice-blue + glow;
+               others dim slightly — no geometry change, no jitter */
+            const anyHover = proximity.some(v => v > 0.02);
+            const dimmed = anyHover ? 0.55 : 1;
+            const letterColor = p > 0
+              ? `rgb(${Math.round(228 + (125 - 228) * p)}, ${Math.round(234 + (184 - 234) * p)}, ${Math.round(242 + (232 - 242) * p)})`
+              : `rgba(228,234,242,${dimmed})`;
             return (
               <span
                 key={i}
                 ref={el => { letterRefs.current[i] = el; }}
                 style={{
                   display: "inline-block",
-                  fontWeight: weight,
-                  color: C.t1,
-                  transform: `translateY(${lift}px)`,
-                  textShadow: p > 0
-                    ? `0 0 ${4 + p * 18}px ${tint}, 0 0 ${1 + p * 2}px ${tint}`
-                    : "0 0 40px rgba(125,184,232,0.04)",
-                  transition: "font-weight .25s ease, transform .25s ease, text-shadow .25s ease",
+                  fontWeight: 800,
+                  color: letterColor,
+                  textShadow: p > 0.05
+                    ? `0 0 ${6 + p * 28}px rgba(125,184,232,${0.35 + p * 0.45}), 0 0 ${2 + p * 4}px rgba(125,184,232,${0.3 + p * 0.3})`
+                    : "0 0 40px rgba(125,184,232,0.05)",
+                  transition: "color .35s ease, text-shadow .35s ease",
                   animation: `letter-in .9s cubic-bezier(.2,.6,.2,1) ${0.15 + i * 0.08}s both`,
                   padding: "0 0.01em",
                 }}
@@ -347,6 +377,7 @@ export default function AccessPage() {
         bottom: 28,
         left: "50%",
         transform: "translateX(-50%)",
+        zIndex: 5,
         fontFamily: MONO,
         fontSize: 9,
         letterSpacing: "0.42em",
