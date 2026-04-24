@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { notify } from "@/lib/notify";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -27,15 +28,10 @@ async function avQuote(symbol: string): Promise<{ price: number; change: number;
   }
 }
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const CHAT_ID   = process.env.TELEGRAM_CHAT_ID;
-
 export async function GET() {
-  // Check notification prefs
-  const { data: prefRow } = await supabase.from("settings").select("value").eq("key", "notification_prefs").single();
-  const prefs = (prefRow?.value ?? {}) as { market_update?: boolean };
+  // Note: we always fetch + snapshot market data (it powers dashboard tiles).
+  // The notify() call below handles the opt-in gate for the Telegram push.
 
-  // Fetch market indices (ETF proxies) + crypto
   const [spy, qqq, dia] = await Promise.all([avQuote("SPY"), avQuote("QQQ"), avQuote("DIA")]);
 
   const snapshot = {
@@ -58,24 +54,22 @@ export async function GET() {
     }
   }
 
-  // Send Telegram update (if enabled)
-  // OPT-IN: only send if user explicitly enabled it in Settings
-  if (prefs.market_update === true && BOT_TOKEN && CHAT_ID) {
-    const fmt = (n: number) => (n >= 0 ? `+${n.toFixed(2)}%` : `${n.toFixed(2)}%`);
-    const lines = [
+  // Notify (no-ops unless opted in via Settings)
+  const fmt = (n: number) => (n >= 0 ? `+${n.toFixed(2)}%` : `${n.toFixed(2)}%`);
+  const topMover = [spy, qqq, dia].filter(Boolean).sort((a, b) => Math.abs((b!.changePct) - (a!.changePct)))[0];
+  await notify({
+    category: "market_update",
+    title:    "2PM Market Update",
+    body:     topMover ? `Biggest move: ${fmt(topMover.changePct)}` : "Market update.",
+    telegramText: [
       `📈 *2PM Market Update*`,
       ``,
       spy ? `S&P 500 (SPY): $${spy.price.toFixed(2)} ${fmt(spy.changePct)}` : null,
       qqq ? `NASDAQ (QQQ): $${qqq.price.toFixed(2)} ${fmt(qqq.changePct)}` : null,
       dia ? `Dow (DIA): $${dia.price.toFixed(2)} ${fmt(dia.changePct)}` : null,
-    ].filter(Boolean).join("\n");
-
-    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: CHAT_ID, text: lines, parse_mode: "Markdown" }),
-    }).catch(() => {});
-  }
+    ].filter(Boolean).join("\n"),
+    actionUrl: "/dashboard/finance",
+  });
 
   return NextResponse.json({ ok: true, indices: { SPY: !!spy, QQQ: !!qqq, DIA: !!dia }, updated: new Date().toISOString() });
 }

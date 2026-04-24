@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { isOptedIn, notify } from "@/lib/notify";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -7,11 +8,7 @@ const supabase = createClient(
 );
 
 export async function GET() {
-  // Check notification prefs
-  const { data: prefRow } = await supabase.from("settings").select("value").eq("key", "notification_prefs").single();
-  const prefs = (prefRow?.value ?? {}) as { habit_nudge?: boolean };
-  // OPT-IN: skip unless explicitly enabled in Settings
-  if (prefs.habit_nudge !== true) return NextResponse.json({ sent: false, reason: "not opted in" });
+  if (!(await isOptedIn("habit_nudge"))) return NextResponse.json({ sent: false, reason: "not opted in" });
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -29,17 +26,14 @@ export async function GET() {
 
   if (!incomplete.length) return NextResponse.json({ sent: false, reason: "all done" });
 
-  const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-  const CHAT_ID   = process.env.TELEGRAM_CHAT_ID;
-  if (!BOT_TOKEN || !CHAT_ID) return NextResponse.json({ sent: false, reason: "no telegram config" });
-
   const list = incomplete.map(h => `• ${h.name}`).join("\n");
-  const msg  = `⏰ *9PM Check-in* — ${incomplete.length} habit${incomplete.length !== 1 ? "s" : ""} still open today:\n\n${list}\n\nYou've still got time. Lock it in.`;
 
-  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: CHAT_ID, text: msg, parse_mode: "Markdown" }),
+  await notify({
+    category: "habit_nudge",
+    title:    `${incomplete.length} habit${incomplete.length !== 1 ? "s" : ""} still open`,
+    body:     `${incomplete.length} habit${incomplete.length !== 1 ? "s" : ""} not done yet today.`,
+    telegramText: `⏰ *9PM Check-in* — ${incomplete.length} habit${incomplete.length !== 1 ? "s" : ""} still open today:\n\n${list}\n\nYou've still got time. Lock it in.`,
+    actionUrl: "/dashboard/habits",
   });
 
   return NextResponse.json({ sent: true, incomplete: incomplete.length });

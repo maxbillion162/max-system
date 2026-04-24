@@ -1,18 +1,9 @@
 import { NextResponse } from "next/server";
 import { readCalendar } from "@/lib/max-tools";
-import { sendNotification } from "@/app/api/telegram/route";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { isOptedIn, notify } from "@/lib/notify";
 
 export async function GET() {
-  // OPT-IN: skip unless explicitly enabled in Settings
-  const { data: prefRow } = await supabase.from("settings").select("value").eq("key", "notification_prefs").single();
-  const prefs = (prefRow?.value ?? {}) as { calendar_alerts?: boolean };
-  if (prefs.calendar_alerts !== true) return NextResponse.json({ sent: 0, reason: "not opted in" });
+  if (!(await isOptedIn("calendar_alerts"))) return NextResponse.json({ sent: 0, reason: "not opted in" });
 
   try {
     const result = await readCalendar(1);
@@ -37,15 +28,19 @@ export async function GET() {
     for (const e of upcoming) {
       const start   = new Date(e.start);
       const timeStr = start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "America/New_York" });
-      const msg     = [
-        `⏰ *Upcoming in 30 min*`,
-        ``,
-        `*${e.title}*`,
-        `🕐 ${timeStr}`,
-        e.location ? `📍 ${e.location}` : "",
-      ].filter(Boolean).join("\n");
-
-      await sendNotification(msg);
+      await notify({
+        category: "calendar_alerts",
+        title:    `${e.title} in 30 min`,
+        body:     `${timeStr}${e.location ? ` · ${e.location}` : ""}`,
+        telegramText: [
+          `⏰ *Upcoming in 30 min*`,
+          ``,
+          `*${e.title}*`,
+          `🕐 ${timeStr}`,
+          e.location ? `📍 ${e.location}` : "",
+        ].filter(Boolean).join("\n"),
+        actionUrl: "/dashboard/calendar",
+      });
     }
 
     return NextResponse.json({ ok: true, sent: upcoming.length });

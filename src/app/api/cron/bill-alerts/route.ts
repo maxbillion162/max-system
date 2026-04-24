@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { sendNotification } from "@/app/api/telegram/route";
+import { isOptedIn, notify } from "@/lib/notify";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,11 +8,8 @@ const supabase = createClient(
 );
 
 export async function GET() {
-  // Check notification prefs
-  const { data: prefRow } = await supabase.from("settings").select("value").eq("key", "notification_prefs").single();
-  const prefs = (prefRow?.value ?? {}) as { bill_alerts?: boolean };
-  // OPT-IN: skip unless explicitly enabled in Settings
-  if (prefs.bill_alerts !== true) return NextResponse.json({ alerted: 0, reason: "not opted in" });
+  // OPT-IN: skip expensive data work unless user enabled the category
+  if (!(await isOptedIn("bill_alerts"))) return NextResponse.json({ alerted: 0, reason: "not opted in" });
 
   const { data: bills } = await supabase.from("bills").select("name,amt,due");
   if (!bills || bills.length === 0) return NextResponse.json({ alerted: 0 });
@@ -27,16 +24,13 @@ export async function GET() {
       : bill.due + 31 - dayOfMonth;
 
     if (daysUntil === 3) {
-      const msg = `⚠️ *Bill Due in 3 Days*\n\n*${bill.name}* — $${bill.amt.toFixed(2)}\nDue on the ${bill.due}${bill.due===1?"st":bill.due===2?"nd":bill.due===3?"rd":"th"} of this month.`;
-      await sendNotification(msg);
-
-      await supabase.from("notifications").insert({
-        type: "bill_due",
-        title: `${bill.name} due in 3 days`,
-        body: `$${bill.amt.toFixed(2)} due on the ${bill.due}th`,
-        read: false,
+      const suffix = bill.due===1?"st":bill.due===2?"nd":bill.due===3?"rd":"th";
+      await notify({
+        category: "bill_alerts",
+        title:    `${bill.name} due in 3 days`,
+        body:     `$${bill.amt.toFixed(2)} due on the ${bill.due}${suffix}.`,
+        telegramText: `⚠️ *Bill Due in 3 Days*\n\n*${bill.name}* — $${bill.amt.toFixed(2)}\nDue on the ${bill.due}${suffix} of this month.`,
       });
-
       alerted.push(bill.name);
     }
   }

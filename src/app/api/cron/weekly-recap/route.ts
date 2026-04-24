@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { fetchCryptoPrices } from "@/lib/crypto";
-import { sendNotification } from "@/app/api/telegram/route";
+import { isOptedIn, notify } from "@/lib/notify";
 import { Resend } from "resend";
 
 const supabase = createClient(
@@ -11,11 +11,7 @@ const supabase = createClient(
 
 export async function GET() {
   try {
-    // Check notification prefs
-    const { data: prefRow } = await supabase.from("settings").select("value").eq("key", "notification_prefs").single();
-    const prefs = (prefRow?.value ?? {}) as { weekly_recap?: boolean };
-    // OPT-IN: skip unless explicitly enabled in Settings
-    if (prefs.weekly_recap !== true) return NextResponse.json({ ok: false, reason: "not opted in" });
+    if (!(await isOptedIn("weekly_recap"))) return NextResponse.json({ ok: false, reason: "not opted in" });
 
     const [habitsRes, tasksRes, goalsRes, cryptoRes] = await Promise.allSettled([
       supabase.from("habits").select("name,completed,streak").order("streak", { ascending: false }),
@@ -79,7 +75,13 @@ export async function GET() {
     lines.push("_Another week in the books. Keep building._");
 
     const msg = lines.filter(l => l !== undefined && l !== null).join("\n");
-    await sendNotification(msg);
+    await notify({
+      category: "weekly_recap",
+      title:    `Weekly Recap — ${date}`,
+      body:     `${habitsDone}/${habitsTotal} habits today · ${completedThisWeek} tasks done this week · ${openTasks} open`,
+      telegramText: msg,
+      actionUrl: "/dashboard",
+    });
 
     // Also send a simpler email version
     const resendKey = process.env.RESEND_API_KEY;
