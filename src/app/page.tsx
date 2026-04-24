@@ -114,13 +114,7 @@ export default function AccessPage() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: `
-        radial-gradient(1200px 900px at 15% 20%, rgba(40,50,65,0.35), transparent 55%),
-        radial-gradient(1000px 800px at 85% 70%, rgba(25,35,50,0.40), transparent 60%),
-        radial-gradient(800px 600px at 70% 15%, rgba(45,60,80,0.28), transparent 55%),
-        radial-gradient(900px 700px at 25% 85%, rgba(20,28,42,0.38), transparent 55%),
-        linear-gradient(180deg, ${C.bg} 0%, ${C.bgSoft} 100%)
-      `,
+      background: `linear-gradient(135deg, #14181F 0%, #0A0D12 35%, #04060A 70%, #000000 100%)`,
       color: C.t1,
       fontFamily: "'Inter', system-ui, sans-serif",
       position: "relative",
@@ -143,15 +137,6 @@ export default function AccessPage() {
         input::placeholder { color: ${C.t3}; }
       `}</style>
 
-      {/* Stone texture — multi-octave turbulence, lightly tinted blue-grey */}
-      <div style={{
-        position: "absolute", inset: 0, pointerEvents: "none",
-        backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='2200' height='2200'><filter id='s'><feTurbulence type='fractalNoise' baseFrequency='0.012 0.009' numOctaves='2' seed='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.38  0 0 0 0 0.5  0 0 0 0 0.7  0 0 0 0.8 0'/></filter><rect width='100%25' height='100%25' filter='url(%23s)'/></svg>")`,
-        backgroundSize: "cover",
-        opacity: 0.13,
-        mixBlendMode: "screen",
-        zIndex: 1,
-      }} />
 
       {/* Camera framing marks — precision instrument cue, not hacker UI */}
       {[
