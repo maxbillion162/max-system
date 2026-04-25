@@ -48,6 +48,17 @@ The agent is the product. All three surfaces are interfaces to the same underlyi
 
 ---
 
+## RESUME / WHERE WE ARE
+
+When picking up a fresh session, **read these in order**:
+1. `~/.claude/projects/-Users-max-Desktop-Claude-Code-Project-1/memory/MEMORY.md` — auto-loaded; contains the most recent session recap as the top entry
+2. `~/.claude/plans/now-i-want-to-radiant-popcorn.md` — phase-by-phase build plan with current ✅/⏸ status
+3. `git log --oneline -25` — concrete record of what's shipped
+
+Don't restate phase status here in this file — it changes too fast. The memory + plan files are the source of truth.
+
+---
+
 ## TECH STACK
 
 | Layer | Technology |
@@ -90,15 +101,16 @@ src/
       page.tsx                  # Main dashboard (net worth, habits, tasks, crypto, weather, intel feed)
       layout.tsx                # Dashboard shell with sidebar
       chat/page.tsx             # M.A.X. chat interface
+      discipline/page.tsx       # Habits + Goals merged daily-view (full CRUD, momentum, heatmap, milestone celebration, smart suggestions)
       calendar/page.tsx         # Google Calendar (day/week/month views) + tasks
       email/page.tsx            # Gmail (3-panel: folders, list, reader)
       feed/page.tsx             # News feed (breaking ticker, topic filters)
       finance/page.tsx          # Finance Hub — 4-tab layout: Overview, Budget, Investments, Transactions
       budget/page.tsx           # Redirect → /dashboard/finance
-      habits/page.tsx           # Habit tracker with heatmap + gamification
-      goals/page.tsx            # Goals with progress bars + notes
+      habits/page.tsx           # LEGACY — kept for agent tool refs / bookmarks; sidebar now points to /discipline
+      goals/page.tsx            # LEGACY — same. Don't enhance these; enhance /discipline.
       archive/page.tsx          # Chat history + action receipts
-      settings/page.tsx         # Settings (feeds, notifications, integrations, preferences)
+      settings/page.tsx         # Settings (Feed / Notifications / Integrations / Budget / Privacy / Preferences / M.A.X. Intelligence / Behind the Scenes / Data)
     api/
       chat/route.ts             # Main chat SSE endpoint (real token streaming)
       chat/brief/route.ts       # Proactive brief on chat load
@@ -131,17 +143,25 @@ src/
       plaid/create-link-token/route.ts
       plaid/exchange-token/route.ts
       plaid/sync/route.ts
+      feedback/route.ts               # POST — write 👍/👎 + optional note for any AI artifact
+      discipline/suggest-habits/route.ts   # POST — Claude suggests 2-3 habits for a goal using memories
       cron/weekly-recap/route.ts      # Sunday recap (Telegram + email)
       cron/plaid-sync/route.ts        # Daily bank sync
       cron/wealth-snapshot/route.ts   # 11pm net worth snapshot
-      cron/market-update/route.ts     # 2pm market update → Telegram
+      cron/market-update/route.ts     # 2pm market data refresh + optional Telegram
       cron/bill-alerts/route.ts       # Bill due alerts
       cron/habit-nudge/route.ts       # 9pm habit nudge → Telegram
+      cron/habit-coach/route.ts       # Late-afternoon "Habit Coach" Telegram push when slipping
       cron/goal-checkin/route.ts      # Quarterly goal progress → Telegram
       cron/evening-checkin/route.ts   # 8pm nightly wrap-up → Telegram
+      cron/calendar-alerts/route.ts   # 30-min-before-event Telegram alerts
+      cron/trend-detection/route.ts   # Daily — produces max_insight notifications via deterministic rules
+      cron/memory-extract/route.ts    # Daily — pulls durable facts from chat_messages → memories
+      cron/feedback-rollup/route.ts   # Daily — feedback table → learned_preference memories
   lib/
-    max-agent.ts    # CORE: agentic loop, tool executor, context injection, real streaming
+    max-agent.ts    # CORE: agentic loop, tool executor, context injection, real streaming. SYSTEM prompt + HISTORY_WINDOW (40) live here.
     max-tools.ts    # All tool implementations (Supabase + Google + all APIs)
+    notify.ts       # Unified notification pipeline — notify() writes bell + Telegram; isOptedIn() gates by category
     supabase.ts     # Supabase client
     google.ts       # Google OAuth client + token refresh
     spotify.ts      # Spotify OAuth + playback control
@@ -157,11 +177,12 @@ src/
     plaid.ts        # Plaid bank integration
     utils.ts        # Shared utilities
   components/
-    layout/Sidebar.tsx          # Dashboard navigation sidebar
-    ui/HudCard.tsx              # Primary card component — gradient glass, blue border, optional accent prop
-    ui/MaxChatBubble.tsx        # Floating chat widget (all dashboard pages)
+    layout/Sidebar.tsx          # Dashboard nav. Hosts NotificationBell inline in footer next to Settings (NOT floating top-right).
+    ui/HudCard.tsx              # Primary card — gradient, 3px radius, hairline border
+    ui/MaxChatBubble.tsx        # Floating chat. Streams SSE, loads history from /api/chat/history on mount.
     ui/Sparkline.tsx            # SVG sparkline chart component
-    ui/NotificationBell.tsx     # Real-time notification bell + drawer + toast stack
+    ui/NotificationBell.tsx     # Bell button + drawer + toast stack. Renders inline in Sidebar footer.
+    ui/FeedbackControl.tsx      # Reusable 👍/👎 control with inline note. Mounts on any AI artifact.
     ui/PlaidLinkButton.tsx      # Plaid Link flow button
     ui/TransactionReview.tsx    # Tinder-style swipe UI for training AI categories
 ```
@@ -185,8 +206,10 @@ src/
 | `ira_funds` | IRA fund breakdown (symbol, name, nav, chg, value, shares) |
 | `bills` | Monthly bills (name, amt, due_day) |
 | `telegram_history` | Telegram conversation history (role, content, created_at) |
-| `chat_messages` | Web chat history (role, content, created_at) — persisted and loaded on open |
-| `notifications` | Real-time alerts (type, title, body, read, action_url) |
+| `chat_messages` | Unified conversation log — web chat, floating bubble, AND Telegram all write here. Has `surface` column. |
+| `notifications` | Real-time alerts (type, title, body, read, action_url). Written via `notify()` only — do not insert directly. |
+| `feedback` | 👍/👎 ratings on AI artifacts (artifact_type, artifact_id, rating ±1, note, metadata). Rolled up daily into learned preferences. |
+| `pending_actions` | Tier-3 agency: actions awaiting Max's Telegram ✓/✗ approval. Executor wiring still pending (Phase 2.5). |
 | `activity_log` | M.A.X. action history (type, description, detail JSONB) |
 | `transactions` | Plaid + manual transactions (date, amount, merchant, category, source) |
 | `merchant_rules` | Learned merchant→category rules (merchant_pattern, category) |
@@ -201,14 +224,24 @@ src/
 
 This is the core of M.A.X. Understand it before touching anything AI-related.
 
-**Model:** Claude Haiku 4.5 — fast + cheap. Goal: run under $5/month total. Don't upgrade model without good reason.  
-**Max tokens:** 2048 per response  
-**Max tool iterations:** 8 per message  
-**History window:** Last 16 messages per session
+**Model:** Claude Haiku 4.5 — fast + cheap. Goal: run under $5/month total. Don't upgrade model without good reason.
+**Max tokens:** 2048 per response
+**Max tool iterations:** 8 per message
+**History window:** `HISTORY_WINDOW = 40` (was 16; widened in Phase 2). One constant at top of file — adjust there.
 
 **Streaming:** Real token streaming via `client.messages.stream()`. Tool labels emit as `{ t: "tool", label }` events inline during streaming, then collapse to ◎ badges above the final response.
 
 **Context injection:** On every message, M.A.X. prepends a live data header into the last user message: current time (ET), habit completion, open tasks, BTC/XRP prices + net worth, weather, top goals with %, budget spend vs allocation, bills due soon, recent memories, writing style.
+
+**Memory split in context:** Memories tagged `learned_preference` (written by the feedback-rollup cron) inject under their own `[LEARNED PREFERENCES (follow these): ...]` header — explicit rules. General memories inject under `[RECENT MEMORY: ...]` — background facts. Don't merge these back together.
+
+**Agency tiers** (encoded in the SYSTEM prompt — agent self-enforces):
+- **Tier 1** (autonomous): all reads, transaction categorization, save/recall memory, web search
+- **Tier 2** (autonomous+): draft email (never send), create tasks, set reminders, **proactive Telegram sends with genuinely useful insights**
+- **Tier 3** (confirm first): create/edit calendar, send SMS, update wealth, delete anything, change goal target/deadline
+- **Tier 4** (gated — do not execute): reschedule existing events, phone bookings, send email, financial transactions
+
+The Tier-3 Telegram ✓/✗ executor flow is **not yet wired** — `pending_actions` table exists but no callback handler. Phase 2.5.
 
 **Tools (35 total):**
 - Habits: `read_habits`, `toggle_habit`, `add_habit`, `delete_habit`
@@ -228,7 +261,7 @@ This is the core of M.A.X. Understand it before touching anything AI-related.
 - Scheduling: `find_free_time`, `project_savings`
 - System: `create_notification`, `log_activity`
 
-**System prompt** contains Max's full personal profile. Keep it up to date as Max's life changes.
+**System prompt** lives at the top of `max-agent.ts` (`const SYSTEM`). Structured around: Who Max Is · Operating Principles · Voice · Response Formatting · Surface Awareness (web/bubble/Telegram) · Agency Tiers · Proactive Intelligence triggers · Memory Protocol · Tool Use Defaults · Hard Limits. Updated when Max's life or product rules change — keep it surgical, don't bloat.
 
 ---
 
@@ -278,23 +311,28 @@ This is the core of M.A.X. Understand it before touching anything AI-related.
 
 ## KEY RULES & CONSTRAINTS
 
-1. **Never auto-send email.** `draft_email` only. Max always reviews before sending.
-2. **Confirm before irreversible actions.** Calendar creates, bookings, anything that can't be undone — M.A.X. confirms intent first.
-3. **Telegram is the primary mobile channel.** Features that notify Max should send to Telegram.
-4. **Plaid is in sandbox mode.** To connect real bank: go to dashboard.plaid.com → switch to Development → get Development Secret → update `PLAID_ENV=development` + new `PLAID_SECRET` in `.env.local` AND Vercel env vars → redeploy.
-5. **Twilio is in trial mode.** SMS only works to verified numbers. Upgrade account to remove restriction when ready.
-6. **Calendar alerts require Vercel Pro** — don't implement cron-based calendar alerts without flagging this.
-7. **M.A.X. personality:** Jarvis capability + TARS dry wit. Direct, capable, never sycophantic. Never starts with "Certainly!", "Of course!", "Great question!".
-8. **Google OAuth tokens** are environment-specific — localhost and Vercel have separate redirect URIs and may need separate re-auth.
+1. **Never auto-send email.** Drafts only. Forever, until Max changes this himself.
+2. **Notifications are opt-in default-OFF.** Every cron must check `isOptedIn(category)` from `src/lib/notify.ts` before sending. New notification categories require: a `NotifyCategory` entry in `notify.ts`, a row in `DEFAULT_NOTIF` (set to `false`), and a toggle row in the Settings page Notifications section. Do NOT add a cron that fires without this gate.
+3. **Use `notify()` for proactive alerts, not direct sendNotification.** Direct Telegram sends in `src/app/api/telegram/route.ts` are for conversational chat replies only. Anything that should land in the dashboard bell goes through `notify()`.
+4. **Tier-3 actions confirm first** (calendar create, SMS, deletes, wealth updates, goal target changes). Until the Tier-3 Telegram executor is wired, the agent confirms via text and waits for the next user message — don't bypass.
+5. **Quality bar:** see `~/.claude/projects/-Users-max-Desktop-Claude-Code-Project-1/memory/feedback_quality_bar.md`. No half-done features. Empty + error states designed at the same time as golden path.
+6. **Plaid is in sandbox mode.** To connect real bank: go to dashboard.plaid.com → switch to Development → get Development Secret → update `PLAID_ENV=development` + new `PLAID_SECRET` in `.env.local` AND Vercel env vars → redeploy.
+7. **Twilio is in trial mode.** SMS only works to verified numbers. Upgrade account to remove restriction when ready.
+8. **M.A.X. personality:** Jarvis capability + TARS dry wit. Direct, capable, never sycophantic. Never starts with "Certainly!", "Of course!", "Great question!".
+9. **Google OAuth tokens** are environment-specific — localhost and Vercel have separate redirect URIs and may need separate re-auth.
 
 ---
 
 ## CURRENT PRIORITIES
 
-- Connect real bank via Plaid Development (swap PLAID_ENV + PLAID_SECRET in Vercel)
-- Add writing style analysis (analyze Gmail sent folder → populate writing_style table)
-- Voice interface via Vapi.ai
-- Upgrade Twilio from trial to paid when SMS usage warrants it
+See the plan file (`~/.claude/plans/now-i-want-to-radiant-popcorn.md`) and most recent session memory for live status. High-level open phases:
+
+- **Phase 2.5** — Tier-3 Telegram ✓/✗ confirmation executor (pending_actions table exists; callback handler + agent routing pending)
+- **Phase 4** — Email "quintessential rebuild" (Max wants to never look at Gmail again — not draft-only)
+- **Phase 5** — Finance complete budgeting app (depends on Plaid Development swap from Max)
+- Plaid Development swap (env var change Max controls)
+- Writing style analysis (drives email drafts in his voice)
+- Voice interface via Vapi.ai (deferred)
 
 ---
 
@@ -330,3 +368,5 @@ When a new API key is needed:
 - Don't write multi-paragraph explanations — brief is better
 - When something is complex enough to need planning, lay out the approach first and get agreement before building
 - Don't make changes to multiple unrelated things in one session without flagging it
+- **Commit + push after each meaningful unit, not just at end of session.** Max wants to see commits as they land.
+- When Max says short imperatives like "go", "continue", "keep coding" — infer the next unit from the plan and ship it. Don't ask which phase to work on if it's obvious from session memory.
