@@ -10,12 +10,14 @@ import { LiveStatusBar } from "@/components/finance/LiveStatusBar";
 import { FinanceQueryBar } from "@/components/finance/FinanceQueryBar";
 import { NetWorthChart } from "@/components/finance/NetWorthChart";
 import { AccountHub } from "@/components/finance/AccountHub";
-import { BudgetCategoryCard } from "@/components/finance/BudgetCategoryCard";
 import { DiscretionaryTracker } from "@/components/finance/DiscretionaryTracker";
 import { LivingTargetsModal } from "@/components/finance/LivingTargetsModal";
 import { GoalAllocatorModal } from "@/components/finance/GoalAllocatorModal";
 import { PaycheckPlannerModal } from "@/components/finance/PaycheckPlannerModal";
 import { PlaidDiagnostics } from "@/components/finance/PlaidDiagnostics";
+import { BudgetTable } from "@/components/finance/BudgetTable";
+import { CategoryDetailPanel } from "@/components/finance/CategoryDetailPanel";
+import { BudgetReallocateModal } from "@/components/finance/BudgetReallocateModal";
 import { cashFlowRunway, netWorthBreakdown, delta24h } from "@/lib/finance-math";
 import { normalizeAccountType } from "@/lib/plaid";
 import type { Account as FinAccount, AccountType, WealthSnapshot } from "@/types/finance";
@@ -205,6 +207,8 @@ export default function FinancePage() {
   const [paycheckPlannerOpen, setPaycheckPlannerOpen] = useState(false);
   const [pendingPaycheck, setPendingPaycheck] = useState<{ amount: number; source?: string|null; date?: string|null } | null>(null);
   const [goals, setGoals] = useState<{ id: string; label: string; current: number; target: number; deadline: string|null }[]>([]);
+  const [selectedBudgetCategory, setSelectedBudgetCategory] = useState<string | null>(null);
+  const [reallocateOpen, setReallocateOpen] = useState(false);
   const [live,         setLive]         = useState<LiveCrypto[]>([]);
   const [history,      setHistory]      = useState<WealthHistory[]>([]);
   const [allocations,  setAllocations]  = useState<BudgetAlloc[]>([]);
@@ -526,6 +530,37 @@ export default function FinancePage() {
     if (error) setAllocations(prev);
   }
 
+  async function updateBudgetedInline(allocId: string, budgeted: number) {
+    const prev = allocations;
+    setAllocations(p => p.map(a => a.id === allocId ? { ...a, budgeted } : a));
+    const { error } = await supabase.from("budget_allocations").update({ budgeted }).eq("id", allocId);
+    if (error) setAllocations(prev);
+  }
+
+  async function classifyCategory(category: string, type: "need"|"want"|"savings"|"investment") {
+    const prev = classifications;
+    setClassifications(c => ({ ...c, [category]: type }));
+    const { error } = await supabase.from("category_classification").upsert({ category, type, set_by: "user" });
+    if (error) setClassifications(prev);
+  }
+
+  async function reallocate(fromId: string, toId: string, amount: number) {
+    const fromAlloc = allocations.find(a => a.id === fromId);
+    const toAlloc   = allocations.find(a => a.id === toId);
+    if (!fromAlloc || !toAlloc) return;
+    const newFrom = Math.max(0, fromAlloc.budgeted - amount);
+    const newTo   = toAlloc.budgeted + amount;
+    setAllocations(p => p.map(a =>
+      a.id === fromId ? { ...a, budgeted: newFrom } :
+      a.id === toId   ? { ...a, budgeted: newTo   } :
+      a
+    ));
+    await Promise.all([
+      supabase.from("budget_allocations").update({ budgeted: newFrom }).eq("id", fromId),
+      supabase.from("budget_allocations").update({ budgeted: newTo   }).eq("id", toId),
+    ]);
+  }
+
   async function saveWealth(updates:Partial<WealthData>) {
     const updated={...wealth,...updates};
     setWealth(updated);
@@ -681,6 +716,9 @@ export default function FinancePage() {
                 <button onClick={() => { setPendingPaycheck(null); setPaycheckPlannerOpen(true); }} style={{ padding: "8px 14px", borderRadius: 2, background: "transparent", border: "1px solid var(--border)", color: "var(--t2)", cursor: "pointer", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 10, letterSpacing: "0.18em", fontWeight: 700 }}>
                   💰 PAYCHECK
                 </button>
+                <button onClick={() => setReallocateOpen(true)} disabled={allocations.length < 2} style={{ padding: "8px 14px", borderRadius: 2, background: "transparent", border: "1px solid var(--border)", color: allocations.length < 2 ? "var(--t4)" : "var(--t2)", cursor: allocations.length < 2 ? "default" : "pointer", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 10, letterSpacing: "0.18em", fontWeight: 700, opacity: allocations.length < 2 ? 0.5 : 1 }}>
+                  ⚡ MOVE $
+                </button>
                 <button onClick={runAICategorize} disabled={aiRunning} style={{ padding: "8px 14px", borderRadius: 2, background: "transparent", border: "1px solid var(--border)", color: aiRunning ? "var(--t4)" : "var(--t2)", cursor: aiRunning ? "default" : "pointer", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 10, letterSpacing: "0.18em", fontWeight: 700 }}>
                   {aiRunning ? "CATEGORIZING…" : "AUTO-CATEGORIZE"}
                 </button>
@@ -746,26 +784,18 @@ export default function FinancePage() {
                 </div>
               </HudCard>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10 }}>
-                {allocations.map(alloc => {
-                  const spent = spendByCategory[alloc.category] ?? 0;
-                  const color = CAT_COLORS[alloc.category] ?? "#7DB8E8";
-                  return (
-                    <BudgetCategoryCard
-                      key={alloc.id}
-                      category={alloc.category}
-                      color={color}
-                      budgeted={alloc.budgeted}
-                      spent={spent}
-                      rollover={alloc.rollover ?? false}
-                      monthlyHistory={monthlyHistoryByCategory[alloc.category]}
-                      classification={classifications[alloc.category]}
-                      onEdit={() => setModal({ type: "edit", alloc })}
-                      onToggleRollover={(next) => toggleRollover(alloc.id, next)}
-                    />
-                  );
-                })}
-              </div>
+              <BudgetTable
+                allocations={allocations}
+                spendByCategory={spendByCategory}
+                monthlyHistoryByCategory={monthlyHistoryByCategory}
+                classifications={classifications}
+                categoryColors={CAT_COLORS}
+                selectedCategory={selectedBudgetCategory}
+                onSelect={setSelectedBudgetCategory}
+                onUpdateBudgeted={updateBudgetedInline}
+                onUpdateRollover={toggleRollover}
+                onClassify={classifyCategory}
+              />
             )}
 
             {/* Transactions — full filterable list */}
@@ -870,6 +900,41 @@ export default function FinancePage() {
             await loadAll();
           }}
         />
+
+        {/* Reallocate modal */}
+        <BudgetReallocateModal
+          open={reallocateOpen}
+          allocations={allocations}
+          spendByCategory={spendByCategory}
+          onClose={() => setReallocateOpen(false)}
+          onApply={reallocate}
+        />
+
+        {/* Category detail side panel */}
+        {(() => {
+          const selectedAlloc = allocations.find(a => a.category === selectedBudgetCategory);
+          if (!selectedAlloc) return null;
+          return (
+            <CategoryDetailPanel
+              open={selectedBudgetCategory !== null}
+              category={selectedBudgetCategory}
+              alloc={selectedAlloc}
+              spent={spendByCategory[selectedAlloc.category] ?? 0}
+              monthlyHistory={monthlyHistoryByCategory[selectedAlloc.category] ?? []}
+              classification={classifications[selectedAlloc.category] ?? "want"}
+              color={CAT_COLORS[selectedAlloc.category] ?? "#7DB8E8"}
+              transactions={transactions}
+              onClose={() => setSelectedBudgetCategory(null)}
+              onUpdateBudgeted={async (b) => updateBudgetedInline(selectedAlloc.id, b)}
+              onUpdateRollover={async (next) => toggleRollover(selectedAlloc.id, next)}
+              onClassify={async (t) => classifyCategory(selectedAlloc.category, t)}
+              onDelete={async () => {
+                const ok = await deleteAlloc(selectedAlloc.id);
+                if (ok) setSelectedBudgetCategory(null);
+              }}
+            />
+          );
+        })()}
 
         {/* ════════════════════════════════════════
              TAB: INVESTMENTS
