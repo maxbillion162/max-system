@@ -10,6 +10,9 @@ import { LiveStatusBar } from "@/components/finance/LiveStatusBar";
 import { FinanceQueryBar } from "@/components/finance/FinanceQueryBar";
 import { NetWorthChart } from "@/components/finance/NetWorthChart";
 import { AccountHub } from "@/components/finance/AccountHub";
+import { BudgetCategoryCard } from "@/components/finance/BudgetCategoryCard";
+import { DiscretionaryTracker } from "@/components/finance/DiscretionaryTracker";
+import { LivingTargetsModal } from "@/components/finance/LivingTargetsModal";
 import { cashFlowRunway, netWorthBreakdown, delta24h } from "@/lib/finance-math";
 import { normalizeAccountType } from "@/lib/plaid";
 import type { Account as FinAccount, AccountType, WealthSnapshot } from "@/types/finance";
@@ -24,7 +27,7 @@ interface WealthHistory  { recorded_at: string; net_worth: number; crypto_total?
 interface MarketIndex   { symbol: string; name: string; price: number; change: number; changePct: number }
 interface MarketSnapshot{ SPY: MarketIndex|null; QQQ: MarketIndex|null; DIA: MarketIndex|null; updated: string }
 interface NewsArticle   { title: string; url: string; snippet: string; published: string|null }
-interface BudgetAlloc    { id: string; category: string; budgeted: number; period_start: string }
+interface BudgetAlloc    { id: string; category: string; budgeted: number; period_start: string; rollover?: boolean }
 interface Transaction    { id: string; date: string; amount: number; merchant: string; merchant_normalized: string; category: string; budget_category: string | null; pending: boolean }
 
 /* ─────────────── Constants ─────────────── */
@@ -192,6 +195,9 @@ export default function FinancePage() {
   const [ira,          setIra]          = useState<IRAFund[]>([]);
   const [bills,        setBills]        = useState<Bill[]>([]);
   const [accountsLoaded, setAccountsLoaded] = useState(false);
+  const [txHistory6mo, setTxHistory6mo] = useState<{ amount: number; date: string; budget_category: string | null; category: string }[]>([]);
+  const [classifications, setClassifications] = useState<Record<string, "need"|"want"|"savings"|"investment">>({});
+  const [livingTargetsOpen, setLivingTargetsOpen] = useState(false);
   const [live,         setLive]         = useState<LiveCrypto[]>([]);
   const [history,      setHistory]      = useState<WealthHistory[]>([]);
   const [allocations,  setAllocations]  = useState<BudgetAlloc[]>([]);
@@ -214,7 +220,8 @@ export default function FinancePage() {
   useEffect(() => { loadAll(); }, [period]);
 
   async function loadAll() {
-    const [accountsRes, wealthRes, iraRes, billsRes, histRes, cryptoRes, allocRes, txRes, incomeRes, marketRes, newsRes] = await Promise.allSettled([
+    const sixMoAgo = new Date(Date.now() - 180*24*60*60*1000).toISOString().slice(0,10);
+    const [accountsRes, wealthRes, iraRes, billsRes, histRes, cryptoRes, allocRes, txRes, incomeRes, marketRes, newsRes, tx6moRes, classRes] = await Promise.allSettled([
       supabase.from("accounts").select("*").eq("active", true).order("institution"),
       supabase.from("wealth").select("*").eq("id","max").single(),
       supabase.from("ira_funds").select("*"),
@@ -226,6 +233,8 @@ export default function FinancePage() {
       supabase.from("settings").select("value").eq("key","monthly_income").single(),
       fetch("/api/market").then(r=>r.json()).catch(()=>null),
       fetch("/api/finance-news").then(r=>r.json()).catch(()=>null),
+      supabase.from("transactions").select("amount,date,budget_category,category,pending").gte("date", sixMoAgo).order("date",{ascending:true}).limit(2500),
+      supabase.from("category_classification").select("category,type"),
     ]);
 
     if (accountsRes.status==="fulfilled"&&accountsRes.value.data) {
@@ -254,6 +263,15 @@ export default function FinancePage() {
     if (iraRes.status==="fulfilled"&&iraRes.value.data?.length) setIra(iraRes.value.data as IRAFund[]);
     else if (marketRes.status==="fulfilled"&&marketRes.value?.ira?.length) setIra(marketRes.value.ira as IRAFund[]);
     if (newsRes.status==="fulfilled"&&newsRes.value?.articles?.length) setNews(newsRes.value.articles as NewsArticle[]);
+    if (tx6moRes.status==="fulfilled"&&tx6moRes.value.data) {
+      setTxHistory6mo((tx6moRes.value.data as { amount:number; date:string; budget_category:string|null; category:string; pending:boolean }[])
+        .filter(t => !t.pending && t.amount > 0));
+    }
+    if (classRes.status==="fulfilled"&&classRes.value.data) {
+      const m: Record<string, "need"|"want"|"savings"|"investment"> = {};
+      for (const r of (classRes.value.data as { category:string; type:"need"|"want"|"savings"|"investment" }[])) m[r.category] = r.type;
+      setClassifications(m);
+    }
   }
 
   /* ── Real-time wealth updates ── */
@@ -351,6 +369,42 @@ export default function FinancePage() {
   const totalSpent    = Object.values(spendByCategory).reduce((a,b)=>a+b,0);
   const readyToAssign = income - totalBudgeted;
 
+  /* ── Per-category 6-month monthly spend history (for sparklines) ── */
+  const monthlyHistoryByCategory = useMemo(() => {
+    const buckets: Record<string, Record<string, number>> = {}; // { category: { 'YYYY-MM': total } }
+    for (const t of txHistory6mo) {
+      const cat = t.budget_category ?? t.category ?? "Misc";
+      const ym  = t.date.slice(0, 7);
+      if (!buckets[cat]) buckets[cat] = {};
+      buckets[cat][ym] = (buckets[cat][ym] ?? 0) + t.amount;
+    }
+    // Build a 6-slot ordered array per category, oldest → newest
+    const months: string[] = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);
+    }
+    const out: Record<string, number[]> = {};
+    for (const [cat, byMonth] of Object.entries(buckets)) {
+      out[cat] = months.map(m => Math.round(byMonth[m] ?? 0));
+    }
+    return out;
+  }, [txHistory6mo]);
+
+  /* ── Needs/Wants/Savings/Investment splits from current allocations ── */
+  const flowSplit = useMemo(() => {
+    let needs = 0, wants = 0, savings = 0, investment = 0;
+    for (const a of allocations) {
+      const type = classifications[a.category] ?? "want";
+      if (type === "need") needs += a.budgeted;
+      else if (type === "savings") savings += a.budgeted;
+      else if (type === "investment") investment += a.budgeted;
+      else wants += a.budgeted;
+    }
+    return { needs, wants, savings, investment };
+  }, [allocations, classifications]);
+
   const sortedBills = [...bills].sort((a,b)=>{
     const da=a.due>=dayOfMonth?a.due-dayOfMonth:a.due+31-dayOfMonth;
     const db=b.due>=dayOfMonth?b.due-dayOfMonth:b.due+31-dayOfMonth;
@@ -432,6 +486,29 @@ export default function FinancePage() {
     if (data) setAllocations(data);
     await supabase.from("settings").upsert({key:"monthly_income",value:3000});
     setIncome(3000);
+  }
+
+  async function applyLivingTargets(rows: { category: string; budgeted: number }[]) {
+    const insertRows = rows.map(r => ({ category: r.category, budgeted: r.budgeted, period_start: period, rollover: false }));
+    const { data } = await supabase
+      .from("budget_allocations")
+      .upsert(insertRows, { onConflict: "category,period_start" })
+      .select();
+    if (data) {
+      // Merge upserted rows back into state
+      setAllocations(prev => {
+        const updated = new Map(prev.map(a => [a.category, a] as const));
+        for (const row of data as BudgetAlloc[]) updated.set(row.category, row);
+        return Array.from(updated.values()).sort((a, b) => a.category.localeCompare(b.category));
+      });
+    }
+  }
+
+  async function toggleRollover(allocId: string, next: boolean) {
+    const prev = allocations;
+    setAllocations(p => p.map(a => a.id === allocId ? { ...a, rollover: next } : a));
+    const { error } = await supabase.from("budget_allocations").update({ rollover: next }).eq("id", allocId);
+    if (error) setAllocations(prev);
   }
 
   async function saveWealth(updates:Partial<WealthData>) {
@@ -525,145 +602,152 @@ export default function FinancePage() {
              TAB: BUDGET
             ════════════════════════════════════════ */}
         {tab==="budget"&&(
-          <div style={{ display:"flex",flexDirection:"column",gap:16 }}>
+          <div style={{ display:"flex",flexDirection:"column",gap:14 }}>
 
-            {/* Ready to Assign */}
-            <HudCard style={{ padding:"24px 28px" }} delay={0.05}>
-              <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:20 }}>
-                <div style={{ display:"flex",gap:40,alignItems:"flex-start",flexWrap:"wrap" }}>
-                  <div>
-                    <div style={{ fontSize:10,fontWeight:700,letterSpacing:"0.14em",textTransform:"uppercase",color:"var(--t4)",marginBottom:8 }}>Ready to Assign</div>
-                    <div style={{ fontSize:44,fontWeight:800,fontFamily:"monospace",color:readyToAssign>=0?"var(--green)":"var(--red)" }}>
-                      {readyToAssign<0?"-":""}${fmtInt(Math.abs(readyToAssign))}
-                    </div>
-                    {readyToAssign<0&&<div style={{ fontSize:11,color:"var(--red)",marginTop:4 }}>Over-budgeted</div>}
-                  </div>
-                  <div style={{ display:"flex",gap:28,paddingTop:4,flexWrap:"wrap" }}>
-                    <div onClick={()=>setModal("income")} style={{ cursor:"pointer" }}>
-                      <StatPill label="Income" value={`$${fmtInt(income)}`} color="var(--green)"/>
-                      <div style={{ fontSize:10,color:"rgba(125,184,232,0.4)",marginTop:4 }}>click to edit</div>
-                    </div>
-                    <StatPill label="Budgeted" value={`$${fmtInt(totalBudgeted)}`} color="var(--blue)"/>
-                    <StatPill label="Spent" value={`$${fmtInt(totalSpent)}`} color="var(--amber)"/>
-                  </div>
+            {/* Header strip — income, ready-to-assign, budgeted, spent + actions */}
+            <div style={{
+              background: "linear-gradient(160deg, #0f141d 0%, #080b11 100%)",
+              border: "1px solid rgba(125,184,232,0.10)", borderRadius: 3,
+              padding: "16px 20px",
+              display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 20,
+            }}>
+              <div style={{ display: "flex", gap: 32, alignItems: "flex-start", flexWrap: "wrap" }}>
+                <div>
+                  <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.32em", color: "var(--blue)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", marginBottom: 6 }}>READY TO ASSIGN</p>
+                  <p style={{ fontSize: 30, fontWeight: 600, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", color: readyToAssign >= 0 ? "var(--green)" : "var(--red)", letterSpacing: "-0.02em", lineHeight: 1 }}>
+                    {readyToAssign < 0 ? "−" : ""}${fmtInt(Math.abs(readyToAssign))}
+                  </p>
+                  {readyToAssign < 0 && <p style={{ fontSize: 10, color: "var(--red)", marginTop: 4, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", letterSpacing: "0.14em" }}>OVER-BUDGETED</p>}
                 </div>
-                <div style={{ display:"flex",gap:10,flexWrap:"wrap" }}>
-                  <button onClick={runAICategorize} disabled={aiRunning} style={{ padding:"10px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:aiRunning?"not-allowed":"pointer",background:"rgba(155,138,251,0.12)",border:"1px solid rgba(155,138,251,0.3)",color:"#9B8AFB",display:"flex",alignItems:"center",gap:7,transition:"all 0.15s" }}
-                    onMouseEnter={e=>{if(!aiRunning)(e.currentTarget as HTMLElement).style.background="rgba(155,138,251,0.22)";}}
-                    onMouseLeave={e=>{if(!aiRunning)(e.currentTarget as HTMLElement).style.background="rgba(155,138,251,0.12)";}}
-                  >
-                    <span>✦</span>{aiRunning?"Categorizing…":"Auto-Categorize with M.A.X."}
-                  </button>
-                  <button onClick={()=>setModal("addAlloc")} style={{ padding:"10px 16px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",background:"rgba(125,184,232,0.12)",border:"1px solid rgba(125,184,232,0.3)",color:"var(--blue)",display:"flex",alignItems:"center",gap:6,transition:"all 0.15s" }}
-                    onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background="rgba(125,184,232,0.22)"}
-                    onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background="rgba(125,184,232,0.12)"}
-                  >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
-                    Add Category
-                  </button>
+                <button onClick={() => setModal("income")} style={{ background: "transparent", border: "none", padding: 0, textAlign: "left", cursor: "pointer" }}>
+                  <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.32em", color: "var(--t3)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", marginBottom: 6 }}>INCOME</p>
+                  <p style={{ fontSize: 22, fontWeight: 500, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", color: "var(--green)", letterSpacing: "-0.02em", lineHeight: 1 }}>${fmtInt(income)}</p>
+                  <p style={{ fontSize: 9, color: "var(--t4)", marginTop: 4, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", letterSpacing: "0.14em" }}>CLICK TO EDIT</p>
+                </button>
+                <div>
+                  <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.32em", color: "var(--t3)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", marginBottom: 6 }}>BUDGETED</p>
+                  <p style={{ fontSize: 22, fontWeight: 500, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", color: "var(--blue)", letterSpacing: "-0.02em", lineHeight: 1 }}>${fmtInt(totalBudgeted)}</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.32em", color: "var(--t3)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", marginBottom: 6 }}>SPENT</p>
+                  <p style={{ fontSize: 22, fontWeight: 500, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", color: totalSpent > totalBudgeted && totalBudgeted > 0 ? "var(--red)" : "var(--t1)", letterSpacing: "-0.02em", lineHeight: 1 }}>${fmtInt(totalSpent)}</p>
                 </div>
               </div>
-            </HudCard>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button onClick={() => setLivingTargetsOpen(true)} style={{ padding: "8px 14px", borderRadius: 2, background: "var(--blue-dim)", border: "1px solid var(--blue-border)", color: "var(--blue)", cursor: "pointer", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 10, letterSpacing: "0.18em", fontWeight: 700 }}>
+                  ✦ LIVING TARGETS
+                </button>
+                <button onClick={runAICategorize} disabled={aiRunning} style={{ padding: "8px 14px", borderRadius: 2, background: "transparent", border: "1px solid var(--border)", color: aiRunning ? "var(--t4)" : "var(--t2)", cursor: aiRunning ? "default" : "pointer", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 10, letterSpacing: "0.18em", fontWeight: 700 }}>
+                  {aiRunning ? "CATEGORIZING…" : "AUTO-CATEGORIZE"}
+                </button>
+                <button onClick={() => setModal("addAlloc")} style={{ padding: "8px 14px", borderRadius: 2, background: "transparent", border: "1px solid var(--border)", color: "var(--t2)", cursor: "pointer", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 10, letterSpacing: "0.18em", fontWeight: 700 }}>
+                  + ADD CATEGORY
+                </button>
+              </div>
+            </div>
+
+            {/* Discretionary tracker */}
+            {allocations.length > 0 && (
+              <DiscretionaryTracker
+                needs={flowSplit.needs}
+                wants={flowSplit.wants}
+                savings={flowSplit.savings}
+                investment={flowSplit.investment}
+                income={income}
+              />
+            )}
 
             {/* Tinder review */}
-            {reviewing&&reviewQueue.length>0&&(
-              <HudCard style={{ padding:"28px" }} delay={0.06}>
-                <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:24 }}>
-                  <div style={{ width:7,height:7,borderRadius:"50%",background:"#9B8AFB",boxShadow:"0 0 8px #9B8AFB" }}/>
-                  <div style={{ fontSize:14,fontWeight:700,color:"var(--t1)" }}>Review M.A.X. Categorizations</div>
-                  <div style={{ fontSize:11,color:"rgba(155,138,251,0.7)",background:"rgba(155,138,251,0.1)",padding:"2px 9px",borderRadius:20,border:"1px solid rgba(155,138,251,0.2)" }}>
-                    {reviewQueue.length} to review
-                  </div>
+            {reviewing && reviewQueue.length > 0 && (
+              <HudCard style={{ padding: "20px 24px" }} delay={0.06}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#9B7BC2" }} />
+                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.24em", color: "var(--t1)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
+                    REVIEW M.A.X. CATEGORIZATIONS
+                  </span>
+                  <span style={{ fontSize: 10, color: "#9B7BC2", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", letterSpacing: "0.14em" }}>
+                    · {reviewQueue.length} TO REVIEW
+                  </span>
                 </div>
                 <TransactionReview
                   transactions={reviewQueue}
                   categories={ALL_CATEGORIES}
                   categoryColors={CAT_COLORS}
                   onConfirm={confirmCategory}
-                  onDone={()=>{ setReviewing(false); setReviewQueue([]); }}
+                  onDone={() => { setReviewing(false); setReviewQueue([]); }}
                 />
               </HudCard>
             )}
 
-            {/* Categories */}
-            {allocations.length===0?(
-              <HudCard style={{ padding:"52px 40px",textAlign:"center" }} delay={0.08}>
-                <div style={{ fontSize:36,marginBottom:16,color:"rgba(125,184,232,0.4)" }}>◈</div>
-                <div style={{ fontSize:18,fontWeight:700,color:"var(--t1)",marginBottom:8 }}>No budget set up yet</div>
-                <div style={{ fontSize:14,color:"var(--t3)",marginBottom:28,maxWidth:360,margin:"0 auto 28px" }}>
-                  Zero-based budgeting means every dollar has a job. Quick Setup loads sensible defaults instantly.
-                </div>
-                <div style={{ display:"flex",gap:12,justifyContent:"center" }}>
-                  <button onClick={quickBudgetSetup} style={{ padding:"12px 28px",borderRadius:8,fontSize:14,fontWeight:700,background:"rgba(125,184,232,0.15)",border:"1px solid rgba(125,184,232,0.35)",color:"var(--blue)",cursor:"pointer",transition:"all 0.15s" }}
-                    onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background="rgba(125,184,232,0.25)"}
-                    onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background="rgba(125,184,232,0.15)"}
-                  >Quick Setup — Load Defaults</button>
-                  <button onClick={()=>setModal("addAlloc")} style={{ padding:"12px 24px",borderRadius:8,fontSize:14,fontWeight:600,background:"transparent",border:"1px solid rgba(255,255,255,0.1)",color:"var(--t3)",cursor:"pointer" }}>Build Manually</button>
+            {/* Category cards */}
+            {allocations.length === 0 ? (
+              <HudCard style={{ padding: "44px 32px", textAlign: "center" }} delay={0.08}>
+                <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.32em", color: "var(--blue)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", marginBottom: 12 }}>
+                  ZERO-BASED BUDGET
+                </p>
+                <p style={{ fontSize: 16, fontWeight: 600, color: "var(--t1)", marginBottom: 8 }}>Every dollar gets a job</p>
+                <p style={{ fontSize: 12, color: "var(--t3)", marginBottom: 22, maxWidth: 380, margin: "0 auto 22px", lineHeight: 1.6 }}>
+                  Start fast with sensible defaults, ask M.A.X. to read your spending and propose targets, or build it manually.
+                </p>
+                <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                  <button onClick={() => setLivingTargetsOpen(true)} style={{ padding: "9px 18px", borderRadius: 2, background: "var(--blue-dim)", border: "1px solid var(--blue-border)", color: "var(--blue)", cursor: "pointer", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 11, letterSpacing: "0.18em", fontWeight: 700 }}>
+                    ✦ ASK M.A.X. FOR TARGETS
+                  </button>
+                  <button onClick={quickBudgetSetup} style={{ padding: "9px 18px", borderRadius: 2, background: "transparent", border: "1px solid var(--border)", color: "var(--t2)", cursor: "pointer", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 11, letterSpacing: "0.18em", fontWeight: 700 }}>
+                    QUICK DEFAULTS
+                  </button>
+                  <button onClick={() => setModal("addAlloc")} style={{ padding: "9px 18px", borderRadius: 2, background: "transparent", border: "1px solid var(--border)", color: "var(--t2)", cursor: "pointer", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 11, letterSpacing: "0.18em", fontWeight: 700 }}>
+                    BUILD MANUALLY
+                  </button>
                 </div>
               </HudCard>
-            ):(
-              <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10 }}>
-                {allocations.map(alloc=>{
-                  const spent=spendByCategory[alloc.category]??0;
-                  const pct=alloc.budgeted>0?(spent/alloc.budgeted)*100:0;
-                  const remaining=alloc.budgeted-spent;
-                  const color=CAT_COLORS[alloc.category]??"#7DB8E8";
-                  const status=pct>=100?"var(--red)":pct>=80?"var(--amber)":"var(--green)";
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10 }}>
+                {allocations.map(alloc => {
+                  const spent = spendByCategory[alloc.category] ?? 0;
+                  const color = CAT_COLORS[alloc.category] ?? "#7DB8E8";
                   return (
-                    <div key={alloc.id} onClick={()=>setModal({type:"edit",alloc})} style={{ padding:"18px 18px",borderRadius:10,cursor:"pointer",background:"rgba(255,255,255,0.025)",border:"1px solid rgba(255,255,255,0.06)",transition:"all 0.15s" }}
-                      onMouseEnter={e=>{ (e.currentTarget as HTMLElement).style.background="rgba(255,255,255,0.045)"; (e.currentTarget as HTMLElement).style.borderColor=`${color}35`; }}
-                      onMouseLeave={e=>{ (e.currentTarget as HTMLElement).style.background="rgba(255,255,255,0.025)"; (e.currentTarget as HTMLElement).style.borderColor="rgba(255,255,255,0.06)"; }}
-                    >
-                      <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10 }}>
-                        <div style={{ display:"flex",alignItems:"center",gap:7 }}>
-                          <div style={{ width:7,height:7,borderRadius:2,background:color }}/>
-                          <div style={{ fontSize:13,fontWeight:600,color:"var(--t1)" }}>{alloc.category}</div>
-                        </div>
-                        <div style={{ fontSize:11,fontWeight:700,color:status }}>{pct.toFixed(0)}%</div>
-                      </div>
-                      <div style={{ height:3,borderRadius:2,background:"rgba(255,255,255,0.06)",overflow:"hidden",marginBottom:12 }}>
-                        <div style={{ height:"100%",borderRadius:2,width:`${Math.min(100,pct)}%`,background:status,transition:"width 0.8s ease" }}/>
-                      </div>
-                      <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-end" }}>
-                        <div>
-                          <div style={{ fontSize:18,fontWeight:800,fontFamily:"monospace",color:"var(--t1)" }}>${fmtInt(spent)}</div>
-                          <div style={{ fontSize:11,color:"var(--t4)",marginTop:2 }}>of ${alloc.budgeted.toLocaleString()}</div>
-                        </div>
-                        <div style={{ textAlign:"right" }}>
-                          <div style={{ fontSize:12,fontWeight:700,fontFamily:"monospace",color:remaining>=0?"var(--t2)":"var(--red)" }}>
-                            {remaining>=0?`$${fmtInt(remaining)}`:`-$${fmtInt(Math.abs(remaining))}`}
-                          </div>
-                          <div style={{ fontSize:11,color:"var(--t4)",marginTop:1 }}>{remaining>=0?"left":"over"}</div>
-                        </div>
-                      </div>
-                    </div>
+                    <BudgetCategoryCard
+                      key={alloc.id}
+                      category={alloc.category}
+                      color={color}
+                      budgeted={alloc.budgeted}
+                      spent={spent}
+                      rollover={alloc.rollover ?? false}
+                      monthlyHistory={monthlyHistoryByCategory[alloc.category]}
+                      classification={classifications[alloc.category]}
+                      onEdit={() => setModal({ type: "edit", alloc })}
+                      onToggleRollover={(next) => toggleRollover(alloc.id, next)}
+                    />
                   );
                 })}
               </div>
             )}
 
             {/* Transactions */}
-            {transactions.filter(tx=>tx.amount>0&&!tx.pending).length>0&&(
-              <HudCard style={{ padding:"24px 24px" }} delay={0.15}>
-                <h2 style={{ fontSize:14,fontWeight:700,color:"var(--t1)",marginBottom:16 }}>Transactions This Month</h2>
-                <div style={{ display:"flex",flexDirection:"column" }}>
-                  {transactions.filter(tx=>tx.amount>0&&!tx.pending).slice(0,25).map((tx,i,arr)=>{
-                    const cat=tx.budget_category??tx.category??"Misc";
-                    const color=CAT_COLORS[cat]??"#6b7280";
+            {transactions.filter(tx => tx.amount > 0 && !tx.pending).length > 0 && (
+              <HudCard style={{ padding: "20px 22px" }} delay={0.15}>
+                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.24em", color: "var(--t1)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", marginBottom: 14 }}>
+                  TRANSACTIONS THIS MONTH
+                </p>
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  {transactions.filter(tx => tx.amount > 0 && !tx.pending).slice(0, 25).map((tx, i, arr) => {
+                    const cat = tx.budget_category ?? tx.category ?? "Misc";
+                    const color = CAT_COLORS[cat] ?? "#6b7280";
                     return (
-                      <div key={tx.id} style={{ display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:i<arr.length-1?"1px solid rgba(255,255,255,0.04)":"none" }}>
-                        <div style={{ display:"flex",alignItems:"center",gap:10,flex:1,minWidth:0 }}>
-                          <div style={{ width:28,height:28,borderRadius:6,background:`${color}14`,border:`1px solid ${color}22`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color,flexShrink:0 }}>
-                            {(tx.merchant??"?").slice(0,2).toUpperCase()}
+                      <div key={tx.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
+                          <div style={{ width: 28, height: 28, borderRadius: 4, background: `${color}14`, border: `1px solid ${color}22`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color, flexShrink: 0 }}>
+                            {(tx.merchant ?? "?").slice(0, 2).toUpperCase()}
                           </div>
-                          <div style={{ minWidth:0 }}>
-                            <div style={{ fontSize:13,fontWeight:500,color:"var(--t1)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{tx.merchant}</div>
-                            <div style={{ fontSize:10,color:"var(--t4)" }}>{new Date(tx.date+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"})}</div>
+                          <div style={{ minWidth: 0 }}>
+                            <p style={{ fontSize: 13, fontWeight: 500, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tx.merchant}</p>
+                            <p style={{ fontSize: 10, color: "var(--t4)" }}>{new Date(tx.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p>
                           </div>
                         </div>
-                        <div style={{ display:"flex",alignItems:"center",gap:12,flexShrink:0 }}>
-                          <div style={{ fontSize:11,fontWeight:600,padding:"2px 8px",borderRadius:20,background:`${color}14`,color,border:`1px solid ${color}22`,whiteSpace:"nowrap" }}>{cat}</div>
-                          <div style={{ fontSize:13,fontWeight:700,fontFamily:"monospace",color:"var(--red)",minWidth:60,textAlign:"right" }}>-${fmt(tx.amount)}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+                          <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 2, background: `${color}14`, color, border: `1px solid ${color}22`, whiteSpace: "nowrap", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", letterSpacing: "0.06em" }}>{cat}</span>
+                          <span style={{ fontSize: 13, fontWeight: 600, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", color: "var(--red)", minWidth: 70, textAlign: "right" }}>−${fmt(tx.amount)}</span>
                         </div>
                       </div>
                     );
@@ -673,6 +757,16 @@ export default function FinancePage() {
             )}
           </div>
         )}
+
+        {/* Living Targets modal */}
+        <LivingTargetsModal
+          open={livingTargetsOpen}
+          onClose={() => setLivingTargetsOpen(false)}
+          onApply={async (rows) => {
+            await applyLivingTargets(rows);
+            await loadAll();
+          }}
+        />
 
         {/* ════════════════════════════════════════
              TAB: INVESTMENTS
