@@ -15,6 +15,7 @@ import { DiscretionaryTracker } from "@/components/finance/DiscretionaryTracker"
 import { LivingTargetsModal } from "@/components/finance/LivingTargetsModal";
 import { GoalAllocatorModal } from "@/components/finance/GoalAllocatorModal";
 import { PaycheckPlannerModal } from "@/components/finance/PaycheckPlannerModal";
+import { PlaidDiagnostics } from "@/components/finance/PlaidDiagnostics";
 import { cashFlowRunway, netWorthBreakdown, delta24h } from "@/lib/finance-math";
 import { normalizeAccountType } from "@/lib/plaid";
 import type { Account as FinAccount, AccountType, WealthSnapshot } from "@/types/finance";
@@ -192,7 +193,6 @@ type Tab = "overview" | "budget" | "investments";
 
 export default function FinancePage() {
   const [tab,          setTab]          = useState<Tab>("overview");
-  const [cleanedSandbox, setCleanedSandbox] = useState<number>(0);
   const [accounts,     setAccounts]     = useState<PlaidAccount[]>([]);
   const [wealth,       setWealth]       = useState<WealthData>(EMPTY_WEALTH);
   const [ira,          setIra]          = useState<IRAFund[]>([]);
@@ -226,26 +226,9 @@ export default function FinancePage() {
   /* ── Load all data ── */
   useEffect(() => { loadAll(); }, [period]);
 
-  /* ── Auto-cleanup any stale-env accounts on first mount.
-        When Max switched from sandbox → production, his old sandbox
-        accounts stayed in the DB. The cleanup endpoint detects them
-        via access-token prefix and archives them silently. ── */
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/plaid/cleanup", { method: "POST" });
-        const data = await res.json();
-        if (cancelled) return;
-        if (data.archived > 0) {
-          setCleanedSandbox(data.archived);
-          await loadAll();
-        }
-      } catch { /* non-fatal */ }
-    })();
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  /* Auto-cleanup is gone — too aggressive. The diagnostics panel surfaces
+     the real state honestly so we can debug, and cleanup is now a manual
+     button gated by the panel. */
 
   async function loadAll() {
     const sixMoAgo = new Date(Date.now() - 180*24*60*60*1000).toISOString().slice(0,10);
@@ -618,18 +601,6 @@ export default function FinancePage() {
           </div>
         </div>
 
-        {/* Sandbox cleanup notice */}
-        {cleanedSandbox > 0 && (
-          <div style={{
-            marginBottom: 16,
-            padding: "10px 14px", borderRadius: 3,
-            background: "rgba(95,176,125,0.06)", border: "1px solid rgba(95,176,125,0.25)",
-            fontSize: 11, color: "var(--green)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", letterSpacing: "0.06em",
-          }}>
-            ✓ Hid {cleanedSandbox} sandbox test account{cleanedSandbox === 1 ? "" : "s"} from previous Plaid environment.
-            Showing live production data only.
-          </div>
-        )}
 
         {/* ════════════════════════════════════════
              TAB: OVERVIEW
@@ -646,6 +617,7 @@ export default function FinancePage() {
             />
             <FinanceQueryBar />
             <NetWorthChart history={wealthSnapshots} loading={!accountsLoaded} />
+            <PlaidDiagnostics onChanged={loadAll} />
             <AccountHub
               accounts={finAccounts}
               loading={!accountsLoaded}
