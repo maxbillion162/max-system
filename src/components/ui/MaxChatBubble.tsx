@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { FeedbackControl } from "@/components/ui/FeedbackControl";
 
 type Msg = { role: "user" | "max"; content: string };
 
@@ -225,21 +226,29 @@ export default function MaxChatBubble() {
                 <p style={{ fontSize: 12, color: "var(--t4)", textAlign: "center" }}>Ask about your {pageLabel.toLowerCase()} data</p>
               </div>
             )}
-            {messages.map((m, i) => (
-              <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
-                <div style={{
-                  maxWidth: "85%", padding: "8px 12px", borderRadius: 10, fontSize: 13, lineHeight: 1.55,
-                  ...(m.role === "user"
-                    ? { background: "rgba(125,184,232,0.12)", color: "var(--t1)", border: "1px solid rgba(125,184,232,0.18)" }
-                    : { background: "rgba(255,255,255,0.04)", color: "var(--t2)", border: "1px solid rgba(255,255,255,0.05)" }
-                  ),
-                }}>
-                  {m.content.split("\n").map((line, li, arr) => (
-                    <span key={li}>{line}{li < arr.length - 1 && <br />}</span>
-                  ))}
+            {messages.map((m, i) => {
+              const isLastMax = m.role === "max" && i === messages.length - 1 && !loading && m.content.length > 0;
+              return (
+                <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: m.role === "user" ? "flex-end" : "flex-start", gap: 4 }}>
+                  <div style={{
+                    maxWidth: "85%", padding: "8px 12px", borderRadius: 10, fontSize: 13, lineHeight: 1.55,
+                    ...(m.role === "user"
+                      ? { background: "rgba(125,184,232,0.12)", color: "var(--t1)", border: "1px solid rgba(125,184,232,0.18)" }
+                      : { background: "rgba(255,255,255,0.04)", color: "var(--t2)", border: "1px solid rgba(255,255,255,0.05)" }
+                    ),
+                  }}>
+                    {m.content.split("\n").map((line, li, arr) => (
+                      <span key={li}>{line}{li < arr.length - 1 && <br />}</span>
+                    ))}
+                  </div>
+                  {isLastMax && (
+                    <div style={{ paddingLeft: 4 }}>
+                      <FeedbackControl artifactType="chat_response" artifactId={`bubble-${i}-${m.content.slice(0,40)}`} surface="bubble" variant="inline" />
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {loading && (
               <div style={{ display: "flex", gap: 5, padding: "6px 12px" }}>
                 {[0, 1, 2].map(i => (

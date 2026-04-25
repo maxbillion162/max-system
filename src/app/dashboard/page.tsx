@@ -1079,10 +1079,7 @@ export default function Dashboard() {
                       </li>
                     ))}
                   </ul>
-                  <div style={{ marginTop: 14, paddingTop: 10, borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: 10, fontFamily: "monospace", letterSpacing: "0.14em", color: "var(--t4)" }}>USEFUL TODAY?</span>
-                    <FeedbackControl artifactType="dashboard_brief" artifactId={briefGenAt ?? undefined} compact />
-                  </div>
+                  <FeedbackControl artifactType="dashboard_brief" artifactId={briefGenAt ?? undefined} label="USEFUL TODAY?" />
                 </>
               ) : briefLoading ? (
                 <span style={{ color: "var(--t4)" }}>M.A.X. is thinking…</span>

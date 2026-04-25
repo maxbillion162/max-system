@@ -29,13 +29,17 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 /** Pretty name for each artifact_type — used in the synth prompt to orient Claude. */
 const TYPE_LABELS: Record<string, string> = {
-  dashboard_brief:   "the daily dashboard brief (short morning intelligence lines)",
-  feed_top3:         "M.A.X.'s Top 3 article picks in the Intel Feed",
-  email_summary:     "one-line AI summaries attached to each email",
-  email_briefing:    "the top-of-page email briefing / action-required ranking",
-  dashboard_insight: "general insights surfaced on the dashboard",
-  brief:             "the proactive brief sent on chat open",
-  feed_summary:      "article summaries in the feed",
+  dashboard_brief:    "the daily dashboard brief (short morning intelligence lines)",
+  feed_top3:          "M.A.X.'s Top 3 article picks in the Intel Feed",
+  email_summary:      "one-line AI summaries attached to each email",
+  email_briefing:     "the top-of-page email briefing / action-required ranking",
+  email_draft:        "AI-generated email reply drafts (writing style, tone, length)",
+  dashboard_insight:  "general insights surfaced on the dashboard",
+  brief:              "the proactive brief sent on chat open",
+  feed_summary:       "article summaries in the feed",
+  chat_response:      "M.A.X.'s conversational replies in chat (web + bubble)",
+  habit_suggestion:   "M.A.X.'s suggested habits for a goal on the Discipline page",
+  max_insight:        "proactive insights M.A.X. surfaces in the notification bell",
 };
 
 interface FeedbackRow {

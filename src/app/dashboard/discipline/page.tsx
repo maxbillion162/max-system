@@ -18,6 +18,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/lib/supabase";
+import { FeedbackControl } from "@/components/ui/FeedbackControl";
 
 /* ════════════════════════════════════════════════════════════════════
    TYPES + CONSTANTS
@@ -1396,6 +1397,12 @@ function SuggestionsModal({ goal, onCreate, onClose }: {
                   </button>
                 </div>
                 <p style={{ fontSize: 12, color: "var(--t3)", lineHeight: 1.5 }}>{s.reason}</p>
+                <FeedbackControl
+                  artifactType="habit_suggestion"
+                  artifactId={`${goal.id}::${s.name}`}
+                  metadata={{ goal: goal.label, habit: s.name, category: s.category }}
+                  variant="inline"
+                />
               </div>
             );
           })}

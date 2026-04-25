@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { FeedbackControl } from "@/components/ui/FeedbackControl";
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 type Msg = {
@@ -113,7 +114,7 @@ function renderInline(text: string): React.ReactNode {
 }
 
 /* ── Message action button ───────────────────────────────────────── */
-function MsgActions({ content }: { content: string }) {
+function MsgActions({ content, msgKey }: { content: string; msgKey: string }) {
   const [copied,   setCopied]   = useState(false);
   const [memSaved, setMemSaved] = useState(false);
   const [tgSent,   setTgSent]   = useState(false);
@@ -145,7 +146,7 @@ function MsgActions({ content }: { content: string }) {
   };
 
   return (
-    <div style={{ display: "flex", gap: 4, marginTop: 4, opacity: 1 }}>
+    <div style={{ display: "flex", gap: 4, marginTop: 4, opacity: 1, alignItems: "center", flexWrap: "wrap" }}>
       <button onClick={copy} style={{ ...btn, color: copied ? "var(--green)" : "var(--t4)" }}>
         {copied ? "✓ Copied" : "Copy"}
       </button>
@@ -155,6 +156,8 @@ function MsgActions({ content }: { content: string }) {
       <button onClick={sendToTelegram} style={{ ...btn, color: tgSent ? "var(--amber)" : "var(--t4)" }}>
         {tgSent ? "✓ Sent" : "✈ Telegram"}
       </button>
+      <span style={{ width: 1, height: 12, background: "rgba(255,255,255,0.06)", margin: "0 2px" }} />
+      <FeedbackControl artifactType="chat_response" artifactId={msgKey} surface="web" variant="inline" />
     </div>
   );
 }
@@ -532,7 +535,7 @@ export default function ChatPage() {
               <span style={{ fontSize: 10, paddingLeft: 4, color: "rgba(125,184,232,0.2)" }}>{msg.time}</span>
               {/* Hover actions — M.A.X. messages only */}
               {msg.role === "max" && msg.content && hoveredIdx === i && streamingIdx !== i && (
-                <MsgActions content={msg.content} />
+                <MsgActions content={msg.content} msgKey={`${msg.time}-${i}`} />
               )}
             </div>
           </div>

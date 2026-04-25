@@ -338,7 +338,7 @@ export default function FeedPage() {
                           <p style={{fontSize:12,fontWeight:600,color:"var(--t1)",lineHeight:1.4,marginBottom:4}}>{article.title.length>75?article.title.slice(0,75)+"…":article.title}</p>
                         </a>
                         <p style={{fontSize:11,color:"var(--t3)",lineHeight:1.4,marginBottom:6}}>{pick.reason}</p>
-                        <FeedbackControl artifactType="feed_top3" artifactId={article.link} metadata={{ title: article.title, source: article.source, reason: pick.reason }} compact />
+                        <FeedbackControl artifactType="feed_top3" artifactId={article.link} metadata={{ title: article.title, source: article.source, reason: pick.reason }} variant="inline" />
                       </div>
                     </div>
                   );

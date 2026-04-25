@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { FeedbackControl } from "@/components/ui/FeedbackControl";
 
 /* ── Types ── */
 interface Email {
@@ -111,6 +112,7 @@ export default function EmailPage() {
   const [drafting,      setDrafting]      = useState(false);
   const [draftSaved,    setDraftSaved]    = useState(false);
   const [aiReplyLoad,   setAiReplyLoad]   = useState(false);
+  const [aiDraftId,     setAiDraftId]     = useState<string | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [noiseOpen,     setNoiseOpen]     = useState(false);
 
@@ -187,16 +189,20 @@ export default function EmailPage() {
   }
 
   async function generateAiReply(email: Email) {
-    setAiReplyLoad(true); setDraftText("");
+    setAiReplyLoad(true); setDraftText(""); setAiDraftId(null);
     try {
       const res  = await fetch("/api/email/reply",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({from:email.from,subject:email.subject,body:email.body||email.preview})});
       const data = await res.json();
-      if (data.reply) { setDraftText(data.reply); setTimeout(()=>composeRef.current?.focus(),100); }
+      if (data.reply) {
+        setDraftText(data.reply);
+        setAiDraftId(`${email.id}-${Date.now()}`);
+        setTimeout(()=>composeRef.current?.focus(),100);
+      }
     } catch {}
     setAiReplyLoad(false);
   }
 
-  function selectEmail(e: Email) { setSelected(e); setDraftText(""); }
+  function selectEmail(e: Email) { setSelected(e); setDraftText(""); setAiDraftId(null); }
 
   /* ── Keyboard shortcuts ── */
   const handleKey = useCallback((e: KeyboardEvent)=>{
@@ -472,11 +478,21 @@ export default function EmailPage() {
                         <span style={{ fontSize:9,color:"var(--t4)",opacity:0.5 }}>R focus · E archive</span>
                       </div>
                       <div style={{ display:"flex",gap:8 }}>
-                        {draftText&&<button onClick={()=>setDraftText("")} style={{ padding:"6px 12px",borderRadius:6,background:"none",border:"1px solid var(--border)",fontSize:11,fontWeight:600,color:"var(--t3)",cursor:"pointer" }}>Clear</button>}
+                        {draftText&&<button onClick={()=>{setDraftText(""); setAiDraftId(null);}} style={{ padding:"6px 12px",borderRadius:6,background:"none",border:"1px solid var(--border)",fontSize:11,fontWeight:600,color:"var(--t3)",cursor:"pointer" }}>Clear</button>}
                         <button onClick={saveDraft} disabled={drafting||!draftText.trim()} style={{ padding:"6px 16px",borderRadius:6,background:"rgba(125,184,232,0.12)",border:"1px solid rgba(125,184,232,0.3)",fontSize:12,fontWeight:700,color:"var(--blue)",cursor:"pointer",opacity:draftText.trim()?1:0.4 }}>
                           {drafting?"Saving…":"Save Draft"}
                         </button>
                       </div>
+                    </div>
+                  )}
+                  {connected && aiDraftId && draftText && (
+                    <div style={{ padding: "0 14px 12px" }}>
+                      <FeedbackControl
+                        artifactType="email_draft"
+                        artifactId={aiDraftId}
+                        metadata={{ from: selected.from, subject: selected.subject }}
+                        label="DID THIS SOUND LIKE YOU?"
+                      />
                     </div>
                   )}
                 </div>
