@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { plaidClient, plaidConfigured } from "@/lib/plaid";
+import { plaidClient, plaidConfigured, normalizeAccountType } from "@/lib/plaid";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -45,9 +45,11 @@ export async function POST(req: Request) {
         official_name: account.official_name ?? null,
         type: account.type,
         subtype: account.subtype,
+        account_type: normalizeAccountType(account.type, account.subtype),
         institution: institution.name,
         mask: account.mask ?? null,
         active: true,
+        archived: false,
       }, { onConflict: "plaid_account_id" });
     }
 

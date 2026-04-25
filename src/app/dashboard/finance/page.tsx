@@ -6,14 +6,21 @@ import { Sparkline } from "@/components/ui/Sparkline";
 import { supabase } from "@/lib/supabase";
 import PlaidLinkButton from "@/components/ui/PlaidLinkButton";
 import TransactionReview, { ReviewTransaction } from "@/components/ui/TransactionReview";
+import { LiveStatusBar } from "@/components/finance/LiveStatusBar";
+import { FinanceQueryBar } from "@/components/finance/FinanceQueryBar";
+import { NetWorthChart } from "@/components/finance/NetWorthChart";
+import { AccountHub } from "@/components/finance/AccountHub";
+import { cashFlowRunway, netWorthBreakdown, delta24h } from "@/lib/finance-math";
+import { normalizeAccountType } from "@/lib/plaid";
+import type { Account as FinAccount, AccountType, WealthSnapshot } from "@/types/finance";
 
 /* ─────────────── Types ─────────────── */
-interface PlaidAccount   { id: string; plaid_account_id: string; name: string; type: string; subtype: string; institution: string; mask: string | null; current_balance: number | null; available_balance: number | null; last_synced: string | null }
+interface PlaidAccount   { id: string; plaid_account_id: string; plaid_item_id: string; name: string; official_name?: string|null; type: string; subtype: string; institution: string; mask: string | null; current_balance: number | null; available_balance: number | null; last_synced: string | null; account_type?: string | null; archived?: boolean | null; active?: boolean }
 interface WealthData     { ira: number; savings: number; btc_amount: number; xrp_amount: number }
 interface IRAFund        { symbol: string; name: string; nav: number; chg: number; value: number; shares: number }
 interface Bill           { name: string; amt: number; due: number }
 interface LiveCrypto     { symbol: string; name: string; price: number; c24: number; c7: number; data: number[] }
-interface WealthHistory  { recorded_at: string; net_worth: number }
+interface WealthHistory  { recorded_at: string; net_worth: number; crypto_total?: number; ira_total?: number; savings?: number }
 interface MarketIndex   { symbol: string; name: string; price: number; change: number; changePct: number }
 interface MarketSnapshot{ SPY: MarketIndex|null; QQQ: MarketIndex|null; DIA: MarketIndex|null; updated: string }
 interface NewsArticle   { title: string; url: string; snippet: string; published: string|null }
@@ -37,19 +44,8 @@ const QUICK_DEFAULTS = [
   { category:"Misc", budgeted:50 },
 ];
 
-const WEALTH_DEFAULTS: WealthData = { ira:2720, savings:2800, btc_amount:0.02, xrp_amount:200 };
-
-const IRA_INIT: IRAFund[] = [
-  { symbol:"MDDVX", name:"Mid-Cap Growth", nav:42.18, chg:0.32,  value:1200, shares:28.45 },
-  { symbol:"RPEAX", name:"Real Assets",    nav:11.44, chg:-0.18, value:880,  shares:76.92 },
-  { symbol:"PTTRX", name:"Total Return",   nav:9.87,  chg:0.05,  value:640,  shares:64.84 },
-];
-
-const BILLS_INIT: Bill[] = [
-  { name:"Rent", amt:950, due:1 }, { name:"Spotify", amt:10.99, due:3 },
-  { name:"Phone", amt:75, due:8 }, { name:"Netflix", amt:15.49, due:18 },
-  { name:"Gym", amt:40, due:22 },
-];
+/* No more hardcoded fallbacks — show empty / loading states instead. */
+const EMPTY_WEALTH: WealthData = { ira: 0, savings: 0, btc_amount: 0, xrp_amount: 0 };
 
 /* ─────────────── Helpers ─────────────── */
 function periodStart(d = new Date()) {
@@ -187,14 +183,15 @@ function AllocModal({ alloc, existingCats, onSave, onDelete, onClose }: { alloc?
 }
 
 /* ─────────────── Main page ─────────────── */
-type Tab = "overview" | "budget" | "investments" | "transactions";
+type Tab = "budget" | "investments" | "transactions";
 
 export default function FinancePage() {
-  const [tab,          setTab]          = useState<Tab>("overview");
+  const [tab,          setTab]          = useState<Tab>("budget");
   const [accounts,     setAccounts]     = useState<PlaidAccount[]>([]);
-  const [wealth,       setWealth]       = useState<WealthData>(WEALTH_DEFAULTS);
-  const [ira,          setIra]          = useState<IRAFund[]>(IRA_INIT);
-  const [bills,        setBills]        = useState<Bill[]>(BILLS_INIT);
+  const [wealth,       setWealth]       = useState<WealthData>(EMPTY_WEALTH);
+  const [ira,          setIra]          = useState<IRAFund[]>([]);
+  const [bills,        setBills]        = useState<Bill[]>([]);
+  const [accountsLoaded, setAccountsLoaded] = useState(false);
   const [live,         setLive]         = useState<LiveCrypto[]>([]);
   const [history,      setHistory]      = useState<WealthHistory[]>([]);
   const [allocations,  setAllocations]  = useState<BudgetAlloc[]>([]);
@@ -222,7 +219,7 @@ export default function FinancePage() {
       supabase.from("wealth").select("*").eq("id","max").single(),
       supabase.from("ira_funds").select("*"),
       supabase.from("bills").select("*").order("due"),
-      supabase.from("wealth_history").select("recorded_at,net_worth").order("recorded_at",{ascending:true}).limit(30),
+      supabase.from("wealth_history").select("recorded_at,net_worth,crypto_total,ira_total,savings").order("recorded_at",{ascending:true}).limit(730),
       fetch("/api/crypto").then(r=>r.json()).catch(()=>null),
       supabase.from("budget_allocations").select("*").eq("period_start",period).order("category"),
       supabase.from("transactions").select("*").gte("date",period).lt("date",nextPeriod(period)).order("date",{ascending:false}).limit(500),
@@ -237,6 +234,7 @@ export default function FinancePage() {
       const synced = accts.map(a=>a.last_synced).filter(Boolean).sort().pop();
       if (synced) setLastSync(synced);
     }
+    setAccountsLoaded(true);
     if (wealthRes.status==="fulfilled"&&wealthRes.value.data)  setWealth(w=>({...w,...wealthRes.value.data}));
     if (iraRes.status==="fulfilled"&&iraRes.value.data?.length) setIra(iraRes.value.data as IRAFund[]);
     if (billsRes.status==="fulfilled"&&billsRes.value.data?.length) setBills(billsRes.value.data as Bill[]);
@@ -265,16 +263,79 @@ export default function FinancePage() {
   }, []);
 
   /* ── Computed values ── */
-  const btcPrice    = live.find(l=>l.symbol==="BTC")?.price ?? 75912;
-  const xrpPrice    = live.find(l=>l.symbol==="XRP")?.price ?? 1.43;
+  const btcPrice    = live.find(l=>l.symbol==="BTC")?.price ?? 0;
+  const xrpPrice    = live.find(l=>l.symbol==="XRP")?.price ?? 0;
   const btcVal      = btcPrice * wealth.btc_amount;
   const xrpVal      = xrpPrice * wealth.xrp_amount;
   const cryptoTotal = btcVal + xrpVal;
   const iraTotal    = ira.reduce((a,f)=>a+f.value,0);
   const bankTotal   = accounts.filter(a=>a.type!=="credit"&&a.current_balance!=null).reduce((a,b)=>a+(b.current_balance??0),0);
-  const netWorth    = cryptoTotal + iraTotal + wealth.savings;
   const billsTotal  = bills.reduce((a,b)=>a+b.amt,0);
   const dayOfMonth  = new Date().getDate();
+
+  /* ── New foundation metrics (Zone A / B) ── */
+  const finAccounts: FinAccount[] = useMemo(() => accounts
+    .filter(a => !a.archived)
+    .map(a => ({
+      plaid_account_id:  a.plaid_account_id,
+      plaid_item_id:     a.plaid_item_id,
+      name:              a.name,
+      official_name:     a.official_name ?? null,
+      institution:       a.institution ?? null,
+      mask:              a.mask,
+      type:              a.type,
+      subtype:           a.subtype,
+      account_type:      (a.account_type as AccountType | null) ?? normalizeAccountType(a.type, a.subtype) as AccountType,
+      current_balance:   a.current_balance,
+      available_balance: a.available_balance,
+      last_synced:       a.last_synced,
+      active:            a.active ?? true,
+      archived:          a.archived ?? false,
+    })), [accounts]);
+
+  const breakdown = useMemo(() => netWorthBreakdown(finAccounts, cryptoTotal, iraTotal), [finAccounts, cryptoTotal, iraTotal]);
+
+  // Net worth — when bank accounts are connected, combine all assets minus debt;
+  // otherwise fall back to manual savings + IRA + crypto so the page is still useful pre-Plaid.
+  const netWorth = finAccounts.length > 0
+    ? breakdown.net_worth
+    : cryptoTotal + iraTotal + wealth.savings;
+
+  const wealthSnapshots: WealthSnapshot[] = useMemo(() => history.map(h => ({
+    recorded_at:  h.recorded_at,
+    net_worth:    h.net_worth,
+    crypto_total: h.crypto_total ?? 0,
+    ira_total:    h.ira_total ?? 0,
+    savings:      h.savings ?? 0,
+  })), [history]);
+
+  const { delta: nwDelta, pct: nwPct } = useMemo(
+    () => delta24h(wealthSnapshots, netWorth),
+    [wealthSnapshots, netWorth]
+  );
+
+  const last30 = useMemo(() => {
+    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    return wealthSnapshots.filter(s => new Date(s.recorded_at).getTime() >= cutoff);
+  }, [wealthSnapshots]);
+
+  const liquidCash = breakdown.cash + breakdown.savings;
+  const txForRunway: { amount: number; date: string; pending?: boolean; merchant: string; merchant_normalized?: string; plaid_transaction_id: string; category: string; source: string }[] =
+    transactions.map(t => ({
+      amount: t.amount,
+      date: t.date,
+      pending: t.pending,
+      merchant: t.merchant,
+      merchant_normalized: t.merchant_normalized,
+      plaid_transaction_id: t.id,
+      category: t.category,
+      source: "plaid",
+    }));
+  const runway = useMemo(
+    () => cashFlowRunway(liquidCash, txForRunway),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [liquidCash, transactions]
+  );
 
   const spendByCategory = useMemo(()=>{
     const map:Record<string,number>={};
@@ -397,178 +458,68 @@ export default function FinancePage() {
       {saving&&<div style={{position:"fixed",bottom:24,right:24,zIndex:200,fontSize:12,color:"var(--t3)",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:8,padding:"10px 16px"}}>Saving…</div>}
 
       <div style={{ maxWidth:1140 }}>
-        {/* ─── Header ─── */}
-        <div style={{ marginBottom:28, display:"flex", alignItems:"flex-start", justifyContent:"space-between" }}>
+        {/* ─── Title strip ─── */}
+        <div style={{ marginBottom: 22, display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
           <div>
-            <p style={{ fontSize:11,fontWeight:700,letterSpacing:"0.14em",textTransform:"uppercase",color:"var(--blue)",opacity:0.7,marginBottom:8 }}>Finance Hub</p>
-            <h1 style={{ fontSize:32,fontWeight:800,color:"var(--t1)",letterSpacing:"-0.02em",marginBottom:4 }}>
-              ${fmtInt(netWorth)}
-              <span style={{ fontSize:16,fontWeight:500,color:"var(--t3)",marginLeft:10 }}>net worth</span>
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.32em", color: "var(--blue)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", marginBottom: 6 }}>
+              FINANCE
+            </p>
+            <h1 style={{ fontSize: 22, fontWeight: 600, color: "var(--t1)", letterSpacing: "-0.01em" }}>
+              Autonomous CFO
             </h1>
-            {lastSync&&<p style={{ fontSize:11,color:"var(--t4)" }}>Synced {new Date(lastSync).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}</p>}
           </div>
-          <div style={{ display:"flex",gap:10,alignItems:"center" }}>
-            {accounts.length>0&&(
-              <button onClick={syncNow} disabled={syncing} style={{ padding:"9px 16px",borderRadius:7,fontSize:12,fontWeight:600,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.09)",color:syncing?"var(--t4)":"var(--t2)",cursor:syncing?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:6,transition:"all 0.15s" }}
-                onMouseEnter={e=>{if(!syncing)(e.currentTarget as HTMLElement).style.background="rgba(255,255,255,0.08)";}}
-                onMouseLeave={e=>{if(!syncing)(e.currentTarget as HTMLElement).style.background="rgba(255,255,255,0.04)";}}
-              >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{animation:syncing?"spin-slow 1s linear infinite":"none"}}>
-                  <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-                </svg>
-                {syncing?"Syncing…":"Sync Now"}
-              </button>
-            )}
-            <PlaidLinkButton onConnected={loadAll}/>
-          </div>
+          {lastSync && (
+            <span style={{ fontSize: 10, color: "var(--t4)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", letterSpacing: "0.14em" }}>
+              SYNCED {new Date(lastSync).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).toUpperCase()}
+            </span>
+          )}
         </div>
 
-        {/* ─── Tab bar ─── */}
+        {/* ════════════════════════════════════════
+             ZONE A — LIVE STATUS (always visible)
+            ════════════════════════════════════════ */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 22 }}>
+          <LiveStatusBar
+            netWorth={netWorth}
+            delta24h={nwDelta}
+            delta24hPct={nwPct}
+            history30d={last30}
+            cashFlowRunwayDays={runway}
+            readyToAssign={income > 0 ? readyToAssign : null}
+          />
+          <FinanceQueryBar />
+        </div>
+
+        {/* ════════════════════════════════════════
+             ZONE B — MOVEMENTS (Net Worth Chart)
+            ════════════════════════════════════════ */}
+        <div style={{ marginBottom: 22 }}>
+          <NetWorthChart history={wealthSnapshots} loading={!accountsLoaded} />
+        </div>
+
+        {/* ════════════════════════════════════════
+             ZONE D-1 — ACCOUNT HUB
+            ════════════════════════════════════════ */}
+        <div style={{ marginBottom: 28 }}>
+          <AccountHub
+            accounts={finAccounts}
+            loading={!accountsLoaded}
+            onRefresh={syncNow}
+            onArchive={async (id) => {
+              await supabase.from("accounts").update({ archived: true }).eq("plaid_account_id", id);
+              await loadAll();
+            }}
+            onConnected={loadAll}
+          />
+        </div>
+
+        {/* ─── Tab bar (Operations) ─── */}
         <div style={{ display:"flex",gap:4,marginBottom:28,padding:"4px",background:"rgba(255,255,255,0.03)",borderRadius:10,border:"1px solid rgba(255,255,255,0.06)",width:"fit-content" }}>
-          {(["overview","budget","investments","transactions"] as Tab[]).map(t=>(
+          {(["budget","investments","transactions"] as Tab[]).map(t=>(
             <TabBtn key={t} label={t.charAt(0).toUpperCase()+t.slice(1)} active={tab===t} onClick={()=>setTab(t)}/>
           ))}
         </div>
 
-        {/* ════════════════════════════════════════
-             TAB: OVERVIEW
-            ════════════════════════════════════════ */}
-        {tab==="overview"&&(
-          <div style={{ display:"flex",flexDirection:"column",gap:16 }}>
-
-            {/* Net worth breakdown */}
-            <HudCard style={{ padding:"24px 28px" }} delay={0.05}>
-              <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20 }}>
-                <h2 style={{ fontSize:14,fontWeight:700,color:"var(--t1)" }}>Portfolio Breakdown</h2>
-                {history.length>=2&&(
-                  <span style={{ fontSize:11,fontWeight:600,color:history[history.length-1].net_worth>=history[0].net_worth?"var(--green)":"var(--red)" }}>
-                    {history[history.length-1].net_worth>=history[0].net_worth?"+":""}{fmtInt(history[history.length-1].net_worth-history[0].net_worth)} vs 30d ago
-                  </span>
-                )}
-              </div>
-              <div style={{ display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16 }}>
-                {[
-                  {label:"Crypto",value:`$${fmtInt(cryptoTotal)}`,color:"var(--amber)"},
-                  {label:"Roth IRA",value:`$${fmtInt(iraTotal)}`,color:"var(--blue)"},
-                  {label:"Savings",value:`$${fmtInt(wealth.savings)}`,color:"var(--green)"},
-                  {label:"Bank Accounts",value:accounts.length?`$${fmtInt(bankTotal)}`:"Not linked",color:accounts.length?"var(--t1)":"var(--t4)"},
-                ].map(s=>(
-                  <div key={s.label} style={{ padding:"14px 16px",borderRadius:8,background:"var(--surface2)",border:"1px solid var(--border)" }}>
-                    <div style={{ fontSize:11,color:"var(--t4)",marginBottom:8 }}>{s.label}</div>
-                    <div style={{ fontSize:20,fontWeight:800,fontFamily:"monospace",color:s.color }}>{s.value}</div>
-                  </div>
-                ))}
-              </div>
-              {history.length>=2&&(
-                <Sparkline data={history.map(h=>h.net_worth)} color="var(--blue)" height={52} id="nw-overview"/>
-              )}
-            </HudCard>
-
-            {/* Accounts + Budget health */}
-            <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:16 }}>
-
-              {/* Accounts */}
-              <HudCard style={{ padding:"22px 24px" }} delay={0.08}>
-                <h2 style={{ fontSize:14,fontWeight:700,color:"var(--t1)",marginBottom:16 }}>Bank Accounts</h2>
-                {accounts.length===0?(
-                  <div style={{ padding:"20px 0",textAlign:"center" }}>
-                    <div style={{ fontSize:13,color:"var(--t3)",marginBottom:16 }}>No accounts connected</div>
-                    <PlaidLinkButton onConnected={loadAll}/>
-                  </div>
-                ):(
-                  <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
-                    {accounts.map(a=>{
-                      const typeColor=a.type==="credit"?"var(--red)":a.subtype==="savings"?"var(--green)":"var(--blue)";
-                      const bal=a.current_balance;
-                      return (
-                        <div key={a.plaid_account_id} style={{ display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 14px",borderRadius:8,background:"var(--surface2)",border:"1px solid var(--border)" }}>
-                          <div style={{ display:"flex",alignItems:"center",gap:10 }}>
-                            <div style={{ width:32,height:32,borderRadius:7,background:`${typeColor}14`,border:`1px solid ${typeColor}28`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:typeColor }}>
-                              {a.institution.slice(0,2).toUpperCase()}
-                            </div>
-                            <div>
-                              <div style={{ fontSize:13,fontWeight:600,color:"var(--t1)" }}>{a.name} {a.mask&&<span style={{ color:"var(--t4)",fontWeight:400,fontSize:11 }}>···{a.mask}</span>}</div>
-                              <div style={{ fontSize:11,color:"var(--t4)" }}>{a.institution} · {a.subtype}</div>
-                            </div>
-                          </div>
-                          <div style={{ fontSize:15,fontWeight:700,fontFamily:"monospace",color:a.type==="credit"&&bal&&bal>0?"var(--red)":"var(--t1)" }}>
-                            {bal!=null?`$${fmt(Math.abs(bal))}`:"—"}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </HudCard>
-
-              {/* Budget health */}
-              <HudCard style={{ padding:"22px 24px" }} delay={0.1}>
-                <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16 }}>
-                  <h2 style={{ fontSize:14,fontWeight:700,color:"var(--t1)" }}>Budget Health</h2>
-                  <button onClick={()=>setTab("budget")} style={{ fontSize:11,color:"var(--blue)",background:"none",border:"none",cursor:"pointer",fontWeight:600 }}>View Full →</button>
-                </div>
-                {allocations.length===0?(
-                  <div style={{ padding:"16px 0",textAlign:"center" }}>
-                    <div style={{ fontSize:13,color:"var(--t3)",marginBottom:12 }}>Budget not set up</div>
-                    <button onClick={()=>setTab("budget")} style={{ padding:"8px 16px",borderRadius:7,fontSize:12,fontWeight:600,background:"rgba(125,184,232,0.1)",border:"1px solid rgba(125,184,232,0.25)",color:"var(--blue)",cursor:"pointer" }}>Set Up Budget</button>
-                  </div>
-                ):(
-                  <>
-                    <div style={{ display:"flex",gap:20,marginBottom:16 }}>
-                      <StatPill label="Ready to Assign" value={`$${fmtInt(Math.abs(readyToAssign))}`} color={readyToAssign>=0?"var(--green)":"var(--red)"}/>
-                      <StatPill label="Spent This Month" value={`$${fmtInt(totalSpent)}`} color="var(--amber)"/>
-                    </div>
-                    <div style={{ display:"flex",flexDirection:"column",gap:6 }}>
-                      {allocations.slice(0,4).map(a=>{
-                        const spent=spendByCategory[a.category]??0;
-                        const pct=a.budgeted>0?(spent/a.budgeted)*100:0;
-                        const color=CAT_COLORS[a.category]??"#7DB8E8";
-                        const status=pct>=100?"var(--red)":pct>=80?"var(--amber)":"var(--green)";
-                        return (
-                          <div key={a.id}>
-                            <div style={{ display:"flex",justifyContent:"space-between",marginBottom:4 }}>
-                              <span style={{ fontSize:12,color:"var(--t2)" }}>{a.category}</span>
-                              <span style={{ fontSize:12,fontFamily:"monospace",color:status }}>${fmtInt(spent)} / ${fmtInt(a.budgeted)}</span>
-                            </div>
-                            <div style={{ height:3,borderRadius:2,background:"rgba(255,255,255,0.06)" }}>
-                              <div style={{ height:"100%",borderRadius:2,width:`${Math.min(100,pct)}%`,background:status,transition:"width 0.6s ease" }}/>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
-              </HudCard>
-            </div>
-
-            {/* Bills */}
-            <HudCard style={{ padding:"22px 24px" }} delay={0.12}>
-              <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16 }}>
-                <div>
-                  <h2 style={{ fontSize:14,fontWeight:700,color:"var(--t1)" }}>Monthly Bills</h2>
-                  <span style={{ fontSize:12,color:"var(--t3)" }}>${fmt(billsTotal)}/mo · ${fmtInt(billsTotal*12)}/yr</span>
-                </div>
-                <SmallEditBtn onClick={()=>setModal("bills")}/>
-              </div>
-              <div style={{ display:"grid",gridTemplateColumns:`repeat(${Math.min(bills.length,6)},1fr)`,gap:10 }}>
-                {sortedBills.map(b=>{
-                  const daysUntil=b.due>=dayOfMonth?b.due-dayOfMonth:b.due+31-dayOfMonth;
-                  const urgent=daysUntil<=3;
-                  return (
-                    <div key={b.name} style={{ padding:"16px 12px",borderRadius:8,textAlign:"center",background:urgent?"rgba(200,90,90,0.06)":"var(--surface2)",border:`1px solid ${urgent?"rgba(200,90,90,0.2)":"var(--border)"}`}}>
-                      <div style={{ fontSize:12,fontWeight:600,color:"var(--t2)",marginBottom:6 }}>{b.name}</div>
-                      <div style={{ fontSize:18,fontWeight:800,fontFamily:"monospace",color:urgent?"var(--red)":"var(--t1)",marginBottom:4 }}>${b.amt%1===0?b.amt:b.amt.toFixed(2)}</div>
-                      <div style={{ fontSize:10,fontWeight:600,color:urgent?"var(--red)":"var(--t4)" }}>
-                        {daysUntil===0?"⚠ Today":urgent?`⚠ ${daysUntil}d`:`Day ${b.due}`}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </HudCard>
-          </div>
-        )}
 
         {/* ════════════════════════════════════════
              TAB: BUDGET

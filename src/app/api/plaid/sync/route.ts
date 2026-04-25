@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { plaidClient, plaidConfigured } from "@/lib/plaid";
+import { plaidClient, plaidConfigured, normalizeAccountType } from "@/lib/plaid";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -36,7 +36,7 @@ export async function POST() {
     let totalTransactions = 0;
 
     for (const { access_token } of itemMap.values()) {
-      // Sync balances
+      // Sync balances + backfill normalized account_type for any accounts missing it
       const balRes = await plaidClient.accountsBalanceGet({ access_token });
       for (const acct of balRes.data.accounts) {
         await supabase
@@ -44,6 +44,7 @@ export async function POST() {
           .update({
             current_balance:   acct.balances.current,
             available_balance: acct.balances.available,
+            account_type:      normalizeAccountType(acct.type, acct.subtype),
             last_synced: now,
           })
           .eq("plaid_account_id", acct.account_id);
