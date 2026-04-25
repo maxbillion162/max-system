@@ -188,10 +188,11 @@ function AllocModal({ alloc, existingCats, onSave, onDelete, onClose }: { alloc?
 }
 
 /* ─────────────── Main page ─────────────── */
-type Tab = "budget" | "investments" | "transactions";
+type Tab = "overview" | "budget" | "investments";
 
 export default function FinancePage() {
-  const [tab,          setTab]          = useState<Tab>("budget");
+  const [tab,          setTab]          = useState<Tab>("overview");
+  const [cleanedSandbox, setCleanedSandbox] = useState<number>(0);
   const [accounts,     setAccounts]     = useState<PlaidAccount[]>([]);
   const [wealth,       setWealth]       = useState<WealthData>(EMPTY_WEALTH);
   const [ira,          setIra]          = useState<IRAFund[]>([]);
@@ -224,6 +225,27 @@ export default function FinancePage() {
 
   /* ── Load all data ── */
   useEffect(() => { loadAll(); }, [period]);
+
+  /* ── Auto-cleanup any stale-env accounts on first mount.
+        When Max switched from sandbox → production, his old sandbox
+        accounts stayed in the DB. The cleanup endpoint detects them
+        via access-token prefix and archives them silently. ── */
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/plaid/cleanup", { method: "POST" });
+        const data = await res.json();
+        if (cancelled) return;
+        if (data.archived > 0) {
+          setCleanedSandbox(data.archived);
+          await loadAll();
+        }
+      } catch { /* non-fatal */ }
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function loadAll() {
     const sixMoAgo = new Date(Date.now() - 180*24*60*60*1000).toISOString().slice(0,10);
@@ -544,68 +566,102 @@ export default function FinancePage() {
       {modal!==null&&typeof modal==="object"&&modal.type==="edit"&&<AllocModal alloc={modal.alloc} existingCats={allocations.map(a=>a.category)} onSave={saveAlloc} onDelete={async()=>deleteAlloc(modal.alloc.id)} onClose={()=>setModal(null)}/>}
       {saving&&<div style={{position:"fixed",bottom:24,right:24,zIndex:200,fontSize:12,color:"var(--t3)",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:8,padding:"10px 16px"}}>Saving…</div>}
 
-      <div style={{ maxWidth:1140 }}>
-        {/* ─── Title strip ─── */}
-        <div style={{ marginBottom: 22, display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
-          <div>
-            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.32em", color: "var(--blue)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", marginBottom: 6 }}>
-              FINANCE
-            </p>
-            <h1 style={{ fontSize: 22, fontWeight: 600, color: "var(--t1)", letterSpacing: "-0.01em" }}>
-              Autonomous CFO
-            </h1>
-          </div>
-          {lastSync && (
-            <span style={{ fontSize: 10, color: "var(--t4)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", letterSpacing: "0.14em" }}>
-              SYNCED {new Date(lastSync).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).toUpperCase()}
-            </span>
-          )}
-        </div>
-
-        {/* ════════════════════════════════════════
-             ZONE A — LIVE STATUS (always visible)
-            ════════════════════════════════════════ */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 22 }}>
-          <LiveStatusBar
-            netWorth={netWorth}
-            delta24h={nwDelta}
-            delta24hPct={nwPct}
-            history30d={last30}
-            cashFlowRunwayDays={runway}
-            readyToAssign={income > 0 ? readyToAssign : null}
-          />
-          <FinanceQueryBar />
-        </div>
-
-        {/* ════════════════════════════════════════
-             ZONE B — MOVEMENTS (Net Worth Chart)
-            ════════════════════════════════════════ */}
+      <div style={{ maxWidth:1180 }}>
+        {/* ─── Header: title + sync-status + tab nav ─── */}
         <div style={{ marginBottom: 22 }}>
-          <NetWorthChart history={wealthSnapshots} loading={!accountsLoaded} />
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 16 }}>
+            <div>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.32em", color: "var(--blue)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", marginBottom: 6 }}>
+                FINANCE
+              </p>
+              <h1 style={{ fontSize: 22, fontWeight: 600, color: "var(--t1)", letterSpacing: "-0.01em" }}>
+                Autonomous CFO
+              </h1>
+            </div>
+            {lastSync && (
+              <span style={{ fontSize: 10, color: "var(--t4)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", letterSpacing: "0.14em" }}>
+                SYNCED {new Date(lastSync).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).toUpperCase()}
+              </span>
+            )}
+          </div>
+
+          {/* Tab nav — full-width, three primary sections */}
+          <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--border)" }}>
+            {([
+              { id: "overview",    label: "OVERVIEW" },
+              { id: "budget",      label: "BUDGET" },
+              { id: "investments", label: "INVESTMENTS" },
+            ] as { id: Tab; label: string }[]).map(t => {
+              const active = tab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setTab(t.id)}
+                  style={{
+                    background: "transparent", border: "none",
+                    padding: "12px 22px",
+                    color: active ? "var(--blue)" : "var(--t3)",
+                    cursor: "pointer",
+                    fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                    fontSize: 11, fontWeight: 700, letterSpacing: "0.24em",
+                    borderBottom: `2px solid ${active ? "var(--blue)" : "transparent"}`,
+                    marginBottom: -1,
+                    transition: "color .15s, border-color .15s",
+                  }}
+                  onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = "var(--t1)"; }}
+                  onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = "var(--t3)"; }}
+                >
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
+
+        {/* Sandbox cleanup notice */}
+        {cleanedSandbox > 0 && (
+          <div style={{
+            marginBottom: 16,
+            padding: "10px 14px", borderRadius: 3,
+            background: "rgba(95,176,125,0.06)", border: "1px solid rgba(95,176,125,0.25)",
+            fontSize: 11, color: "var(--green)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", letterSpacing: "0.06em",
+          }}>
+            ✓ Hid {cleanedSandbox} sandbox test account{cleanedSandbox === 1 ? "" : "s"} from previous Plaid environment.
+            Showing live production data only.
+          </div>
+        )}
 
         {/* ════════════════════════════════════════
-             ZONE D-1 — ACCOUNT HUB
+             TAB: OVERVIEW
             ════════════════════════════════════════ */}
-        <div style={{ marginBottom: 28 }}>
-          <AccountHub
-            accounts={finAccounts}
-            loading={!accountsLoaded}
-            onRefresh={syncNow}
-            onArchive={async (id) => {
-              await supabase.from("accounts").update({ archived: true }).eq("plaid_account_id", id);
-              await loadAll();
-            }}
-            onConnected={loadAll}
-          />
-        </div>
-
-        {/* ─── Tab bar (Operations) ─── */}
-        <div style={{ display:"flex",gap:4,marginBottom:28,padding:"4px",background:"rgba(255,255,255,0.03)",borderRadius:10,border:"1px solid rgba(255,255,255,0.06)",width:"fit-content" }}>
-          {(["budget","investments","transactions"] as Tab[]).map(t=>(
-            <TabBtn key={t} label={t.charAt(0).toUpperCase()+t.slice(1)} active={tab===t} onClick={()=>setTab(t)}/>
-          ))}
-        </div>
+        {tab === "overview" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <LiveStatusBar
+              netWorth={netWorth}
+              delta24h={nwDelta}
+              delta24hPct={nwPct}
+              history30d={last30}
+              cashFlowRunwayDays={runway}
+              readyToAssign={income > 0 ? readyToAssign : null}
+            />
+            <FinanceQueryBar />
+            <NetWorthChart history={wealthSnapshots} loading={!accountsLoaded} />
+            <AccountHub
+              accounts={finAccounts}
+              loading={!accountsLoaded}
+              onRefresh={syncNow}
+              onArchive={async (id) => {
+                await supabase.from("accounts").update({ archived: true, active: false }).eq("plaid_account_id", id);
+                await loadAll();
+              }}
+              onConnected={async () => {
+                // Freshly-connected accounts come back with null balances —
+                // sync immediately so the UI populates with real numbers.
+                await syncNow();
+              }}
+            />
+          </div>
+        )}
 
 
         {/* ════════════════════════════════════════
@@ -740,25 +796,57 @@ export default function FinancePage() {
               </div>
             )}
 
-            {/* Transactions */}
-            {transactions.filter(tx => tx.amount > 0 && !tx.pending).length > 0 && (
-              <HudCard style={{ padding: "20px 22px" }} delay={0.15}>
-                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.24em", color: "var(--t1)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", marginBottom: 14 }}>
-                  TRANSACTIONS THIS MONTH
+            {/* Transactions — full filterable list */}
+            <div style={{
+              background: "linear-gradient(160deg, #0f141d 0%, #080b11 100%)",
+              border: "1px solid rgba(125,184,232,0.10)", borderRadius: 3,
+              padding: "18px 22px",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, gap: 12, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.24em", color: "var(--t1)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
+                  TRANSACTIONS · {new Date(period + "T12:00:00").toLocaleDateString("en-US", { month: "long", year: "numeric" }).toUpperCase()}
+                </span>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <div style={{ position: "relative" }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", color: "var(--t4)" }}>
+                      <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
+                    </svg>
+                    <input value={txSearch} onChange={e => setTxSearch(e.target.value)} placeholder="search merchant…"
+                      style={{ paddingLeft: 26, paddingRight: 10, paddingTop: 6, paddingBottom: 6, borderRadius: 2, background: "var(--surface2)", border: "1px solid var(--border2)", color: "var(--t1)", fontSize: 12, outline: "none", width: 160 }}
+                    />
+                  </div>
+                  <select value={txCatFilter ?? ""} onChange={e => setTxCatFilter(e.target.value || null)}
+                    style={{ padding: "6px 10px", borderRadius: 2, background: "var(--surface2)", border: "1px solid var(--border2)", color: "var(--t1)", fontSize: 12, outline: "none", cursor: "pointer" }}>
+                    <option value="">All categories</option>
+                    {ALL_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <p style={{ fontSize: 10, color: "var(--t4)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", letterSpacing: "0.14em", marginBottom: 10 }}>
+                {filteredTx.length} TRANSACTIONS · ${fmt(filteredTx.reduce((a, tx) => a + tx.amount, 0))} TOTAL
+              </p>
+
+              {filteredTx.length === 0 ? (
+                <p style={{ textAlign: "center", padding: "30px 0", color: "var(--t4)", fontSize: 12 }}>
+                  {transactions.filter(tx => tx.amount > 0 && !tx.pending).length === 0
+                    ? "No transactions in this period yet."
+                    : "No transactions match your filter."}
                 </p>
+              ) : (
                 <div style={{ display: "flex", flexDirection: "column" }}>
-                  {transactions.filter(tx => tx.amount > 0 && !tx.pending).slice(0, 25).map((tx, i, arr) => {
+                  {filteredTx.map((tx, i) => {
                     const cat = tx.budget_category ?? tx.category ?? "Misc";
                     const color = CAT_COLORS[cat] ?? "#6b7280";
                     return (
-                      <div key={tx.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                      <div key={tx.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: i < filteredTx.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
                           <div style={{ width: 28, height: 28, borderRadius: 4, background: `${color}14`, border: `1px solid ${color}22`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color, flexShrink: 0 }}>
                             {(tx.merchant ?? "?").slice(0, 2).toUpperCase()}
                           </div>
                           <div style={{ minWidth: 0 }}>
                             <p style={{ fontSize: 13, fontWeight: 500, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tx.merchant}</p>
-                            <p style={{ fontSize: 10, color: "var(--t4)" }}>{new Date(tx.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p>
+                            <p style={{ fontSize: 10, color: "var(--t4)" }}>{new Date(tx.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
                           </div>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
@@ -769,8 +857,8 @@ export default function FinancePage() {
                     );
                   })}
                 </div>
-              </HudCard>
-            )}
+              )}
+            </div>
           </div>
         )}
 
@@ -987,66 +1075,6 @@ export default function FinancePage() {
           </div>
         )}
 
-        {/* ════════════════════════════════════════
-             TAB: TRANSACTIONS
-            ════════════════════════════════════════ */}
-        {tab==="transactions"&&(
-          <HudCard style={{ padding:"24px 28px" }} delay={0.05}>
-            <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,gap:12,flexWrap:"wrap" }}>
-              <h2 style={{ fontSize:14,fontWeight:700,color:"var(--t1)" }}>All Transactions — {new Date(period+"T12:00:00").toLocaleDateString("en-US",{month:"long",year:"numeric"})}</h2>
-              <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
-                {/* Search */}
-                <div style={{ position:"relative" }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"var(--t4)" }}>
-                    <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
-                  </svg>
-                  <input value={txSearch} onChange={e=>setTxSearch(e.target.value)} placeholder="Search…"
-                    style={{ paddingLeft:30,paddingRight:12,paddingTop:8,paddingBottom:8,borderRadius:7,background:"var(--surface2)",border:"1px solid var(--border2)",color:"var(--t1)",fontSize:13,outline:"none",width:160 }}
-                    onFocus={e=>e.target.style.borderColor="var(--blue)"} onBlur={e=>e.target.style.borderColor="var(--border2)"}
-                  />
-                </div>
-                {/* Category filter */}
-                <select value={txCatFilter??""} onChange={e=>setTxCatFilter(e.target.value||null)}
-                  style={{ padding:"8px 12px",borderRadius:7,background:"var(--surface2)",border:"1px solid var(--border2)",color:"var(--t1)",fontSize:12,outline:"none",cursor:"pointer" }}>
-                  <option value="">All Categories</option>
-                  {ALL_CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-            </div>
-
-            <div style={{ fontSize:11,color:"var(--t4)",marginBottom:12 }}>{filteredTx.length} transactions · ${fmt(filteredTx.reduce((a,tx)=>a+tx.amount,0))} total</div>
-
-            {filteredTx.length===0?(
-              <div style={{ textAlign:"center",padding:"40px 0",color:"var(--t4)",fontSize:14 }}>
-                No transactions found
-              </div>
-            ):(
-              <div style={{ display:"flex",flexDirection:"column" }}>
-                {filteredTx.map((tx,i)=>{
-                  const cat=tx.budget_category??tx.category??"Misc";
-                  const color=CAT_COLORS[cat]??"#6b7280";
-                  return (
-                    <div key={tx.id} style={{ display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 0",borderBottom:i<filteredTx.length-1?"1px solid rgba(255,255,255,0.04)":"none" }}>
-                      <div style={{ display:"flex",alignItems:"center",gap:12,flex:1,minWidth:0 }}>
-                        <div style={{ width:32,height:32,borderRadius:7,background:`${color}14`,border:`1px solid ${color}22`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color,flexShrink:0 }}>
-                          {(tx.merchant??"?").slice(0,2).toUpperCase()}
-                        </div>
-                        <div style={{ minWidth:0,flex:1 }}>
-                          <div style={{ fontSize:13,fontWeight:500,color:"var(--t1)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{tx.merchant}</div>
-                          <div style={{ fontSize:11,color:"var(--t4)" }}>{new Date(tx.date+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}</div>
-                        </div>
-                      </div>
-                      <div style={{ display:"flex",alignItems:"center",gap:14,flexShrink:0 }}>
-                        <div style={{ fontSize:11,fontWeight:600,padding:"2px 9px",borderRadius:20,background:`${color}14`,color,border:`1px solid ${color}22`,whiteSpace:"nowrap" }}>{cat}</div>
-                        <div style={{ fontSize:13,fontWeight:700,fontFamily:"monospace",color:"var(--red)",minWidth:72,textAlign:"right" }}>-${fmt(tx.amount)}</div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </HudCard>
-        )}
       </div>
 
       {/* Bills edit modal */}
