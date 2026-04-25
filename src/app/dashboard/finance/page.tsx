@@ -18,6 +18,7 @@ import { PlaidDiagnostics } from "@/components/finance/PlaidDiagnostics";
 import { BudgetTable } from "@/components/finance/BudgetTable";
 import { CategoryDetailPanel } from "@/components/finance/CategoryDetailPanel";
 import { BudgetReallocateModal } from "@/components/finance/BudgetReallocateModal";
+import { SpendingIntel } from "@/components/finance/SpendingIntel";
 import { cashFlowRunway, netWorthBreakdown, delta24h } from "@/lib/finance-math";
 import { normalizeAccountType } from "@/lib/plaid";
 import type { Account as FinAccount, AccountType, WealthSnapshot } from "@/types/finance";
@@ -738,6 +739,14 @@ export default function FinancePage() {
                 income={income}
               />
             )}
+
+            {/* Spending Intelligence — top categories, merchants, day-of-week,
+                recurring subs, anomalies, AI narrative. The Bloomberg/Mint
+                terminal layer on top of the budget table. */}
+            <SpendingIntel
+              categoryColors={CAT_COLORS}
+              onCategoryClick={(cat) => setSelectedBudgetCategory(cat)}
+            />
 
             {/* Tinder review */}
             {reviewing && reviewQueue.length > 0 && (

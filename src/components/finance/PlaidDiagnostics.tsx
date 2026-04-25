@@ -65,11 +65,12 @@ export function PlaidDiagnostics({ onChanged }: Props) {
   useEffect(() => { void refresh(); }, []);
 
   async function runCleanup() {
+    if (!confirm("This will permanently delete all transactions from sandbox/test accounts and archive those accounts. Continue?")) return;
     setBusy("cleanup");
     try {
       const res = await fetch("/api/plaid/cleanup", { method: "POST" });
       const j = await res.json();
-      alert(`Cleanup: archived ${j.archived ?? 0} stale-env accounts.`);
+      alert(`Cleanup complete:\n  · ${j.archived ?? 0} accounts archived\n  · ${j.transactions_deleted ?? 0} fake transactions deleted`);
       await refresh(); await onChanged();
     } finally { setBusy(null); }
   }
@@ -139,8 +140,8 @@ export function PlaidDiagnostics({ onChanged }: Props) {
               {busy === "restore" ? "…" : `RESTORE ${data.summary.archived_accounts} ARCHIVED`}
             </button>
           )}
-          <button onClick={runCleanup} disabled={busy !== null} style={btn("var(--t2)")}>
-            {busy === "cleanup" ? "…" : "ARCHIVE STALE-ENV"}
+          <button onClick={runCleanup} disabled={busy !== null} style={btn("var(--red)")}>
+            {busy === "cleanup" ? "…" : "DELETE FAKE DATA"}
           </button>
         </div>
       </div>
