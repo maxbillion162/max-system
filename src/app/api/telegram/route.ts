@@ -9,6 +9,7 @@ import {
   storeMemory, recallMemory,
   saveTelegramMessage, loadTelegramHistory,
 } from "@/lib/max-tools";
+import { resolvePendingAction, answerCallbackQuery } from "@/lib/pending-actions";
 
 const BOT_TOKEN       = process.env.TELEGRAM_BOT_TOKEN;
 const ALLOWED_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
@@ -310,7 +311,30 @@ async function handleCommand(cmd: string, args: string): Promise<string | null> 
 
 export async function POST(request: Request) {
   try {
-    const body    = await request.json();
+    const body = await request.json();
+
+    /* ─── Handle inline-button approvals (Tier-3 confirmation flow) ─── */
+    const cb = body?.callback_query;
+    if (cb) {
+      const fromId = cb.from?.id?.toString();
+      const data   = (cb.data ?? "") as string;
+      if (ALLOWED_CHAT_ID && fromId !== ALLOWED_CHAT_ID) {
+        await answerCallbackQuery(cb.id, "Unauthorized");
+        return NextResponse.json({ ok: true });
+      }
+      const m = data.match(/^pa:(approve|reject):(.+)$/);
+      if (!m) {
+        await answerCallbackQuery(cb.id);
+        return NextResponse.json({ ok: true });
+      }
+      const decision = m[1] as "approve" | "reject";
+      const id       = m[2];
+      // Acknowledge immediately so Max's spinner clears
+      await answerCallbackQuery(cb.id, decision === "approve" ? "Executing…" : "Rejected");
+      await resolvePendingAction(id, decision);
+      return NextResponse.json({ ok: true });
+    }
+
     const message = body?.message;
     if (!message) return NextResponse.json({ ok: true });
 

@@ -16,6 +16,7 @@ import {
   getStockQuote, getFearGreedIndex, sendSms,
   findFreeTime, projectSavings,
 } from "@/lib/max-tools";
+import { TIER_3_TOOLS, enqueuePendingAction } from "@/lib/pending-actions";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -102,12 +103,18 @@ Most things you can just do. A few require explicit confirmation. A few are off-
 - Store a memory when you learn a durable fact about Max worth keeping
 - Send Telegram messages on your own initiative when you have a genuinely useful insight or timely reminder (not chatter — high-signal only)
 
-**TIER 3 — Confirm first (describe the action, wait for Max's ✓):**
-- Create or edit a calendar event — state title, time, date, then wait
+**TIER 3 — Confirmation flow (call the tool — it will queue + ping Telegram for ✓/✗):**
+- Create a calendar event
 - Send an SMS (Twilio)
 - Update wealth figures (savings, IRA, crypto holdings)
-- Delete anything — goal, task, habit, transaction
+- Delete anything — goal, task, habit
 - Update a goal's target or deadline (not just progress)
+
+When you call a Tier-3 tool, the system intercepts it. The tool does NOT execute immediately. Instead:
+  1. The action is queued in pending_actions and a Telegram message with ✓/✗ buttons is sent to Max.
+  2. The tool result you get back will be \`{ status: "pending_approval", ... }\`.
+  3. Tell Max plainly what you queued and that he can approve via Telegram. Example: "Queued — drop a tap on the Telegram approval card and I'll create the event." (or, on Telegram, "Queued above — ✓ to approve.")
+  4. Do NOT call the tool a second time. Do NOT chain a follow-up tool that depends on the queued action's result. Stop, summarize, wait.
 
 **TIER 4 — Gated — do not attempt (Max said these need to be earned):**
 - Rescheduling existing calendar events
@@ -164,8 +171,8 @@ TOOL USE — DEFAULTS
 - **Read before writing.** Check state before modifying.
 - **Budget questions:** pull budget status AND recent transactions for a full picture.
 - **Net worth:** pull wealth + live crypto, calculate yourself.
-- **Deletes (Tier 3):** name exactly what you're deleting before confirming.
-- **Calendar (Tier 3):** describe event first, then create after ✓.
+- **Deletes (Tier 3):** name exactly what you're deleting in your reply, then call the tool — it'll route through Telegram approval automatically.
+- **Calendar (Tier 3):** describe the event in your reply, then call create_calendar_event — Max gets a ✓/✗ card on Telegram.
 - **Email:** draft only, forever. After: "Draft saved — check Gmail Drafts."
 - **Spotify fails:** usually no active device. Tell him to open Spotify first.
 - **Tool errors:** say what failed and why. Don't pretend it worked.
@@ -662,8 +669,50 @@ const TOOLS: Anthropic.Tool[] = [
   },
 ];
 
+/* ─── Tier-3 description builder ─── */
+function describeTier3Action(name: string, input: Record<string, unknown>): string {
+  switch (name) {
+    case "create_calendar_event": {
+      const start = input.start as string | undefined;
+      const when  = start ? new Date(start).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", hour12: true }) : "(no time)";
+      const loc   = input.location ? ` at ${input.location}` : "";
+      return `Create calendar event: *${input.title ?? "Untitled"}* on ${when}${loc}`;
+    }
+    case "send_sms":
+      return `Send SMS:\n_"${(input.message as string ?? "").slice(0, 220)}"_`;
+    case "update_wealth": {
+      const fields = Object.entries(input)
+        .filter(([k]) => ["savings", "ira", "btc_amount", "xrp_amount"].includes(k))
+        .map(([k, v]) => `${k} → ${v}`)
+        .join(", ");
+      return `Update wealth: ${fields || "(no changes)"}`;
+    }
+    case "delete_habit":  return `Delete habit (id: ${input.id})`;
+    case "delete_task":   return `Delete task (id: ${input.id})`;
+    case "delete_goal":   return `Delete goal (id: ${input.id})`;
+    default:              return `Run ${name}`;
+  }
+}
+
 /* ─── Tool executor ─── */
-async function executeTool(name: string, input: Record<string, unknown>): Promise<string> {
+async function executeTool(name: string, input: Record<string, unknown>, surface?: string): Promise<string> {
+  // Tier-3 confirmation flow — route through Telegram approval instead of running directly.
+  if (TIER_3_TOOLS.has(name)) {
+    const { id, delivered, reason } = await enqueuePendingAction({
+      tool_name:   name,
+      tool_input:  input,
+      description: describeTier3Action(name, input),
+      surface,
+    });
+    if (!id) return JSON.stringify({ status: "queue_failed", error: reason ?? "could not queue" });
+    return JSON.stringify({
+      status: "pending_approval",
+      pending_action_id: id,
+      delivered_to_telegram: delivered,
+      message: "Action queued. Max needs to approve via Telegram (✓/✗ buttons) before it runs.",
+    });
+  }
+
   try {
     switch (name) {
       case "read_habits":          return JSON.stringify(await readHabits());
