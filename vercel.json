@@ -12,6 +12,7 @@
     { "path": "/api/cron/trend-detection", "schedule": "0 13 * * *"          },
     { "path": "/api/cron/memory-extract",  "schedule": "0 6 * * *"           },
     { "path": "/api/cron/feedback-rollup", "schedule": "0 7 * * *"           },
-    { "path": "/api/cron/habit-coach",     "schedule": "0 21 * * *"          }
+    { "path": "/api/cron/habit-coach",     "schedule": "0 21 * * *"          },
+    { "path": "/api/cron/paycheck-detector","schedule": "30 10 * * *"        }
   ]
 }

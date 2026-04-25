@@ -16,6 +16,8 @@ interface NotifPrefs {
   budget_alerts:    boolean;
   goal_milestone:   boolean;
   market_update:    boolean;
+  paycheck_detected: boolean;
+  anomaly_alert:    boolean;
   // Summaries
   weekly_recap:     boolean;
   evening_checkin:  boolean;
@@ -39,6 +41,7 @@ interface BudgetPrefs {
 const DEFAULT_NOTIF: NotifPrefs = {
   habit_nudge:false, calendar_alerts:false, bill_alerts:false,
   max_insight:false, habit_coach:false, budget_alerts:false, goal_milestone:false, market_update:false,
+  paycheck_detected:false, anomaly_alert:false,
   weekly_recap:false, evening_checkin:false, goal_checkin:false,
 };
 const DEFAULT_PREFS:    Preferences   = { calendar_default_view:"week", tasks_in_calendar:true };
@@ -162,11 +165,13 @@ function NotifSection({ prefs, onSave }: { prefs:NotifPrefs; onSave:(v:NotifPref
       { key:"bill_alerts",     label:"Bill Due",          desc:"Heads-up when a bill is due in 3 days" },
     ]},
     { title: "Proactive Intelligence", rows: [
-      { key:"max_insight",    label:"M.A.X. Insights",    desc:"Trend findings and observations M.A.X. surfaces on its own" },
-      { key:"habit_coach",    label:"Habit Coach",        desc:"Late-afternoon nudge when habits or goals are slipping" },
-      { key:"budget_alerts",  label:"Budget Alerts",      desc:"Warnings when a spending category crosses thresholds" },
-      { key:"goal_milestone", label:"Goal Milestones",    desc:"Ping when a goal milestone is reached" },
-      { key:"market_update",  label:"Market Update",      desc:"2pm snapshot of SPY / QQQ / DIA" },
+      { key:"max_insight",       label:"M.A.X. Insights",    desc:"Trend findings and observations M.A.X. surfaces on its own" },
+      { key:"habit_coach",       label:"Habit Coach",        desc:"Late-afternoon nudge when habits or goals are slipping" },
+      { key:"budget_alerts",     label:"Budget Alerts",      desc:"Warnings when a spending category crosses thresholds" },
+      { key:"goal_milestone",    label:"Goal Milestones",    desc:"Ping when a goal milestone is reached" },
+      { key:"market_update",     label:"Market Update",      desc:"2pm snapshot of SPY / QQQ / DIA" },
+      { key:"paycheck_detected", label:"Paycheck Planner",   desc:"When a paycheck is detected, M.A.X. proposes a distribution waiting on Finance" },
+      { key:"anomaly_alert",     label:"Anomaly Alerts",     desc:"Flags unusual spending via Telegram ✓/✗ for fraud / mistakes" },
     ]},
     { title: "Summaries", rows: [
       { key:"weekly_recap",    label:"Weekly Recap",      desc:"Sunday morning summary — habits, goals, wins" },

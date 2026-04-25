@@ -13,6 +13,8 @@ import { AccountHub } from "@/components/finance/AccountHub";
 import { BudgetCategoryCard } from "@/components/finance/BudgetCategoryCard";
 import { DiscretionaryTracker } from "@/components/finance/DiscretionaryTracker";
 import { LivingTargetsModal } from "@/components/finance/LivingTargetsModal";
+import { GoalAllocatorModal } from "@/components/finance/GoalAllocatorModal";
+import { PaycheckPlannerModal } from "@/components/finance/PaycheckPlannerModal";
 import { cashFlowRunway, netWorthBreakdown, delta24h } from "@/lib/finance-math";
 import { normalizeAccountType } from "@/lib/plaid";
 import type { Account as FinAccount, AccountType, WealthSnapshot } from "@/types/finance";
@@ -198,6 +200,10 @@ export default function FinancePage() {
   const [txHistory6mo, setTxHistory6mo] = useState<{ amount: number; date: string; budget_category: string | null; category: string }[]>([]);
   const [classifications, setClassifications] = useState<Record<string, "need"|"want"|"savings"|"investment">>({});
   const [livingTargetsOpen, setLivingTargetsOpen] = useState(false);
+  const [goalAllocOpen, setGoalAllocOpen] = useState(false);
+  const [paycheckPlannerOpen, setPaycheckPlannerOpen] = useState(false);
+  const [pendingPaycheck, setPendingPaycheck] = useState<{ amount: number; source?: string|null; date?: string|null } | null>(null);
+  const [goals, setGoals] = useState<{ id: string; label: string; current: number; target: number; deadline: string|null }[]>([]);
   const [live,         setLive]         = useState<LiveCrypto[]>([]);
   const [history,      setHistory]      = useState<WealthHistory[]>([]);
   const [allocations,  setAllocations]  = useState<BudgetAlloc[]>([]);
@@ -221,7 +227,7 @@ export default function FinancePage() {
 
   async function loadAll() {
     const sixMoAgo = new Date(Date.now() - 180*24*60*60*1000).toISOString().slice(0,10);
-    const [accountsRes, wealthRes, iraRes, billsRes, histRes, cryptoRes, allocRes, txRes, incomeRes, marketRes, newsRes, tx6moRes, classRes] = await Promise.allSettled([
+    const [accountsRes, wealthRes, iraRes, billsRes, histRes, cryptoRes, allocRes, txRes, incomeRes, marketRes, newsRes, tx6moRes, classRes, goalsRes] = await Promise.allSettled([
       supabase.from("accounts").select("*").eq("active", true).order("institution"),
       supabase.from("wealth").select("*").eq("id","max").single(),
       supabase.from("ira_funds").select("*"),
@@ -235,6 +241,7 @@ export default function FinancePage() {
       fetch("/api/finance-news").then(r=>r.json()).catch(()=>null),
       supabase.from("transactions").select("amount,date,budget_category,category,pending").gte("date", sixMoAgo).order("date",{ascending:true}).limit(2500),
       supabase.from("category_classification").select("category,type"),
+      supabase.from("goals").select("id,label,current,target,deadline").order("deadline",{ascending:true,nullsFirst:false}),
     ]);
 
     if (accountsRes.status==="fulfilled"&&accountsRes.value.data) {
@@ -271,6 +278,9 @@ export default function FinancePage() {
       const m: Record<string, "need"|"want"|"savings"|"investment"> = {};
       for (const r of (classRes.value.data as { category:string; type:"need"|"want"|"savings"|"investment" }[])) m[r.category] = r.type;
       setClassifications(m);
+    }
+    if (goalsRes.status==="fulfilled"&&goalsRes.value.data) {
+      setGoals(goalsRes.value.data as { id: string; label: string; current: number; target: number; deadline: string|null }[]);
     }
   }
 
@@ -634,8 +644,14 @@ export default function FinancePage() {
                 </div>
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button onClick={() => setLivingTargetsOpen(true)} style={{ padding: "8px 14px", borderRadius: 2, background: "var(--blue-dim)", border: "1px solid var(--blue-border)", color: "var(--blue)", cursor: "pointer", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 10, letterSpacing: "0.18em", fontWeight: 700 }}>
+                <button onClick={() => setGoalAllocOpen(true)} style={{ padding: "8px 14px", borderRadius: 2, background: "var(--blue-dim)", border: "1px solid var(--blue-border)", color: "var(--blue)", cursor: "pointer", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 10, letterSpacing: "0.18em", fontWeight: 700 }}>
+                  ⊕ GOAL-DRIVEN
+                </button>
+                <button onClick={() => setLivingTargetsOpen(true)} style={{ padding: "8px 14px", borderRadius: 2, background: "transparent", border: "1px solid var(--blue-border)", color: "var(--blue)", cursor: "pointer", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 10, letterSpacing: "0.18em", fontWeight: 700 }}>
                   ✦ LIVING TARGETS
+                </button>
+                <button onClick={() => { setPendingPaycheck(null); setPaycheckPlannerOpen(true); }} style={{ padding: "8px 14px", borderRadius: 2, background: "transparent", border: "1px solid var(--border)", color: "var(--t2)", cursor: "pointer", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 10, letterSpacing: "0.18em", fontWeight: 700 }}>
+                  💰 PAYCHECK
                 </button>
                 <button onClick={runAICategorize} disabled={aiRunning} style={{ padding: "8px 14px", borderRadius: 2, background: "transparent", border: "1px solid var(--border)", color: aiRunning ? "var(--t4)" : "var(--t2)", cursor: aiRunning ? "default" : "pointer", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 10, letterSpacing: "0.18em", fontWeight: 700 }}>
                   {aiRunning ? "CATEGORIZING…" : "AUTO-CATEGORIZE"}
@@ -764,6 +780,33 @@ export default function FinancePage() {
           onClose={() => setLivingTargetsOpen(false)}
           onApply={async (rows) => {
             await applyLivingTargets(rows);
+            await loadAll();
+          }}
+        />
+
+        {/* Goal-Driven Allocator modal */}
+        <GoalAllocatorModal
+          open={goalAllocOpen}
+          goals={goals}
+          onClose={() => setGoalAllocOpen(false)}
+          onApply={async (rows) => {
+            await applyLivingTargets(rows);
+            await loadAll();
+          }}
+        />
+
+        {/* Paycheck Planner modal */}
+        <PaycheckPlannerModal
+          open={paycheckPlannerOpen}
+          paycheck={pendingPaycheck}
+          onClose={() => { setPaycheckPlannerOpen(false); setPendingPaycheck(null); }}
+          onAccept={async (allocations) => {
+            // Apply only the budget_category and savings_goal kinds to allocations table.
+            // Bills, IRA contributions, and discretionary are recorded but not auto-applied (yet).
+            const budgetRows = allocations
+              .filter(a => a.kind === "budget_category" || a.kind === "savings_goal")
+              .map(a => ({ category: a.bucket, budgeted: a.amount }));
+            if (budgetRows.length > 0) await applyLivingTargets(budgetRows);
             await loadAll();
           }}
         />

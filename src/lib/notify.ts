@@ -29,7 +29,9 @@ export type NotifyCategory =
   | "max_insight"        // Tier 2 proactive insights
   | "confirmation"       // Tier 3 approval requests (usually forceDeliver=true)
   | "weekly_recap"
-  | "evening_checkin";
+  | "evening_checkin"
+  | "paycheck_detected"  // F2 — income transaction detected, planner modal waiting
+  | "anomaly_alert";     // F4 — unusual transaction flagged via Tier-3 confirmation
 
 /* ─── Display type for the notifications table (icon/color mapping) ───
    Keeps notify() backward-compatible with NotificationBell's TYPE_CONFIG. */
@@ -56,6 +58,8 @@ const CATEGORY_TO_DISPLAY: Record<NotifyCategory, NotifyDisplayType> = {
   confirmation:     "max_action",
   weekly_recap:     "max_action",
   evening_checkin:  "max_action",
+  paycheck_detected:"max_action",
+  anomaly_alert:    "max_action",
 };
 
 export interface NotifyParams {
