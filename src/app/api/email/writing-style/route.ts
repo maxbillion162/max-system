@@ -60,14 +60,19 @@ function stripQuoted(text: string): string {
 }
 
 interface VoiceProfile {
-  greeting_examples:    string[];   // "Hey", "Hi —", "Yo"
-  signoff_examples:     string[];   // "Cheers", "Thanks", "—Max"
-  sentence_length:      "short" | "medium" | "long";
-  formality:            "casual" | "neutral" | "professional";
-  signature_phrases:    string[];   // recurring phrases
-  punctuation_quirks:   string[];   // "uses em-dashes liberally", "double-breaks paragraphs"
-  voice_summary:        string;     // 2-3 sentence prose summary
+  greeting_examples:    string[];
+  signoff_examples:     string[];
+  sentence_length:      string;
+  formality:            string;
+  signature_phrases:    string[];
+  punctuation_quirks:   string[];
+  structural_habits?:   string[];
+  register_shifts?:     string[];
+  voice_summary:        string;
+  do_list?:             string[];
+  dont_list?:           string[];
   sample_count:         number;
+  scanned_count?:       number;
   generated_at:         string;
 }
 
@@ -90,60 +95,98 @@ export async function POST() {
     const supabase = sb();
     const gmail = google.gmail({ version: "v1", auth });
 
-    /* Pull a wider net to filter out short replies / noisy auto-mail */
-    const list = await gmail.users.messages.list({
-      userId: "me",
-      q: "in:sent -from:noreply -from:no-reply",
-      maxResults: 60,
-    });
+    /* Pull a much wider net — paginate through up to 500 sent messages */
+    const SENT_QUERY = "in:sent -from:noreply -from:no-reply -from:mailer-daemon";
+    const SAMPLE_TARGET = 120;          // up from 30 — deeper signal
+    const FETCH_CAP     = 500;          // Gmail messages to consider
+    const PER_PAGE      = 100;
 
-    const messages = list.data.messages ?? [];
-    if (messages.length === 0) {
+    const messageIds: { id: string }[] = [];
+    let pageToken: string | undefined = undefined;
+    while (messageIds.length < FETCH_CAP) {
+      const params: { userId: string; q: string; maxResults: number; pageToken?: string } = {
+        userId: "me",
+        q: SENT_QUERY,
+        maxResults: PER_PAGE,
+      };
+      if (pageToken) params.pageToken = pageToken;
+      const list = await gmail.users.messages.list(params);
+      const batch: Array<{ id?: string | null }> = list.data.messages ?? [];
+      for (const msg of batch) {
+        if (typeof msg.id === "string") messageIds.push({ id: msg.id });
+      }
+      const next: string | null | undefined = list.data.nextPageToken;
+      if (!next || batch.length === 0) break;
+      pageToken = next;
+    }
+
+    if (messageIds.length === 0) {
       return NextResponse.json({ error: "No sent emails found" }, { status: 400 });
     }
 
-    /* Fetch bodies */
+    /* Fetch bodies in parallel batches of 10 — way faster than serial */
     const samples: string[] = [];
-    for (const m of messages) {
-      try {
-        const detail = await gmail.users.messages.get({ userId: "me", id: m.id!, format: "full" });
-        const text = stripQuoted(extractBody(detail.data.payload as Parameters<typeof extractBody>[0]));
-        const trimmed = text.trim();
-        if (trimmed.length >= 80 && trimmed.length <= 1500) {
-          samples.push(trimmed);
+    const BATCH = 10;
+    let scanned = 0;
+    for (let i = 0; i < messageIds.length && samples.length < SAMPLE_TARGET; i += BATCH) {
+      const slice = messageIds.slice(i, i + BATCH);
+      const bodies = await Promise.all(slice.map(async ({ id }) => {
+        try {
+          const detail = await gmail.users.messages.get({ userId: "me", id, format: "full" });
+          return stripQuoted(extractBody(detail.data.payload as Parameters<typeof extractBody>[0])).trim();
+        } catch {
+          return "";
         }
-        if (samples.length >= 30) break;
-      } catch { /* skip bad messages */ }
+      }));
+      scanned += slice.length;
+      for (const text of bodies) {
+        if (samples.length >= SAMPLE_TARGET) break;
+        /* Quality filter: substantive length, not just iPhone footer / OOO / auto-reply */
+        if (text.length < 60 || text.length > 4000) continue;
+        const lower = text.toLowerCase();
+        if (lower.startsWith("sent from my iphone") && text.length < 200) continue;
+        if (/^(out of office|i am out of|automatic reply|auto-reply)/i.test(text)) continue;
+        if (/unsubscribe/i.test(text) && text.length < 300) continue;
+        samples.push(text);
+      }
     }
 
     if (samples.length < 5) {
-      return NextResponse.json({ error: `Only ${samples.length} usable samples — need 5+ substantive sent emails.` }, { status: 400 });
+      return NextResponse.json({
+        error: `Only ${samples.length} usable samples after scanning ${scanned} sent emails — need 5+ substantive ones.`,
+      }, { status: 400 });
     }
 
-    /* Claude extracts the profile */
+    /* Claude extracts the profile — richer schema, more depth */
     const prompt = [
-      `You are analyzing email writing samples to build a voice fingerprint. The author is Max — 22, just graduated FSU, starts an Account Manager job July 2026.`,
+      `You are a forensic linguist analyzing ${samples.length} of Max's sent emails to build a HIGH-FIDELITY voice fingerprint that an AI will use to draft replies on his behalf.`,
       ``,
-      `Read all ${samples.length} sample emails below and extract a structured voice profile. Be SPECIFIC, not generic. The fingerprint will be used by an AI to draft replies in Max's voice — generic descriptions are useless.`,
+      `Max is 22, just graduated FSU, starts an Account Manager job July 2026. He likely writes in different registers — work/professional, customer-service complaints, personal/casual, transactional.`,
       ``,
-      `Return JSON only:`,
+      `Read EVERY sample. Be SPECIFIC, EVIDENCE-BASED, and SHARP. Generic platitudes ("uses polite language", "is professional") are useless and disqualifying. Cite actual phrases and patterns. Note when he code-switches between contexts.`,
+      ``,
+      `Return JSON only with this expanded schema:`,
       `{`,
-      `  "greeting_examples":  ["..." up to 5],`,
-      `  "signoff_examples":   ["..." up to 5],`,
-      `  "sentence_length":    "short" | "medium" | "long",`,
-      `  "formality":          "casual" | "neutral" | "professional",`,
-      `  "signature_phrases":  ["..." up to 8 — phrases or words Max uses repeatedly],`,
-      `  "punctuation_quirks": ["..." up to 5 — observable patterns, not guesses],`,
-      `  "voice_summary":      "2-3 sentence prose describing how Max writes"`,
+      `  "greeting_examples":      ["..." up to 8 — actual openings that recur, not paraphrased],`,
+      `  "signoff_examples":       ["..." up to 8],`,
+      `  "sentence_length":        "short" | "medium" | "long" | "varies",`,
+      `  "formality":              "casual" | "neutral" | "professional" | "varies-by-context",`,
+      `  "signature_phrases":      ["..." up to 12 — recurring phrases or mini-expressions, exact wording],`,
+      `  "punctuation_quirks":     ["..." up to 8 — observable patterns with examples],`,
+      `  "structural_habits":      ["..." up to 6 — paragraphing, list use, attachments, opening pattern, etc.],`,
+      `  "register_shifts":        ["..." up to 4 — when/how Max changes register. e.g. 'signs as Maximillian for institutional, Max for casual'. Empty array if no clear pattern.],`,
+      `  "voice_summary":          "3-4 sentence prose describing how Max writes — reads like a coach briefing a stand-in writer",`,
+      `  "do_list":                ["..." up to 5 — concrete things to ALWAYS do when drafting in his voice],`,
+      `  "dont_list":              ["..." up to 5 — concrete things to NEVER do]`,
       `}`,
       ``,
-      `── SAMPLES ──`,
+      `── SAMPLES (${samples.length}) ──`,
       samples.map((s, i) => `[${i+1}]\n${s}`).join("\n\n──\n\n"),
     ].join("\n");
 
     const r = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 2000,
+      model: "claude-sonnet-4-6",      // upgrade from Haiku — deeper reading on the foundational profile is worth it
+      max_tokens: 4000,
       messages: [{ role: "user", content: prompt }],
     });
 
@@ -151,11 +194,12 @@ export async function POST() {
     const m = text.match(/\{[\s\S]*\}/);
     if (!m) return NextResponse.json({ error: "Claude returned no profile" }, { status: 500 });
 
-    const parsed = JSON.parse(m[0]) as Omit<VoiceProfile, "sample_count" | "generated_at">;
+    const parsed = JSON.parse(m[0]) as Omit<VoiceProfile, "sample_count" | "generated_at" | "scanned_count">;
     const profile: VoiceProfile = {
       ...parsed,
-      sample_count: samples.length,
-      generated_at: new Date().toISOString(),
+      sample_count:  samples.length,
+      scanned_count: scanned,
+      generated_at:  new Date().toISOString(),
     };
 
     /* Upsert into settings k/v */

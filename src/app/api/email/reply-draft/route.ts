@@ -24,7 +24,11 @@ interface VoiceProfile {
   formality?:            string;
   signature_phrases?:    string[];
   punctuation_quirks?:   string[];
+  structural_habits?:    string[];
+  register_shifts?:      string[];
   voice_summary?:        string;
+  do_list?:              string[];
+  dont_list?:            string[];
 }
 
 export async function POST(req: Request) {
@@ -67,6 +71,10 @@ export async function POST(req: Request) {
       if (voice.signoff_examples?.length)  lines.push(`- Sign-offs used: ${voice.signoff_examples.join(" | ")}`);
       if (voice.signature_phrases?.length) lines.push(`- Signature phrases: ${voice.signature_phrases.join(" | ")}`);
       if (voice.punctuation_quirks?.length) lines.push(`- Punctuation quirks: ${voice.punctuation_quirks.join(" | ")}`);
+      if (voice.structural_habits?.length) lines.push(`- Structural habits: ${voice.structural_habits.join(" | ")}`);
+      if (voice.register_shifts?.length)   lines.push(`- Register shifts: ${voice.register_shifts.join(" | ")}`);
+      if (voice.do_list?.length)           lines.push(`- ALWAYS: ${voice.do_list.join(" | ")}`);
+      if (voice.dont_list?.length)         lines.push(`- NEVER:  ${voice.dont_list.join(" | ")}`);
       lines.push(``);
     } else {
       lines.push(`(No writing-style profile yet — match a casual-direct young-professional tone.)`);
