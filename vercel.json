@@ -16,6 +16,7 @@
     { "path": "/api/cron/paycheck-detector","schedule": "30 10 * * *"        },
     { "path": "/api/cron/recurring-detect", "schedule": "0 9 * * 1"           },
     { "path": "/api/cron/anomaly-detect",   "schedule": "0 8 * * *"           },
-    { "path": "/api/cron/money-dna-refresh","schedule": "0 8 * * 1"           }
+    { "path": "/api/cron/money-dna-refresh","schedule": "0 8 * * 1"           },
+    { "path": "/api/cron/quarterly-narrative","schedule": "0 13 1 1,4,7,10 *" }
   ]
 }

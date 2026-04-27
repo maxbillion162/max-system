@@ -28,6 +28,8 @@ import { MerchantDrilldown } from "@/components/finance/MerchantDrilldown";
 import { InvestmentThesisCard } from "@/components/finance/InvestmentThesisCard";
 import { BillsCalendar } from "@/components/finance/BillsCalendar";
 import { ManualTxnModal } from "@/components/finance/ManualTxnModal";
+import { QuarterlyReport } from "@/components/finance/QuarterlyReport";
+import { ScenarioTracker } from "@/components/finance/ScenarioTracker";
 import { cashFlowRunway, netWorthBreakdown, delta24h } from "@/lib/finance-math";
 import { normalizeAccountType } from "@/lib/plaid";
 import type { Account as FinAccount, AccountType, WealthSnapshot } from "@/types/finance";
@@ -664,9 +666,11 @@ export default function FinancePage() {
             />
             <FinanceQueryBar />
             <NetWorthChart history={wealthSnapshots} loading={!accountsLoaded} />
+            <QuarterlyReport />
             <CashFlowForecast />
             <MoneyDNA />
             <NetWorthSimulator />
+            <ScenarioTracker />
             <WhatIfEngine />
             <PlaidDiagnostics onChanged={loadAll} />
             <AccountHub
