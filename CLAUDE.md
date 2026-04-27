@@ -103,7 +103,7 @@ src/
       chat/page.tsx             # M.A.X. chat interface
       discipline/page.tsx       # Habits + Goals merged daily-view (full CRUD, momentum, heatmap, milestone celebration, smart suggestions)
       calendar/page.tsx         # Google Calendar (day/week/month views) + tasks
-      email/page.tsx            # Gmail (3-panel: folders, list, reader)
+      email/page.tsx            # M.A.X. Email (P4 rebuild): briefing strip + folder rail + list + detail. Smart folders (action/waiting/newsletter/fyi/noise), trainable rules engine, snooze, reclassify-with-rule, real send + voice-matched AI replies, full keyboard shortcuts. Backed by /api/email/* + email_intel table.
       feed/page.tsx             # News feed (breaking ticker, topic filters)
       finance/page.tsx          # Finance Hub — 4-tab layout: Overview, Budget, Investments, Transactions
       budget/page.tsx           # Redirect → /dashboard/finance
@@ -133,9 +133,19 @@ src/
       market/route.ts           # Alpha Vantage market indices
       finance-news/route.ts     # Finance news via Tavily
       memory/route.ts           # Save message to memory from chat UI
-      email/digest/route.ts
-      email/reply/route.ts
-      email/summaries/route.ts  # AI summary line per email (batch)
+      email/digest/route.ts            # legacy digest (pre-P4)
+      email/reply/route.ts             # legacy AI-reply (pre-P4) — replaced by /api/email/reply-draft
+      email/summaries/route.ts         # legacy batched summaries (pre-P4) — replaced by /api/email/intel
+      email/send/route.ts              # P4: real Gmail send (RFC822, threadId+inReplyTo headers)
+      email/writing-style/route.ts     # P4: voice-fingerprint extractor; settings.writing_style_profile
+      email/intel/route.ts             # P4: GET intel rows + POST refresh-from-Gmail
+      email/intel-actions/route.ts     # P4: PATCH archive/star/unread on a thread
+      email/thread/[id]/route.ts       # P4: full Gmail thread fetch + auto-mark-read
+      email/rules/route.ts             # P4: rules engine CRUD
+      email/snooze/route.ts            # P4: set/clear snooze_until
+      email/reclassify/route.ts        # P4: manual override + optional auto-rule creation (the learning hook)
+      email/briefing/route.ts          # P4: top-of-page Claude-ranked briefing (cached 30 min)
+      email/reply-draft/route.ts       # P4: Claude generates a voice-matched reply
       feed/summary/route.ts
       feed/top3/route.ts        # Claude picks top 3 articles for Max
       dashboard-brief/route.ts  # M.A.X. Brief for dashboard
@@ -158,6 +168,7 @@ src/
       cron/trend-detection/route.ts   # Daily — produces max_insight notifications via deterministic rules
       cron/memory-extract/route.ts    # Daily — pulls durable facts from chat_messages → memories
       cron/feedback-rollup/route.ts   # Daily — feedback table → learned_preference memories
+      cron/email-intel-refresh/route.ts # P4: every 30 min during waking hours — pulls Gmail, classifies new threads via rules→Claude
   lib/
     max-agent.ts    # CORE: agentic loop, tool executor, context injection, real streaming. SYSTEM prompt + HISTORY_WINDOW (40) live here.
     max-tools.ts    # All tool implementations (Supabase + Google + all APIs)
@@ -216,7 +227,9 @@ src/
 | `budget_allocations` | Zero-based budget per category (category, budgeted, period_start) |
 | `accounts` | Connected bank accounts (plaid_account_id, institution, balances) |
 | `settings` | Key-value preference store (key, value JSONB) — stores prefs, spotify_tokens, notification_prefs, feed interests |
-| `writing_style` | Max's analyzed email voice profile |
+| `email_intel` | P4: per-thread Claude classification (action/waiting/newsletter/fyi/noise) + summary + why_important + action_required + importance_score + snooze_until + archived/starred. Source can be `rule` / `ai` / `manual`. |
+| `email_rules` | P4: Max-editable rules engine. Trainable from 👎-feedback via `/api/email/reclassify` with `make_rule:true` — auto-creates a rule with `source='feedback'` so future matching threads skip Claude entirely. |
+| Voice profile | Stored in `settings.value` under key `writing_style_profile`. Bootstrapped via `POST /api/email/writing-style`. (No dedicated `writing_style` table.) |
 
 ---
 
