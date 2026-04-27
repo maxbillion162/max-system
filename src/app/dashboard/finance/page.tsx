@@ -19,6 +19,10 @@ import { BudgetTable } from "@/components/finance/BudgetTable";
 import { CategoryDetailPanel } from "@/components/finance/CategoryDetailPanel";
 import { BudgetReallocateModal } from "@/components/finance/BudgetReallocateModal";
 import { SpendingIntel } from "@/components/finance/SpendingIntel";
+import { CashFlowForecast } from "@/components/finance/CashFlowForecast";
+import { NetWorthSimulator } from "@/components/finance/NetWorthSimulator";
+import { WhatIfEngine } from "@/components/finance/WhatIfEngine";
+import { SubscriptionAudit } from "@/components/finance/SubscriptionAudit";
 import { cashFlowRunway, netWorthBreakdown, delta24h } from "@/lib/finance-math";
 import { normalizeAccountType } from "@/lib/plaid";
 import type { Account as FinAccount, AccountType, WealthSnapshot } from "@/types/finance";
@@ -653,6 +657,9 @@ export default function FinancePage() {
             />
             <FinanceQueryBar />
             <NetWorthChart history={wealthSnapshots} loading={!accountsLoaded} />
+            <CashFlowForecast />
+            <NetWorthSimulator />
+            <WhatIfEngine />
             <PlaidDiagnostics onChanged={loadAll} />
             <AccountHub
               accounts={finAccounts}
@@ -747,6 +754,9 @@ export default function FinancePage() {
               categoryColors={CAT_COLORS}
               onCategoryClick={(cat) => setSelectedBudgetCategory(cat)}
             />
+
+            {/* Subscription Audit — F3 — recurring detector with cancel/keep/negotiate per sub */}
+            <SubscriptionAudit />
 
             {/* Tinder review */}
             {reviewing && reviewQueue.length > 0 && (
