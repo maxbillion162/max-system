@@ -201,6 +201,8 @@ export async function POST() {
       scanned_count: scanned,
       generated_at:  new Date().toISOString(),
     };
+    /* Deployment marker so we can tell new code is live */
+    (profile as VoiceProfile & { version: string }).version = "v2-sonnet-120";
 
     /* Upsert into settings k/v */
     const { error: upsertErr } = await supabase
