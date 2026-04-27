@@ -50,12 +50,12 @@ The agent is the product. All three surfaces are interfaces to the same underlyi
 
 ## RESUME / WHERE WE ARE
 
-When picking up a fresh session, **read these in order**:
-1. `~/.claude/projects/-Users-max-Desktop-Claude-Code-Project-1/memory/MEMORY.md` — auto-loaded; contains the most recent session recap as the top entry
-2. `~/.claude/plans/now-i-want-to-radiant-popcorn.md` — phase-by-phase build plan with current ✅/⏸ status
-3. `git log --oneline -25` — concrete record of what's shipped
+Read in this order:
+1. `~/.claude/projects/-Users-max-Desktop-Claude-Code-Project-1/memory/MEMORY.md` — auto-loaded; top entry is `project_current_state.md`
+2. `git log --oneline -25` — truth about what shipped
+3. The plan files only if Max references a specific phase
 
-Don't restate phase status here in this file — it changes too fast. The memory + plan files are the source of truth.
+Don't restate phase status here — it changes. State lives in memory + git.
 
 ---
 
@@ -79,7 +79,7 @@ Don't restate phase status here in this file — it changes too fast. The memory
 | Music | Spotify Web API (OAuth connected — tokens in settings table) |
 | SMS | Twilio (trial mode — upgrade when ready) |
 | Reddit | Public JSON API (no key needed) |
-| Bank data | Plaid (sandbox — upgrade to Development for real bank) |
+| Bank data | Plaid (production — Diagnostics panel on Finance Overview is source of truth) |
 | Fear & Greed | Alternative.me (free, no key) |
 | Voice (planned) | Vapi.ai |
 
@@ -133,19 +133,10 @@ src/
       market/route.ts           # Alpha Vantage market indices
       finance-news/route.ts     # Finance news via Tavily
       memory/route.ts           # Save message to memory from chat UI
-      email/digest/route.ts            # legacy digest (pre-P4)
-      email/reply/route.ts             # legacy AI-reply (pre-P4) — replaced by /api/email/reply-draft
-      email/summaries/route.ts         # legacy batched summaries (pre-P4) — replaced by /api/email/intel
-      email/send/route.ts              # P4: real Gmail send (RFC822, threadId+inReplyTo headers)
-      email/writing-style/route.ts     # P4: voice-fingerprint extractor; settings.writing_style_profile
-      email/intel/route.ts             # P4: GET intel rows + POST refresh-from-Gmail
-      email/intel-actions/route.ts     # P4: PATCH archive/star/unread on a thread
-      email/thread/[id]/route.ts       # P4: full Gmail thread fetch + auto-mark-read
-      email/rules/route.ts             # P4: rules engine CRUD
-      email/snooze/route.ts            # P4: set/clear snooze_until
-      email/reclassify/route.ts        # P4: manual override + optional auto-rule creation (the learning hook)
-      email/briefing/route.ts          # P4: top-of-page Claude-ranked briefing (cached 30 min)
-      email/reply-draft/route.ts       # P4: Claude generates a voice-matched reply
+      email/                           # P4 rebuild — see project_current_state.md "Email system" for architecture.
+                                       # Routes: send, writing-style, intel, intel-actions, thread/[id],
+                                       # rules, snooze, reclassify, briefing, reply-draft.
+                                       # Plus legacy: digest, reply, summaries (superseded; safe to remove later).
       feed/summary/route.ts
       feed/top3/route.ts        # Claude picks top 3 articles for Max
       dashboard-brief/route.ts  # M.A.X. Brief for dashboard
@@ -220,13 +211,13 @@ src/
 | `chat_messages` | Unified conversation log — web chat, floating bubble, AND Telegram all write here. Has `surface` column. |
 | `notifications` | Real-time alerts (type, title, body, read, action_url). Written via `notify()` only — do not insert directly. |
 | `feedback` | 👍/👎 ratings on AI artifacts (artifact_type, artifact_id, rating ±1, note, metadata). Rolled up daily into learned preferences. |
-| `pending_actions` | Tier-3 agency: actions awaiting Max's Telegram ✓/✗ approval. Executor wiring still pending (Phase 2.5). |
+| `pending_actions` | Tier-3 agency: actions awaiting Telegram ✓/✗ approval. Executor + callback handler fully wired. |
 | `activity_log` | M.A.X. action history (type, description, detail JSONB) |
 | `transactions` | Plaid + manual transactions (date, amount, merchant, category, source) |
 | `merchant_rules` | Learned merchant→category rules (merchant_pattern, category) |
 | `budget_allocations` | Zero-based budget per category (category, budgeted, period_start) |
 | `accounts` | Connected bank accounts (plaid_account_id, institution, balances) |
-| `settings` | Key-value preference store (key, value JSONB) — stores prefs, spotify_tokens, notification_prefs, feed interests |
+| `settings` | Key-value preference store (key, value JSONB) — stores prefs, spotify_tokens, notification_prefs, feed interests, `writing_style_profile`, `email_briefing_cache`, paycheck_history |
 | `email_intel` | P4: per-thread Claude classification (action/waiting/newsletter/fyi/noise) + summary + why_important + action_required + importance_score + snooze_until + archived/starred. Source can be `rule` / `ai` / `manual`. |
 | `email_rules` | P4: Max-editable rules engine. Trainable from 👎-feedback via `/api/email/reclassify` with `make_rule:true` — auto-creates a rule with `source='feedback'` so future matching threads skip Claude entirely. |
 | Voice profile | Stored in `settings.value` under key `writing_style_profile`. Bootstrapped via `POST /api/email/writing-style`. (No dedicated `writing_style` table.) |
@@ -250,11 +241,9 @@ This is the core of M.A.X. Understand it before touching anything AI-related.
 
 **Agency tiers** (encoded in the SYSTEM prompt — agent self-enforces):
 - **Tier 1** (autonomous): all reads, transaction categorization, save/recall memory, web search
-- **Tier 2** (autonomous+): draft email (never send), create tasks, set reminders, **proactive Telegram sends with genuinely useful insights**
-- **Tier 3** (confirm first): create/edit calendar, send SMS, update wealth, delete anything, change goal target/deadline
-- **Tier 4** (gated — do not execute): reschedule existing events, phone bookings, send email, financial transactions
-
-The Tier-3 Telegram ✓/✗ executor flow is **not yet wired** — `pending_actions` table exists but no callback handler. Phase 2.5.
+- **Tier 2** (autonomous+): draft email, create tasks, set reminders, proactive Telegram insights
+- **Tier 3** (Telegram ✓/✗ approval — fully wired): create/edit calendar, send SMS, send email, update wealth, delete anything, change goal target/deadline. The full executor flow is live in `pending-actions.ts`; agent calls Tier-3 tools and they route through `enqueuePendingAction()` → Telegram card → `resolvePendingAction()` on tap.
+- **Tier 4** (gated — do not execute): reschedule existing events, phone bookings, financial transactions
 
 **Tools (36 total):**
 - Habits: `read_habits`, `toggle_habit`, `add_habit`, `delete_habit`
@@ -280,34 +269,14 @@ The Tier-3 Telegram ✓/✗ executor flow is **not yet wired** — `pending_acti
 
 ## DESIGN SYSTEM
 
-**Theme:** Dark futuristic HUD. Deep blue-black backgrounds, gradient glass cards, single blue accent. Think high-end AI tool — not a toy, not a consumer app. Every element should feel intentional.
+Locked aesthetic: **Bloomberg-density + Quant-HQ sharp**. Pure black `#000000` background, ice-blue accent `#7DB8E8`. Read [`project_design_system.md`](~/.claude/projects/-Users-max-Desktop-Claude-Code-Project-1/memory/project_design_system.md) and [`feedback_design_bar.md`](~/.claude/projects/-Users-max-Desktop-Claude-Code-Project-1/memory/feedback_design_bar.md) for full palette/type/shape rules. Live values are in `src/app/globals.css`.
 
-**CSS Variables (defined in `globals.css`):**
-- `--bg: #06080f` — main background (deep space black)
-- `--surface / --surface2 / --surface3` — layered card backgrounds
-- `--border / --border2` — blue-tinted subtle borders
-- `--blue: #4d90ff` — THE ONLY accent color. Use this for everything interactive.
-- `--blue-dim: rgba(77,144,255,0.08)` — hover/active backgrounds
-- `--blue-border: rgba(77,144,255,0.18)` — highlighted borders
-- `--blue-glow: rgba(77,144,255,0.05)` — ambient glow effects
-- `--green / --red / --amber` — muted status colors (data/notifications only, not decoration)
-- `--t1 / --t2 / --t3 / --t4` — text hierarchy (near-white → invisible)
-- Legacy aliases (`--teal`, `--cyan`, `--orange`) all resolve to `--blue` or `--amber` — do NOT use them directly in new code, use the primary variables.
+Patterns:
+- Newer surfaces (Finance, Email): `linear-gradient(160deg, #0f141d 0%, #080b11 100%)` cards, 3px radius, `rgba(125,184,232,0.10)` borders, monospace `0.32em` letterspaced labels, underline-active tabs.
+- Legacy `<HudCard>` is still used on dashboard / discipline; do NOT introduce HudCard in new finance/email code.
+- All inline styles, no Tailwind for visual styling. Single ice-blue accent — no cyan, teal, or rainbow colors.
 
-**Card style (`<HudCard>`):**
-- Gradient background: `linear-gradient(145deg, #111826, #0b0e1a)`
-- Border: `1px solid rgba(77,144,255,0.13)`
-- Inner top glow: `inset 0 1px 0 rgba(77,144,255,0.07)`
-- Use `accent` prop for cards that should feel more prominent (slightly stronger glow)
-- Border radius: 10px
-
-**Component patterns:**
-- Cards: always use `<HudCard>` — read source before assuming props
-- Charts: use `<Sparkline>` — read source before assuming props
-- All inline styles (no Tailwind classes for visual styling) — this is intentional
-- Sidebar accent color is blue throughout — do NOT introduce cyan or teal
-
-**Design bar is HIGH.** If it looks like a prototype, it doesn't ship. Hover states, transitions, loading states — all required. No placeholder UI. No rainbow of colors — if you're adding color, ask whether blue + opacity handles it first.
+**Bar is HIGH.** If it looks like a prototype, it doesn't ship. Hover states, transitions, loading states all required. No placeholder UI.
 
 ---
 
@@ -329,23 +298,11 @@ The Tier-3 Telegram ✓/✗ executor flow is **not yet wired** — `pending_acti
 3. **Use `notify()` for proactive alerts, not direct sendNotification.** Direct Telegram sends in `src/app/api/telegram/route.ts` are for conversational chat replies only. Anything that should land in the dashboard bell goes through `notify()`.
 4. **Tier-3 actions confirm first** (calendar create, SMS, deletes, wealth updates, goal target changes). Until the Tier-3 Telegram executor is wired, the agent confirms via text and waits for the next user message — don't bypass.
 5. **Quality bar:** see `~/.claude/projects/-Users-max-Desktop-Claude-Code-Project-1/memory/feedback_quality_bar.md`. No half-done features. Empty + error states designed at the same time as golden path.
-6. **Plaid is in sandbox mode.** To connect real bank: go to dashboard.plaid.com → switch to Development → get Development Secret → update `PLAID_ENV=development` + new `PLAID_SECRET` in `.env.local` AND Vercel env vars → redeploy.
-7. **Twilio is in trial mode.** SMS only works to verified numbers. Upgrade account to remove restriction when ready.
+6. **Plaid is in production mode.** Diagnostics panel on `/dashboard/finance` Overview is the source of truth — ask Max what it shows when there are doubts.
+7. **Twilio is in trial mode.** SMS only works to verified numbers. Upgrade when ready.
 8. **M.A.X. personality:** Jarvis capability + TARS dry wit. Direct, capable, never sycophantic. Never starts with "Certainly!", "Of course!", "Great question!".
 9. **Google OAuth tokens** are environment-specific — localhost and Vercel have separate redirect URIs and may need separate re-auth.
-
----
-
-## CURRENT PRIORITIES
-
-See the plan file (`~/.claude/plans/now-i-want-to-radiant-popcorn.md`) and most recent session memory for live status. High-level open phases:
-
-- **Phase 2.5** — Tier-3 Telegram ✓/✗ confirmation executor (pending_actions table exists; callback handler + agent routing pending)
-- **Phase 4** — Email "quintessential rebuild" (Max wants to never look at Gmail again — not draft-only)
-- **Phase 5** — Finance complete budgeting app (depends on Plaid Development swap from Max)
-- Plaid Development swap (env var change Max controls)
-- Writing style analysis (drives email drafts in his voice)
-- Voice interface via Vapi.ai (deferred)
+10. **Vercel Hobby plan only allows daily cron schedules.** `*/30` or hour-range patterns silently break ALL deploys. Always use daily-pattern crons (`0 X * * *` or weekly).
 
 ---
 
