@@ -25,6 +25,9 @@ import { WhatIfEngine } from "@/components/finance/WhatIfEngine";
 import { SubscriptionAudit } from "@/components/finance/SubscriptionAudit";
 import { MoneyDNA } from "@/components/finance/MoneyDNA";
 import { MerchantDrilldown } from "@/components/finance/MerchantDrilldown";
+import { InvestmentThesisCard } from "@/components/finance/InvestmentThesisCard";
+import { BillsCalendar } from "@/components/finance/BillsCalendar";
+import { ManualTxnModal } from "@/components/finance/ManualTxnModal";
 import { cashFlowRunway, netWorthBreakdown, delta24h } from "@/lib/finance-math";
 import { normalizeAccountType } from "@/lib/plaid";
 import type { Account as FinAccount, AccountType, WealthSnapshot } from "@/types/finance";
@@ -203,6 +206,7 @@ type Tab = "overview" | "budget" | "investments";
 export default function FinancePage() {
   const [tab,          setTab]          = useState<Tab>("overview");
   const [drilldownMerchant, setDrilldownMerchant] = useState<string | null>(null);
+  const [manualTxnOpen, setManualTxnOpen] = useState(false);
   const [accounts,     setAccounts]     = useState<PlaidAccount[]>([]);
   const [wealth,       setWealth]       = useState<WealthData>(EMPTY_WEALTH);
   const [ira,          setIra]          = useState<IRAFund[]>([]);
@@ -737,6 +741,9 @@ export default function FinancePage() {
                 <button onClick={() => setModal("addAlloc")} style={{ padding: "8px 14px", borderRadius: 2, background: "transparent", border: "1px solid var(--border)", color: "var(--t2)", cursor: "pointer", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 10, letterSpacing: "0.18em", fontWeight: 700 }}>
                   + ADD CATEGORY
                 </button>
+                <button onClick={() => setManualTxnOpen(true)} style={{ padding: "8px 14px", borderRadius: 2, background: "transparent", border: "1px solid var(--border)", color: "var(--t2)", cursor: "pointer", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 10, letterSpacing: "0.18em", fontWeight: 700 }}>
+                  + MANUAL TXN
+                </button>
               </div>
             </div>
 
@@ -762,6 +769,9 @@ export default function FinancePage() {
 
             {/* Subscription Audit — F3 — recurring detector with cancel/keep/negotiate per sub */}
             <SubscriptionAudit />
+
+            {/* Bills Calendar — F5 — month-grid with weekly totals, click bill to edit */}
+            <BillsCalendar bills={bills.map(b => ({ name: b.name, amt: b.amt, due_day: b.due }))} onEditBill={() => setModal("bills")} />
 
             {/* Tinder review */}
             {reviewing && reviewQueue.length > 0 && (
@@ -934,6 +944,9 @@ export default function FinancePage() {
           />
         )}
 
+        {/* Manual transaction modal — F5 */}
+        <ManualTxnModal open={manualTxnOpen} onClose={() => setManualTxnOpen(false)} onSaved={loadAll} />
+
         {/* Reallocate modal */}
         <BudgetReallocateModal
           open={reallocateOpen}
@@ -1058,6 +1071,12 @@ export default function FinancePage() {
               </div>
             </HudCard>
 
+            {/* Crypto theses — F5 */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <InvestmentThesisCard holding_id="BTC" holding_type="crypto" display_name="Bitcoin" />
+              <InvestmentThesisCard holding_id="XRP" holding_type="crypto" display_name="Ripple" />
+            </div>
+
             {/* IRA */}
             <HudCard style={{ padding:"24px 28px" }} delay={0.08}>
               <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16 }}>
@@ -1082,6 +1101,13 @@ export default function FinancePage() {
                 ))}
               </div>
             </HudCard>
+
+            {/* IRA fund theses — F5 */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+              {["MDDVX", "RPEAX", "PTTRX"].map(sym => (
+                <InvestmentThesisCard key={sym} holding_id={sym} holding_type="fund" display_name={sym} />
+              ))}
+            </div>
 
             {/* Emergency Fund */}
             <HudCard style={{ padding:"24px 28px" }} delay={0.1}>
