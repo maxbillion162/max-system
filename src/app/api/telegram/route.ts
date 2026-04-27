@@ -10,6 +10,7 @@ import {
   saveTelegramMessage, loadTelegramHistory,
 } from "@/lib/max-tools";
 import { resolvePendingAction, answerCallbackQuery } from "@/lib/pending-actions";
+import { createClient } from "@supabase/supabase-js";
 
 const BOT_TOKEN       = process.env.TELEGRAM_BOT_TOKEN;
 const ALLOWED_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
@@ -323,15 +324,56 @@ export async function POST(request: Request) {
         return NextResponse.json({ ok: true });
       }
       const m = data.match(/^pa:(approve|reject):(.+)$/);
-      if (!m) {
-        await answerCallbackQuery(cb.id);
+      if (m) {
+        const decision = m[1] as "approve" | "reject";
+        const id       = m[2];
+        await answerCallbackQuery(cb.id, decision === "approve" ? "Executing…" : "Rejected");
+        await resolvePendingAction(id, decision);
         return NextResponse.json({ ok: true });
       }
-      const decision = m[1] as "approve" | "reject";
-      const id       = m[2];
-      // Acknowledge immediately so Max's spinner clears
-      await answerCallbackQuery(cb.id, decision === "approve" ? "Executing…" : "Rejected");
-      await resolvePendingAction(id, decision);
+
+      /* F4 anomaly review — `an:legit:<id>` (confirm legit) | `an:flag:<id>` (flag for dispute) */
+      const am = data.match(/^an:(legit|flag):(.+)$/);
+      if (am) {
+        const verdict = am[1] as "legit" | "flag";
+        const anId    = am[2];
+        const newStatus = verdict === "legit" ? "confirmed" : "flagged";
+        await answerCallbackQuery(cb.id, verdict === "legit" ? "Confirmed legit" : "Flagged for dispute");
+
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        );
+        await supabase.from("anomaly_log").update({
+          status:       newStatus,
+          resolved_via: "telegram_approval",
+          resolved_at:  new Date().toISOString(),
+        }).eq("id", anId);
+
+        /* Edit the original card so Max sees the resolution */
+        try {
+          if (cb.message?.message_id && cb.message?.chat?.id) {
+            const symbol = verdict === "legit" ? "✅" : "🚩";
+            const headerWord = verdict === "legit" ? "Confirmed Legit" : "Flagged for Dispute";
+            const originalText = cb.message.text ?? "";
+            const stripped = originalText.replace(/^[^\n]*\n*/, "");
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`, {
+              method:  "POST",
+              headers: { "Content-Type": "application/json" },
+              body:    JSON.stringify({
+                chat_id:    cb.message.chat.id,
+                message_id: cb.message.message_id,
+                text:       `${symbol} *${headerWord}*\n${stripped}`,
+                parse_mode: "Markdown",
+                reply_markup: { inline_keyboard: [] },
+              }),
+            });
+          }
+        } catch { /* non-fatal */ }
+        return NextResponse.json({ ok: true });
+      }
+
+      await answerCallbackQuery(cb.id);
       return NextResponse.json({ ok: true });
     }
 

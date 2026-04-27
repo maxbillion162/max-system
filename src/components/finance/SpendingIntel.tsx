@@ -67,9 +67,10 @@ function fmtInt(n: number): string { return Math.round(n).toLocaleString("en-US"
 interface Props {
   categoryColors: Record<string, string>;
   onCategoryClick?: (category: string) => void;
+  onMerchantClick?: (merchant: string) => void;
 }
 
-export function SpendingIntel({ categoryColors, onCategoryClick }: Props) {
+export function SpendingIntel({ categoryColors, onCategoryClick, onMerchantClick }: Props) {
   const [data, setData] = useState<InsightsData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -256,7 +257,7 @@ export function SpendingIntel({ categoryColors, onCategoryClick }: Props) {
                     const max = Math.max(...data.top_merchants.slice(0, 8).map(x => x.total));
                     const w = max > 0 ? (m.total / max) * 100 : 0;
                     return (
-                      <div key={m.merchant} style={{ padding: "5px 0" }}>
+                      <div key={m.merchant} onClick={() => onMerchantClick?.(m.merchant)} style={{ padding: "5px 0", cursor: onMerchantClick ? "pointer" : "default" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 3 }}>
                           <span style={{ fontSize: 12, color: "var(--t1)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>{m.merchant}</span>
                           <div style={{ display: "flex", gap: 8 }}>
@@ -326,9 +327,10 @@ export function SpendingIntel({ categoryColors, onCategoryClick }: Props) {
               ) : (
                 <div style={{ display: "flex", flexDirection: "column" }}>
                   {data.recurring.slice(0, 8).map((r, i) => (
-                    <div key={r.merchant + i} style={{
+                    <div key={r.merchant + i} onClick={() => onMerchantClick?.(r.merchant)} style={{
                       display: "flex", justifyContent: "space-between", alignItems: "center",
                       padding: "7px 0", borderBottom: i < Math.min(7, data.recurring.length - 1) ? "1px solid var(--border)" : "none",
+                      cursor: onMerchantClick ? "pointer" : "default",
                     }}>
                       <div style={{ minWidth: 0 }}>
                         <p style={{ fontSize: 12, color: "var(--t1)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -361,9 +363,10 @@ export function SpendingIntel({ categoryColors, onCategoryClick }: Props) {
                 >
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 8 }}>
                     {data.anomalies.slice(0, 6).map((a, i) => (
-                      <div key={i} style={{
+                      <div key={i} onClick={() => onMerchantClick?.(a.merchant)} style={{
                         background: "var(--surface)", border: "1px solid rgba(200,90,90,0.18)",
                         borderRadius: 2, padding: "9px 12px",
+                        cursor: onMerchantClick ? "pointer" : "default",
                       }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
                           <span style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)" }}>{a.merchant}</span>

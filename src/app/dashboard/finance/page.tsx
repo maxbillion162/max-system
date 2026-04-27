@@ -23,6 +23,8 @@ import { CashFlowForecast } from "@/components/finance/CashFlowForecast";
 import { NetWorthSimulator } from "@/components/finance/NetWorthSimulator";
 import { WhatIfEngine } from "@/components/finance/WhatIfEngine";
 import { SubscriptionAudit } from "@/components/finance/SubscriptionAudit";
+import { MoneyDNA } from "@/components/finance/MoneyDNA";
+import { MerchantDrilldown } from "@/components/finance/MerchantDrilldown";
 import { cashFlowRunway, netWorthBreakdown, delta24h } from "@/lib/finance-math";
 import { normalizeAccountType } from "@/lib/plaid";
 import type { Account as FinAccount, AccountType, WealthSnapshot } from "@/types/finance";
@@ -200,6 +202,7 @@ type Tab = "overview" | "budget" | "investments";
 
 export default function FinancePage() {
   const [tab,          setTab]          = useState<Tab>("overview");
+  const [drilldownMerchant, setDrilldownMerchant] = useState<string | null>(null);
   const [accounts,     setAccounts]     = useState<PlaidAccount[]>([]);
   const [wealth,       setWealth]       = useState<WealthData>(EMPTY_WEALTH);
   const [ira,          setIra]          = useState<IRAFund[]>([]);
@@ -658,6 +661,7 @@ export default function FinancePage() {
             <FinanceQueryBar />
             <NetWorthChart history={wealthSnapshots} loading={!accountsLoaded} />
             <CashFlowForecast />
+            <MoneyDNA />
             <NetWorthSimulator />
             <WhatIfEngine />
             <PlaidDiagnostics onChanged={loadAll} />
@@ -753,6 +757,7 @@ export default function FinancePage() {
             <SpendingIntel
               categoryColors={CAT_COLORS}
               onCategoryClick={(cat) => setSelectedBudgetCategory(cat)}
+              onMerchantClick={(m) => setDrilldownMerchant(m)}
             />
 
             {/* Subscription Audit — F3 — recurring detector with cancel/keep/negotiate per sub */}
@@ -919,6 +924,15 @@ export default function FinancePage() {
             await loadAll();
           }}
         />
+
+        {/* Merchant drilldown modal — F4 — opens from any merchant click in SpendingIntel etc */}
+        {drilldownMerchant && (
+          <MerchantDrilldown
+            merchant={drilldownMerchant}
+            onClose={() => setDrilldownMerchant(null)}
+            onCategoryChanged={loadAll}
+          />
+        )}
 
         {/* Reallocate modal */}
         <BudgetReallocateModal
