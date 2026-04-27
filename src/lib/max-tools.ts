@@ -153,6 +153,46 @@ export async function draftEmail(to: string, subject: string, body: string, thre
   return { success: true, draftId: res.data.id };
 }
 
+/**
+ * Real send via Gmail API. Always Tier-3 — never auto-send. The agent
+ * can only invoke this through pending_actions (Telegram ✓ approval),
+ * and the UI Compose modal calls it directly only on an explicit click.
+ */
+export async function sendEmail(opts: {
+  to:           string;
+  subject:      string;
+  body:         string;
+  threadId?:    string;
+  inReplyTo?:   string;        // Message-ID of the email being replied to
+  cc?:          string;
+  bcc?:         string;
+}) {
+  const auth = await getAuthenticatedClient();
+  if (!auth) return { error: "Gmail not connected" };
+  const gmail = google.gmail({ version: "v1", auth });
+
+  const headers: string[] = [
+    `To: ${opts.to}`,
+    `Subject: ${opts.subject}`,
+    "Content-Type: text/plain; charset=utf-8",
+  ];
+  if (opts.cc)        headers.push(`Cc: ${opts.cc}`);
+  if (opts.bcc)       headers.push(`Bcc: ${opts.bcc}`);
+  if (opts.inReplyTo) {
+    headers.push(`In-Reply-To: ${opts.inReplyTo}`);
+    headers.push(`References: ${opts.inReplyTo}`);
+  }
+
+  const raw = Buffer.from([...headers, "", opts.body].join("\r\n"))
+    .toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+  const res = await gmail.users.messages.send({
+    userId: "me",
+    requestBody: { raw, threadId: opts.threadId },
+  });
+  return { success: true, messageId: res.data.id, threadId: res.data.threadId };
+}
+
 /* ────────────────────────────────── CRYPTO ── */
 export async function readCrypto() {
   const prices = await fetchCryptoPrices();

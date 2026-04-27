@@ -24,6 +24,7 @@ import {
   deleteHabit,
   deleteTask,
   deleteGoal,
+  sendEmail,
 } from "@/lib/max-tools";
 
 /* ─── Tier-3 tool registry ─────────────────────────────────────── */
@@ -34,6 +35,7 @@ export const TIER_3_TOOLS = new Set([
   "delete_habit",
   "delete_task",
   "delete_goal",
+  "send_email",   // P4 — real Gmail send. Auto-send forbidden by CLAUDE.md, so always Tier-3.
 ]);
 
 /* ─── Supabase ─────────────────────────────────────────────────── */
@@ -177,6 +179,20 @@ async function runTier3Tool(name: string, input: Record<string, unknown>): Promi
       case "delete_goal": {
         await deleteGoal(input.id as string);
         return { ok: true, result: "Goal deleted" };
+      }
+      case "send_email": {
+        const r = await sendEmail({
+          to:        input.to as string,
+          subject:   input.subject as string,
+          body:      input.body as string,
+          threadId:  input.threadId  as string | undefined,
+          inReplyTo: input.inReplyTo as string | undefined,
+          cc:        input.cc        as string | undefined,
+          bcc:       input.bcc       as string | undefined,
+        });
+        const errMsg = (r as { error?: string })?.error;
+        if (errMsg) return { ok: false, result: errMsg };
+        return { ok: true, result: `Sent to ${input.to}` };
       }
       default:
         return { ok: false, result: `Unknown Tier-3 tool: ${name}` };

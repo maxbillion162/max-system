@@ -243,12 +243,12 @@ This is the core of M.A.X. Understand it before touching anything AI-related.
 
 The Tier-3 Telegram ✓/✗ executor flow is **not yet wired** — `pending_actions` table exists but no callback handler. Phase 2.5.
 
-**Tools (35 total):**
+**Tools (36 total):**
 - Habits: `read_habits`, `toggle_habit`, `add_habit`, `delete_habit`
 - Tasks: `read_tasks`, `add_task`, `complete_task`, `delete_task`, `update_task`
 - Goals: `read_goals`, `update_goal`, `create_goal`, `delete_goal`
 - Calendar: `read_calendar`, `create_calendar_event`
-- Gmail: `read_gmail`, `draft_email`
+- Gmail: `read_gmail`, `draft_email`, `send_email` (Tier-3)
 - Finance: `read_wealth`, `update_wealth`, `get_budget_status`, `get_transactions`, `read_bills`, `set_income`
 - Data: `read_crypto`, `read_weather`, `read_news`
 - Memory: `store_memory`, `recall_memory`, `read_all_memories`
@@ -311,7 +311,7 @@ The Tier-3 Telegram ✓/✗ executor flow is **not yet wired** — `pending_acti
 
 ## KEY RULES & CONSTRAINTS
 
-1. **Never auto-send email.** Drafts only. Forever, until Max changes this himself.
+1. **Never auto-send email.** The `send_email` tool exists (P4 foundation) but is registered Tier-3 in `pending-actions.ts` — every invocation fires a Telegram ✓/✗ confirmation card and only executes when Max taps ✓. The agent must NEVER bypass this by calling `sendEmail()` directly. `draft_email` remains Tier-1 (autonomous, no confirmation).
 2. **Notifications are opt-in default-OFF.** Every cron must check `isOptedIn(category)` from `src/lib/notify.ts` before sending. New notification categories require: a `NotifyCategory` entry in `notify.ts`, a row in `DEFAULT_NOTIF` (set to `false`), and a toggle row in the Settings page Notifications section. Do NOT add a cron that fires without this gate.
 3. **Use `notify()` for proactive alerts, not direct sendNotification.** Direct Telegram sends in `src/app/api/telegram/route.ts` are for conversational chat replies only. Anything that should land in the dashboard bell goes through `notify()`.
 4. **Tier-3 actions confirm first** (calendar create, SMS, deletes, wealth updates, goal target changes). Until the Tier-3 Telegram executor is wired, the agent confirms via text and waits for the next user message — don't bypass.

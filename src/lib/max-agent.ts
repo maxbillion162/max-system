@@ -205,6 +205,7 @@ const TOOL_LABELS: Record<string, string> = {
   create_calendar_event: "Creating calendar event…",
   read_gmail:            "Checking your email…",
   draft_email:           "Drafting email…",
+  send_email:            "Queuing email for your approval…",
   read_crypto:           "Checking crypto prices…",
   read_weather:          "Checking Orlando weather…",
   read_news:             "Scanning latest news…",
@@ -411,6 +412,23 @@ const TOOLS: Anthropic.Tool[] = [
         to:      { type: "string", description: "Recipient email" },
         subject: { type: "string", description: "Email subject" },
         body:    { type: "string", description: "Email body" },
+      },
+      required: ["to", "subject", "body"],
+    },
+  },
+  {
+    name: "send_email",
+    description: "Send a real email via Gmail. TIER-3: always queues a Telegram ✓/✗ confirmation card — never executes without Max's explicit approval. Use only when Max has clearly asked you to send. Match Max's voice using the [MAX'S VOICE] context line.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        to:        { type: "string", description: "Recipient email address" },
+        subject:   { type: "string", description: "Email subject line" },
+        body:      { type: "string", description: "Email body — plain text, voice-matched to Max" },
+        cc:        { type: "string", description: "Optional CC address" },
+        bcc:       { type: "string", description: "Optional BCC address" },
+        threadId:  { type: "string", description: "Optional Gmail threadId when replying" },
+        inReplyTo: { type: "string", description: "Optional Message-ID being replied to (sets In-Reply-To + References headers)" },
       },
       required: ["to", "subject", "body"],
     },
@@ -804,7 +822,7 @@ export async function buildContextHeader(): Promise<string> {
     sb.from("bills").select("name,amt,due_day").order("due_day"),
     sb.from("transactions").select("amount,budget_category,pending").gte("date", periodStart).gt("amount", 0),
     sb.from("budget_allocations").select("category,budgeted").eq("period_start", periodStart),
-    sb.from("writing_style").select("*").limit(1),
+    sb.from("settings").select("value").eq("key", "writing_style_profile").maybeSingle(),
   ]);
 
   let ctx = `[CURRENT TIME: ${now} ET]\n`;
@@ -910,11 +928,20 @@ export async function buildContextHeader(): Promise<string> {
     }
   }
 
-  // Writing style
-  if (styleRes.status === "fulfilled" && styleRes.value.data?.[0]) {
-    const row  = styleRes.value.data[0] as Record<string, unknown>;
-    const tone = row.tone ?? row.summary ?? null;
-    if (tone) ctx += `[MAX'S WRITING STYLE: ${String(tone).slice(0, 120)}]\n`;
+  // Writing style — voice fingerprint stored in settings.writing_style_profile
+  if (styleRes.status === "fulfilled" && styleRes.value.data?.value) {
+    const p = styleRes.value.data.value as {
+      voice_summary?: string;
+      greeting_examples?: string[];
+      signoff_examples?: string[];
+      formality?: string;
+    };
+    if (p.voice_summary) {
+      const greet = (p.greeting_examples ?? []).slice(0, 3).join(" / ");
+      const sign  = (p.signoff_examples ?? []).slice(0, 3).join(" / ");
+      const tone  = p.formality ? `${p.formality} · ` : "";
+      ctx += `[MAX'S VOICE: ${tone}${p.voice_summary.slice(0, 200)}${greet ? ` Greetings: ${greet}.` : ""}${sign ? ` Sign-offs: ${sign}.` : ""}]\n`;
+    }
   }
 
   return ctx;
