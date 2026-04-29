@@ -36,9 +36,18 @@ export async function POST() {
     let totalTransactions = 0;
 
     for (const { access_token } of itemMap.values()) {
-      // Sync balances + backfill normalized account_type for any accounts missing it
-      const balRes = await plaidClient.accountsBalanceGet({ access_token });
-      for (const acct of balRes.data.accounts) {
+      // ONE Plaid call per item: transactionsGet returns the accounts array WITH
+      // balances inline, so we no longer call accountsBalanceGet separately.
+      // Pay-as-you-go cost: cuts Plaid API calls per sync in half.
+      const txRes = await plaidClient.transactionsGet({
+        access_token,
+        start_date: startDate,
+        end_date: endDate,
+        options: { count: 500 },
+      });
+
+      // Sync balances + backfill normalized account_type from the same response
+      for (const acct of txRes.data.accounts) {
         await supabase
           .from("accounts")
           .update({
@@ -49,14 +58,6 @@ export async function POST() {
           })
           .eq("plaid_account_id", acct.account_id);
       }
-
-      // Sync transactions (last 90 days)
-      const txRes = await plaidClient.transactionsGet({
-        access_token,
-        start_date: startDate,
-        end_date: endDate,
-        options: { count: 500 },
-      });
 
       const txs = txRes.data.transactions;
       totalTransactions += txs.length;
