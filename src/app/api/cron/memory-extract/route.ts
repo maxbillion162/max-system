@@ -16,6 +16,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import Anthropic from "@anthropic-ai/sdk";
+import { requireCron } from "@/lib/auth-guards";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -48,7 +49,8 @@ Example outputs:
 ["Max prefers concise Telegram responses under 120 words.", "Max's emergency fund target is $10K before aggressive investing."]
 []`;
 
-export async function GET() {
+export async function GET(req: Request) {
+  const guard = requireCron(req); if (guard) return guard;
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ extracted: 0, reason: "no API key" });
   }

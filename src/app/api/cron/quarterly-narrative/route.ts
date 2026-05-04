@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { notify } from "@/lib/notify";
+import { requireCron } from "@/lib/auth-guards";
 
 /**
  * Quarterly narrative cron — runs on the 1st of Apr/Jul/Oct/Jan.
  * Hits /api/finance/reports POST (no body = previous full quarter),
  * then pings Max via the bell + Telegram with a teaser link.
  */
-export async function GET() {
+export async function GET(req: Request) {
+  const guard = requireCron(req); if (guard) return guard;
   try {
     const base = process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`

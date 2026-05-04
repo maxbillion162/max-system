@@ -3,13 +3,15 @@ import { createClient } from "@supabase/supabase-js";
 import { fetchCryptoPrices } from "@/lib/crypto";
 import { isOptedIn, notify } from "@/lib/notify";
 import { Resend } from "resend";
+import { requireCron } from "@/lib/auth-guards";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-export async function GET() {
+export async function GET(req: Request) {
+  const guard = requireCron(req); if (guard) return guard;
   try {
     if (!(await isOptedIn("weekly_recap"))) return NextResponse.json({ ok: false, reason: "not opted in" });
 

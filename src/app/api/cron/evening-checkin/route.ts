@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { runAgent } from "@/lib/max-agent";
 import { isOptedIn, notify } from "@/lib/notify";
+import { requireCron } from "@/lib/auth-guards";
 
 export async function GET(req: Request) {
+  const guard = requireCron(req); if (guard) return guard;
   if (req.headers.get("Authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

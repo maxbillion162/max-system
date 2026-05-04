@@ -16,6 +16,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isOptedIn, notify } from "@/lib/notify";
+import { requireCron } from "@/lib/auth-guards";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,7 +35,8 @@ function daysAgoStr(n: number): string {
   return new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const guard = requireCron(req); if (guard) return guard;
   if (!(await isOptedIn("habit_coach"))) {
     return NextResponse.json({ delivered: false, reason: "not opted in" });
   }

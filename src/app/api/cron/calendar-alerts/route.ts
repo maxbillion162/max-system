@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { readCalendar } from "@/lib/max-tools";
 import { isOptedIn, notify } from "@/lib/notify";
+import { requireCron } from "@/lib/auth-guards";
 
-export async function GET() {
+export async function GET(req: Request) {
+  const guard = requireCron(req); if (guard) return guard;
   if (!(await isOptedIn("calendar_alerts"))) return NextResponse.json({ sent: 0, reason: "not opted in" });
 
   try {

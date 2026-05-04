@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { requireCron } from "@/lib/auth-guards";
 
 /** Money DNA refresh — weekly. Hits /api/finance/money-dna POST. */
-export async function GET() {
+export async function GET(req: Request) {
+  const guard = requireCron(req); if (guard) return guard;
   try {
     const base = process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`

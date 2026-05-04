@@ -15,6 +15,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { readCrypto, readHabits } from "@/lib/max-tools";
 import { isOptedIn, notify } from "@/lib/notify";
+import { requireCron } from "@/lib/auth-guards";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -28,7 +29,8 @@ interface Candidate {
   actionUrl?: string;
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const guard = requireCron(req); if (guard) return guard;
   // Skip expensive work if user isn't opted in
   if (!(await isOptedIn("max_insight"))) {
     return NextResponse.json({ delivered: false, reason: "not opted in" });

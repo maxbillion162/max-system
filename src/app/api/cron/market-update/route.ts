@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { notify } from "@/lib/notify";
+import { requireCron } from "@/lib/auth-guards";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -28,7 +29,8 @@ async function avQuote(symbol: string): Promise<{ price: number; change: number;
   }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const guard = requireCron(req); if (guard) return guard;
   // Note: we always fetch + snapshot market data (it powers dashboard tiles).
   // The notify() call below handles the opt-in gate for the Telegram push.
 

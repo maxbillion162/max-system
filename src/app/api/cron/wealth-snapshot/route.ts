@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { fetchCryptoPrices } from "@/lib/crypto";
+import { requireCron } from "@/lib/auth-guards";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-export async function GET() {
+export async function GET(req: Request) {
+  const guard = requireCron(req); if (guard) return guard;
   const [wealthRes, iraRes, cryptoRes] = await Promise.allSettled([
     supabase.from("wealth").select("ira,savings,btc_amount,xrp_amount").eq("id", "max").single(),
     supabase.from("ira_funds").select("value"),

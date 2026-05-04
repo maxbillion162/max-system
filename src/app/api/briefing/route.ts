@@ -7,6 +7,7 @@ import { buildBriefingEmail } from "@/lib/briefing";
 import { createClient } from "@supabase/supabase-js";
 import { readCalendar } from "@/lib/max-tools";
 import type { WeatherData } from "@/lib/weather";
+import { requireCron } from "@/lib/auth-guards";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -74,7 +75,8 @@ async function runBriefing() {
 }
 
 // GET — called by Vercel cron at 7am ET daily
-export async function GET() {
+export async function GET(req: Request) {
+  const guard = requireCron(req); if (guard) return guard;
   try {
     const result = await runBriefing();
     return NextResponse.json(result);

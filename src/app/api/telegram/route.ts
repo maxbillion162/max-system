@@ -11,6 +11,7 @@ import {
 } from "@/lib/max-tools";
 import { resolvePendingAction, answerCallbackQuery } from "@/lib/pending-actions";
 import { createClient } from "@supabase/supabase-js";
+import { requireTelegram } from "@/lib/auth-guards";
 
 const BOT_TOKEN       = process.env.TELEGRAM_BOT_TOKEN;
 const ALLOWED_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
@@ -311,6 +312,8 @@ async function handleCommand(cmd: string, args: string): Promise<string | null> 
 }
 
 export async function POST(request: Request) {
+  const guard = requireTelegram(request);
+  if (guard) return guard;
   try {
     const body = await request.json();
 

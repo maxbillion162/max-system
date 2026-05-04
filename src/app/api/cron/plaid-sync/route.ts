@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { requireCron } from "@/lib/auth-guards";
 
 // Cron: daily at 6am ET — calls the Plaid sync route
-export async function GET() {
+export async function GET(req: Request) {
+  const guard = requireCron(req); if (guard) return guard;
   const base = process.env.APP_URL
     ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
 

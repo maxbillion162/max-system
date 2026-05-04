@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isOptedIn, notify } from "@/lib/notify";
+import { requireCron } from "@/lib/auth-guards";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-export async function GET() {
+export async function GET(req: Request) {
+  const guard = requireCron(req); if (guard) return guard;
   if (!(await isOptedIn("habit_nudge"))) return NextResponse.json({ sent: false, reason: "not opted in" });
 
   const today = new Date().toISOString().slice(0, 10);

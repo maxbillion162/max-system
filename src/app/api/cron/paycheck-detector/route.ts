@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { notify } from "@/lib/notify";
+import { requireCron } from "@/lib/auth-guards";
 
 /**
  * Paycheck Detector — daily cron.
@@ -30,7 +31,8 @@ interface DetectedPaycheck {
   merchant:       string;
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const guard = requireCron(req); if (guard) return guard;
   return runDetect();
 }
 export async function POST() {

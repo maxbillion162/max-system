@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { fetchThreads, classifyAndStore } from "@/lib/email-intel";
+import { requireCron } from "@/lib/auth-guards";
 
 /**
  * Email intel refresh — runs every 30 minutes during waking hours.
@@ -9,7 +10,8 @@ import { fetchThreads, classifyAndStore } from "@/lib/email-intel";
  * remainder. Idempotent via model_input_hash, so re-runs on unchanged
  * threads cost nothing.
  */
-export async function GET() {
+export async function GET(req: Request) {
+  const guard = requireCron(req); if (guard) return guard;
   try {
     const threads = await fetchThreads({ maxResults: 80, query: "in:inbox -in:trash" });
     if (threads.length === 0) {

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireCron } from "@/lib/auth-guards";
 
 /**
  * Recurring-detect cron — weekly. Re-scans the last 90 days of transactions,
@@ -8,7 +9,8 @@ import { NextResponse } from "next/server";
  * The actual work lives in /api/finance/recurring (POST without an action
  * triggers `refreshDetection`); the cron just hits it.
  */
-export async function GET() {
+export async function GET(req: Request) {
+  const guard = requireCron(req); if (guard) return guard;
   try {
     const base = process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`

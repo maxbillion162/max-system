@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isOptedIn } from "@/lib/notify";
+import { requireCron } from "@/lib/auth-guards";
 
 /**
  * Anomaly Detection — nightly cron.
@@ -30,7 +31,8 @@ const Z_THRESHOLD = 3;
 const NEW_MERCHANT_MIN_AMT = 50;       // ignore tiny first-time txns
 const HISTORY_WINDOW_DAYS = 180;       // baseline pulled from this window
 
-export async function GET() {
+export async function GET(req: Request) {
+  const guard = requireCron(req); if (guard) return guard;
   return runDetect();
 }
 

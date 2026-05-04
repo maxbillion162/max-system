@@ -19,6 +19,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import Anthropic from "@anthropic-ai/sdk";
+import { requireCron } from "@/lib/auth-guards";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -72,7 +73,8 @@ Example good outputs:
 ["For feed_top3 picks, weight crypto and AI news more heavily than politics.", "Keep dashboard briefs to 4 lines maximum; no more."]
 []`;
 
-export async function GET() {
+export async function GET(req: Request) {
+  const guard = requireCron(req); if (guard) return guard;
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ learned: 0, reason: "no API key" });
   }
