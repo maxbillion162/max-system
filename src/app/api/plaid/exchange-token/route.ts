@@ -1,12 +1,6 @@
 import { NextResponse } from "next/server";
 import { plaidClient, plaidConfigured, normalizeAccountType } from "@/lib/plaid";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
+import { supabase } from "@/lib/supabase";
 interface PlaidAccount {
   id: string;
   name: string;

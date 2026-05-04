@@ -230,10 +230,14 @@ function IntegrSection() {
 
   useEffect(()=>{
     (async()=>{
-      try { const {data}=await supabase.from("google_tokens").select("access_token").limit(1); setGoogleStatus(data?.length?"connected":"disconnected"); }
-      catch { setGoogleStatus("disconnected"); }
-      try { const {count}=await supabase.from("accounts").select("id",{count:"exact",head:true}); setPlaidCount(count??0); }
-      catch { setPlaidCount(0); }
+      try {
+        const r = await fetch("/api/settings/integration-status");
+        if (r.ok) {
+          const j = await r.json();
+          setGoogleStatus(j.google ? "connected" : "disconnected");
+          setPlaidCount(j.plaid ?? 0);
+        } else { setGoogleStatus("disconnected"); setPlaidCount(0); }
+      } catch { setGoogleStatus("disconnected"); setPlaidCount(0); }
     })();
   },[]);
 
@@ -358,22 +362,12 @@ function IntelSection() {
   useEffect(()=>{
     (async()=>{
       try {
-        const {data}=await supabase.from("writing_style").select("*").limit(1);
-        if (data?.[0]) {
-          const row = data[0] as Record<string,unknown>;
-          const text = Object.entries(row)
-            .filter(([k])=>k!=="id"&&k!=="created_at"&&k!=="updated_at")
-            .map(([k,v])=>`${k.replace(/_/g," ")}: ${v}`)
-            .join("\n");
-          setStyle(text);
-        } else {
-          setStyle("No writing style profile yet. Send emails through M.A.X. to build your voice profile.");
-        }
-      } catch { setStyle("Unable to load writing style."); }
+        const r = await fetch("/api/settings/intelligence");
+        const j = await r.json();
+        setStyle(j.style?.trim() || "No writing style profile yet. Send emails through M.A.X. to build your voice profile.");
+        setMemCount(j.memCount ?? 0);
+      } catch { setStyle("Unable to load writing style."); setMemCount(0); }
       finally { setStyleLoad(false); }
-
-      try { const {count}=await supabase.from("memories").select("id",{count:"exact",head:true}); setMemCount(count??0); }
-      catch { setMemCount(0); }
     })();
   },[]);
 
@@ -497,14 +491,15 @@ function BehindSection() {
 
   useEffect(() => {
     (async () => {
-      const [actRes, memRes, notifRes] = await Promise.allSettled([
-        supabase.from("activity_log").select("id,type,description,created_at").order("created_at",{ascending:false}).limit(15),
-        supabase.from("memories").select("id,content,tags,created_at").order("created_at",{ascending:false}).limit(10),
-        supabase.from("notifications").select("id,type,title,body,read,created_at").order("created_at",{ascending:false}).limit(10),
-      ]);
-      setActivity( actRes.status   === "fulfilled" && actRes.value.data   ? actRes.value.data   as ActivityRow[] : []);
-      setMemories( memRes.status   === "fulfilled" && memRes.value.data   ? memRes.value.data   as MemoryRow[]   : []);
-      setNotifs(   notifRes.status === "fulfilled" && notifRes.value.data ? notifRes.value.data as NotifRow[]    : []);
+      try {
+        const r = await fetch("/api/settings/behind-scenes");
+        const j = await r.json();
+        setActivity((j.activity ?? []) as ActivityRow[]);
+        setMemories((j.memories ?? []) as MemoryRow[]);
+        setNotifs((j.notifications ?? []) as NotifRow[]);
+      } catch {
+        setActivity([]); setMemories([]); setNotifs([]);
+      }
     })();
   }, []);
 

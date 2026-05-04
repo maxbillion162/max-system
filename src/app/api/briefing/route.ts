@@ -4,15 +4,10 @@ import { fetchWeather } from "@/lib/weather";
 import { fetchCryptoPrices } from "@/lib/crypto";
 import { fetchNews } from "@/lib/news";
 import { buildBriefingEmail } from "@/lib/briefing";
-import { createClient } from "@supabase/supabase-js";
 import { readCalendar } from "@/lib/max-tools";
 import type { WeatherData } from "@/lib/weather";
 import { requireCron } from "@/lib/auth-guards";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase } from "@/lib/supabase";
 
 const WEATHER_FALLBACK: WeatherData = {
   location: "Orlando", tempF: 82, feelsLikeF: 88, condition: "Partly cloudy",

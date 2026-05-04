@@ -345,7 +345,7 @@ export async function POST(request: Request) {
 
         const supabase = createClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          (process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)!,
         );
         await supabase.from("anomaly_log").update({
           status:       newStatus,

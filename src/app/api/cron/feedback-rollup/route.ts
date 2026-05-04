@@ -23,7 +23,7 @@ import { requireCron } from "@/lib/auth-guards";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  (process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)!,
 );
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });

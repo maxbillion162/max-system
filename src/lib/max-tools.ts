@@ -1,4 +1,3 @@
-import { createClient } from "@supabase/supabase-js";
 import { fetchCryptoPrices } from "@/lib/crypto";
 import { getAuthenticatedClient } from "@/lib/google";
 import { google } from "googleapis";
@@ -8,11 +7,7 @@ import { searchYelp as _searchYelp } from "@/lib/yelp";
 import { searchReddit as _searchReddit } from "@/lib/reddit";
 import { wolframQuery as _wolframQuery } from "@/lib/wolfram";
 import { getCurrentTrack, playback, searchSpotify, setVolume } from "@/lib/spotify";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase } from "@/lib/supabase";
 
 /* ────────────────────────────────── HABITS ── */
 export async function readHabits() {

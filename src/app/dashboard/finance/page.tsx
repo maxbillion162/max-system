@@ -251,7 +251,7 @@ export default function FinancePage() {
   async function loadAll() {
     const sixMoAgo = new Date(Date.now() - 180*24*60*60*1000).toISOString().slice(0,10);
     const [accountsRes, wealthRes, iraRes, billsRes, histRes, cryptoRes, allocRes, txRes, incomeRes, marketRes, newsRes, tx6moRes, classRes, goalsRes] = await Promise.allSettled([
-      supabase.from("accounts").select("*").eq("active", true).order("institution"),
+      supabase.from("accounts").select("id,plaid_account_id,plaid_item_id,name,official_name,type,subtype,institution,mask,current_balance,available_balance,last_synced,active,created_at").eq("active", true).order("institution"),
       supabase.from("wealth").select("*").eq("id","max").single(),
       supabase.from("ira_funds").select("*"),
       supabase.from("bills").select("*").order("due"),

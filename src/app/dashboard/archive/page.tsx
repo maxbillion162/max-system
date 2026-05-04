@@ -2,12 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { HudCard } from "@/components/ui/HudCard";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 interface ChatMessage {
   id: string;
@@ -98,16 +92,16 @@ export default function ArchivePage() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const [chatRes, tgRes] = await Promise.all([
-        supabase.from("chat_messages").select("*").order("created_at", { ascending: false }).limit(400),
-        supabase.from("telegram_history").select("*").order("created_at", { ascending: false }).limit(200),
-      ]);
-      if (chatRes.data) {
-        const grouped = groupBySession(chatRes.data as ChatMessage[]);
-        setSessions(grouped);
-        if (grouped.length > 0) setSelected(grouped[0]);
-      }
-      if (tgRes.data) setTelegram(tgRes.data as TelegramMsg[]);
+      try {
+        const r = await fetch("/api/archive");
+        const j = await r.json();
+        if (Array.isArray(j.chat)) {
+          const grouped = groupBySession(j.chat as ChatMessage[]);
+          setSessions(grouped);
+          if (grouped.length > 0) setSelected(grouped[0]);
+        }
+        if (Array.isArray(j.telegram)) setTelegram(j.telegram as TelegramMsg[]);
+      } catch {}
       setLoading(false);
     }
     load();
