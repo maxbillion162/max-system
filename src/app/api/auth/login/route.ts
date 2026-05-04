@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import crypto from "crypto";
+import { rateLimit } from "@/lib/rate-limit";
 
 const COOKIE = "max_session";
 const MAX_AGE = 60 * 60 * 24 * 30;
@@ -13,6 +14,8 @@ function timingSafeEqStr(a: string, b: string) {
 }
 
 export async function POST(request: Request) {
+  const limited = rateLimit(request, { key: "login", limit: 10, windowMs: 60_000 });
+  if (limited) return limited;
   try {
     const { password } = (await request.json()) as { password?: string };
     const correct = process.env.MAX_PASSWORD;

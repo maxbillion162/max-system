@@ -12,6 +12,7 @@ import {
 import { resolvePendingAction, answerCallbackQuery } from "@/lib/pending-actions";
 import { createClient } from "@supabase/supabase-js";
 import { requireTelegram } from "@/lib/auth-guards";
+import { rateLimit } from "@/lib/rate-limit";
 
 const BOT_TOKEN       = process.env.TELEGRAM_BOT_TOKEN;
 const ALLOWED_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
@@ -314,6 +315,8 @@ async function handleCommand(cmd: string, args: string): Promise<string | null> 
 export async function POST(request: Request) {
   const guard = requireTelegram(request);
   if (guard) return guard;
+  const limited = rateLimit(request, { key: "tg", limit: 60, windowMs: 60_000 });
+  if (limited) return limited;
   try {
     const body = await request.json();
 

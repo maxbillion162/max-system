@@ -56,7 +56,7 @@ async function getValidToken(): Promise<string | null> {
 }
 
 /* ── OAuth helpers ── */
-export function getAuthUrl(): string {
+export function getAuthUrl(state?: string): string {
   const scopes = [
     "user-read-playback-state",
     "user-modify-playback-state",
@@ -71,6 +71,7 @@ export function getAuthUrl(): string {
     scope: scopes,
     show_dialog: "false",
   });
+  if (state) params.set("state", state);
   return `https://accounts.spotify.com/authorize?${params}`;
 }
 
