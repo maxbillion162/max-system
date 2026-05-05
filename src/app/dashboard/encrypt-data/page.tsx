@@ -1,10 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+interface FieldStat { encrypted: number; plaintext: number; null_or_empty: number }
+interface TableStat { rows: number; encrypted: number; plaintext: number; null_or_empty: number; per_field?: Record<string, FieldStat>; error?: string }
 
 export default function EncryptDataPage() {
   const [status, setStatus] = useState<"idle" | "running" | "done" | "error">("idle");
   const [result, setResult] = useState<{ total_encrypted?: number; per_table?: Record<string, { scanned: number; encrypted: number; errors: number } | { error: string }>; error?: string } | null>(null);
+  const [statusData, setStatusData] = useState<Record<string, TableStat> | null>(null);
+
+  async function loadStatus() {
+    try {
+      const r = await fetch("/api/admin/encrypt-status");
+      const j = await r.json();
+      if (j.ok) setStatusData(j.tables);
+    } catch {}
+  }
+
+  useEffect(() => { loadStatus(); }, []);
 
   async function run() {
     setStatus("running");
@@ -14,6 +28,7 @@ export default function EncryptDataPage() {
       if (j.ok) {
         setStatus("done");
         setResult(j);
+        await loadStatus();
       } else {
         setStatus("error");
         setResult(j);
@@ -76,6 +91,37 @@ export default function EncryptDataPage() {
           )}
           <p style={{ fontSize: 12, color: "#525C6B", marginTop: 16 }}>
             Safe to leave this page now. Your data is encrypted at rest.
+          </p>
+        </div>
+      )}
+
+      {statusData && (
+        <div style={{ marginTop: 32, padding: 20, background: "#0a0d12", border: "1px solid rgba(125,184,232,0.18)", borderRadius: 4 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: "#8794A6" }}>
+            Current state — what&rsquo;s actually in the database
+          </p>
+          <div style={{ fontFamily: "monospace", fontSize: 12, lineHeight: 1.9 }}>
+            {Object.entries(statusData).map(([table, s]) => (
+              <div key={table} style={{ marginBottom: 6 }}>
+                <span style={{ color: "#E4EAF2" }}>{table}</span>:{" "}
+                {s.error ? (
+                  <span style={{ color: "#C85A5A" }}>{s.error}</span>
+                ) : (
+                  <>
+                    <span style={{ color: s.plaintext === 0 ? "#5FB07D" : "#C85A5A" }}>
+                      {s.encrypted} encrypted
+                    </span>
+                    {s.plaintext > 0 && <>, <span style={{ color: "#C85A5A" }}>{s.plaintext} still plaintext</span></>}
+                    {s.null_or_empty > 0 && <>, <span style={{ color: "#525C6B" }}>{s.null_or_empty} empty</span></>}
+                    <span style={{ color: "#525C6B" }}> · {s.rows} total</span>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+          <p style={{ fontSize: 11, color: "#525C6B", marginTop: 12, lineHeight: 1.5 }}>
+            Green = encrypted at rest. Red = still readable in your DB (plaintext). &ldquo;Empty&rdquo; rows have no
+            content in the encryptable fields and don&rsquo;t need encrypting.
           </p>
         </div>
       )}
