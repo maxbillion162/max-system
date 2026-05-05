@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { sb } from "@/lib/email-intel";
+import { decrypt } from "@/lib/encryption";
 
 /**
  * Top-of-page email briefing.
@@ -71,7 +72,12 @@ async function generate() {
       .order("importance_score", { ascending: false })
       .limit(30);
 
-    const threads = rows ?? [];
+    const threads = (rows ?? []).map(r => ({
+      ...r,
+      subject:       decrypt(r.subject) ?? "",
+      summary:       decrypt(r.summary) ?? "",
+      why_important: decrypt(r.why_important) ?? "",
+    }));
     if (threads.length === 0) {
       return NextResponse.json({ briefing: null, empty: true });
     }

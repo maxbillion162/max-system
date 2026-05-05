@@ -17,6 +17,7 @@ import {
   findFreeTime, projectSavings,
 } from "@/lib/max-tools";
 import { TIER_3_TOOLS, enqueuePendingAction } from "@/lib/pending-actions";
+import { decrypt } from "@/lib/encryption";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -924,7 +925,8 @@ export async function buildContextHeader(): Promise<string> {
 
   // Memories — split into learned preferences (treated as rules) and general memories
   if (memoriesRes.status === "fulfilled" && memoriesRes.value.data?.length) {
-    const rows = memoriesRes.value.data as { content: string; tags: string[] | null }[];
+    const rows = (memoriesRes.value.data as { content: string; tags: string[] | null }[])
+      .map(m => ({ ...m, content: decrypt(m.content) ?? "" }));
     const learned = rows.filter(m => Array.isArray(m.tags) && m.tags.includes("learned_preference"));
     const general = rows.filter(m => !Array.isArray(m.tags) || !m.tags.includes("learned_preference"));
     if (learned.length > 0) {

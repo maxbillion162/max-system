@@ -1,5 +1,6 @@
 import { runAgentStream, AgentEvent, AgentMessage } from "@/lib/max-agent";
 import { supabase } from "@/lib/supabase";
+import { encrypt } from "@/lib/encryption";
 export async function POST(request: Request) {
   try {
     const body       = await request.json();
@@ -41,8 +42,8 @@ export async function POST(request: Request) {
             const last = normalized[normalized.length - 1];
             if (last.role === "user" && fullText) {
               await supabase.from("chat_messages").insert([
-                { role: "user",      content: last.content },
-                { role: "assistant", content: fullText     },
+                { role: "user",      content: encrypt(last.content) },
+                { role: "assistant", content: encrypt(fullText)     },
               ]).then(() => {}, () => {}); // non-fatal
             }
           }

@@ -20,6 +20,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import Anthropic from "@anthropic-ai/sdk";
 import { requireCron } from "@/lib/auth-guards";
+import { encrypt, decrypt } from "@/lib/encryption";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -110,7 +111,7 @@ export async function GET(req: Request) {
     .limit(500);
   const existingLearned = ((existing ?? []) as { content: string; tags: string[] | null }[])
     .filter(m => Array.isArray(m.tags) && m.tags.includes("learned_preference"))
-    .map(m => m.content.toLowerCase());
+    .map(m => (decrypt(m.content) ?? "").toLowerCase());
 
   const allNewPrefs: { type: string; content: string }[] = [];
   const perTypeStats: Record<string, { up: number; down: number; notes: number; learned: number }> = {};
@@ -186,7 +187,7 @@ export async function GET(req: Request) {
 
   // Insert as learned preferences
   const rows = allNewPrefs.map(p => ({
-    content: p.content,
+    content: encrypt(p.content),
     tags:    ["learned_preference", p.type],
   }));
   const { error: insErr } = await supabase.from("memories").insert(rows);

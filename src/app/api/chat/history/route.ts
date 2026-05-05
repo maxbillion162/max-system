@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { decrypt } from "@/lib/encryption";
 export async function GET() {
   const { data, error } = await supabase
     .from("chat_messages")
@@ -11,7 +12,7 @@ export async function GET() {
 
   const messages = (data ?? []).reverse().map(r => ({
     role:    r.role === "assistant" ? "max" : "user",
-    content: r.content,
+    content: decrypt(r.content) ?? "",
     time:    new Date(r.created_at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
   }));
 

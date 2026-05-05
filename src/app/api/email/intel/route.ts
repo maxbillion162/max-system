@@ -1,5 +1,16 @@
 import { NextResponse } from "next/server";
 import { sb, fetchThreads, classifyAndStore } from "@/lib/email-intel";
+import { decrypt } from "@/lib/encryption";
+
+const ENCRYPTED_FIELDS = ["subject", "preview", "summary", "why_important", "action_reason"] as const;
+function decryptIntel<T extends Record<string, unknown>>(row: T): T {
+  const out = { ...row } as Record<string, unknown>;
+  for (const f of ENCRYPTED_FIELDS) {
+    const v = out[f];
+    if (typeof v === "string") out[f] = decrypt(v);
+  }
+  return out as T;
+}
 
 /**
  * Email intel — the heart of the smart inbox.
@@ -29,7 +40,8 @@ export async function GET(req: Request) {
 
     const { data, error } = await q.limit(200);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ threads: data ?? [] });
+    const threads = (data ?? []).map(decryptIntel);
+    return NextResponse.json({ threads });
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { decrypt } from "@/lib/encryption";
 
 /**
  * Plaid Diagnostics — server-side report of what's configured and what's
@@ -22,7 +23,8 @@ function sb() {
 
 function tokenEnvPrefix(token: string | null): string {
   if (!token) return "missing";
-  const m = token.match(/^access-(sandbox|production|development)-/);
+  const decrypted = decrypt(token) ?? "";
+  const m = decrypted.match(/^access-(sandbox|production|development)-/);
   return m ? m[1] : "unknown";
 }
 

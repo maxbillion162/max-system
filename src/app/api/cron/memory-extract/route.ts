@@ -17,6 +17,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import Anthropic from "@anthropic-ai/sdk";
 import { requireCron } from "@/lib/auth-guards";
+import { encrypt, decrypt } from "@/lib/encryption";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -68,9 +69,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ extracted: 0, reason: "no recent messages" });
   }
 
-  // Build a compact transcript
+  // Build a compact transcript (decrypt content from at-rest encryption)
   const transcript = (msgs as { role: string; content: string }[])
-    .map(m => `${m.role.toUpperCase()}: ${m.content.slice(0, 600)}`)
+    .map(m => `${m.role.toUpperCase()}: ${(decrypt(m.content) ?? "").slice(0, 600)}`)
     .join("\n");
 
   // Ask Claude for candidate facts
@@ -104,7 +105,7 @@ export async function GET(req: Request) {
     .select("content")
     .order("created_at", { ascending: false })
     .limit(500);
-  const existingTexts = ((existing ?? []) as { content: string }[]).map(m => m.content.toLowerCase());
+  const existingTexts = ((existing ?? []) as { content: string }[]).map(m => (decrypt(m.content) ?? "").toLowerCase());
 
   function isDuplicate(fact: string): boolean {
     const f = fact.toLowerCase();
@@ -121,9 +122,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ extracted: 0, reason: "all duplicates", considered: candidates.length });
   }
 
-  // Insert
+  // Insert (encrypted)
   const rows = newFacts.map(content => ({
-    content,
+    content: encrypt(content),
     tags: ["auto-extract"],
   }));
   const { error } = await supabase.from("memories").insert(rows);

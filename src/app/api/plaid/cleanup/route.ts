@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { decrypt } from "@/lib/encryption";
 
 /**
  * Archive accounts AND delete their transactions when their Plaid access
@@ -37,9 +38,11 @@ export async function POST() {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const stale = (accounts ?? []).filter(a =>
-    a.plaid_access_token && !a.plaid_access_token.startsWith(expectedPrefix)
-  );
+  const stale = (accounts ?? []).filter(a => {
+    if (!a.plaid_access_token) return false;
+    const t = decrypt(a.plaid_access_token) ?? "";
+    return t && !t.startsWith(expectedPrefix);
+  });
 
   if (stale.length === 0) {
     return NextResponse.json({ env, archived: 0, transactions_deleted: 0 });

@@ -1,5 +1,6 @@
 import { google } from "googleapis";
 import { supabase } from "@/lib/supabase";
+import { encrypt, decrypt } from "@/lib/encryption";
 export function getOAuthClient() {
   return new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
@@ -29,7 +30,12 @@ export async function getStoredTokens() {
     .select("*")
     .eq("user_id", "max")
     .single();
-  return data;
+  if (!data) return null;
+  return {
+    ...data,
+    access_token: decrypt(data.access_token) ?? "",
+    refresh_token: data.refresh_token ? decrypt(data.refresh_token) : data.refresh_token,
+  };
 }
 
 export async function storeTokens(tokens: {
@@ -39,8 +45,8 @@ export async function storeTokens(tokens: {
 }) {
   await supabase.from("google_tokens").upsert({
     user_id: "max",
-    access_token: tokens.access_token,
-    refresh_token: tokens.refresh_token,
+    access_token: encrypt(tokens.access_token),
+    refresh_token: tokens.refresh_token ? encrypt(tokens.refresh_token) : tokens.refresh_token,
     expiry_date: tokens.expiry_date,
     updated_at: new Date().toISOString(),
   }, { onConflict: "user_id" });

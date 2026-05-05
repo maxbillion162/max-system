@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { plaidClient, plaidConfigured, normalizeAccountType } from "@/lib/plaid";
 import { supabase } from "@/lib/supabase";
+import { decrypt } from "@/lib/encryption";
 export async function POST() {
   if (!plaidConfigured()) {
     return NextResponse.json({ error: "Plaid not configured" }, { status: 503 });
@@ -20,7 +21,8 @@ export async function POST() {
     const itemMap = new Map<string, { access_token: string }>();
     for (const acct of accounts) {
       if (!itemMap.has(acct.plaid_item_id)) {
-        itemMap.set(acct.plaid_item_id, { access_token: acct.plaid_access_token });
+        const at = decrypt(acct.plaid_access_token) ?? "";
+        if (at) itemMap.set(acct.plaid_item_id, { access_token: at });
       }
     }
 

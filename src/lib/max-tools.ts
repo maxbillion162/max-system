@@ -8,6 +8,7 @@ import { searchReddit as _searchReddit } from "@/lib/reddit";
 import { wolframQuery as _wolframQuery } from "@/lib/wolfram";
 import { getCurrentTrack, playback, searchSpotify, setVolume } from "@/lib/spotify";
 import { supabase } from "@/lib/supabase";
+import { encrypt, decrypt } from "@/lib/encryption";
 
 /* ────────────────────────────────── HABITS ── */
 export async function readHabits() {
@@ -210,18 +211,25 @@ export async function readNews(count = 10) {
 
 /* ────────────────────────────────── MEMORY ── */
 export async function storeMemory(content: string, tags: string[] = []) {
-  const { data } = await supabase.from("memories").insert({ content, tags }).select().single();
+  const { data } = await supabase.from("memories").insert({ content: encrypt(content), tags }).select().single();
+  if (data && typeof data.content === "string") data.content = decrypt(data.content) ?? "";
   return data;
 }
 
 export async function recallMemory(query: string) {
-  const { data } = await supabase.from("memories").select("*").ilike("content", `%${query}%`).order("created_at", { ascending: false }).limit(10);
-  return data ?? [];
+  // Content is encrypted at rest; cannot ILIKE on ciphertext. Fetch a working set
+  // and filter in memory. Cheap for our scale (memories table ~hundreds max).
+  const { data } = await supabase.from("memories").select("*").order("created_at", { ascending: false }).limit(200);
+  if (!data) return [];
+  const q = query.toLowerCase();
+  const decoded = data.map(r => ({ ...r, content: decrypt(r.content) ?? "" }));
+  return decoded.filter(r => r.content.toLowerCase().includes(q)).slice(0, 10);
 }
 
 export async function readAllMemories() {
   const { data } = await supabase.from("memories").select("*").order("created_at", { ascending: false }).limit(30);
-  return data ?? [];
+  if (!data) return [];
+  return data.map(r => ({ ...r, content: decrypt(r.content) ?? "" }));
 }
 
 /* ────────────────────────────────── GOALS ── */
@@ -597,19 +605,21 @@ export async function projectSavings(
    telegram_history is kept for backwards compatibility with the Archive
    page until that page migrates to read from chat_messages directly. */
 export async function saveTelegramMessage(role: "user" | "assistant", content: string) {
+  const ct = encrypt(content);
   await Promise.all([
-    supabase.from("telegram_history").insert({ role, content }).then(() => {}, () => {}),
-    supabase.from("chat_messages").insert({ role, content }).then(() => {}, () => {}),
+    supabase.from("telegram_history").insert({ role, content: ct }).then(() => {}, () => {}),
+    supabase.from("chat_messages").insert({ role, content: ct }).then(() => {}, () => {}),
   ]);
 }
 
 export async function loadTelegramHistory(limit = 12) {
-  // Read from the unified chat_messages table so Telegram picks up web + bubble context too
   const { data } = await supabase
     .from("chat_messages")
     .select("role, content")
     .order("created_at", { ascending: false })
     .limit(limit);
   if (!data || data.length === 0) return [];
-  return data.reverse() as { role: "user" | "assistant"; content: string }[];
+  return data
+    .reverse()
+    .map(m => ({ role: m.role as "user" | "assistant", content: decrypt(m.content) ?? "" }));
 }

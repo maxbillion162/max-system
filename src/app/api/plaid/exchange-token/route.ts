@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { plaidClient, plaidConfigured, normalizeAccountType } from "@/lib/plaid";
 import { supabase } from "@/lib/supabase";
+import { encrypt } from "@/lib/encryption";
 interface PlaidAccount {
   id: string;
   name: string;
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
     for (const account of accounts) {
       await supabase.from("accounts").upsert({
         plaid_account_id: account.id,
-        plaid_access_token: access_token,
+        plaid_access_token: encrypt(access_token),
         plaid_item_id: item_id,
         name: account.name,
         official_name: account.official_name ?? null,
