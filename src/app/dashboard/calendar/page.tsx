@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { HudCard } from "@/components/ui/HudCard";
 import { supabase } from "@/lib/supabase";
+import { dbWrite } from "@/lib/db-client";
 
 /* ── Types ── */
 interface TaskList { id: string; name: string; color: string; position: number }
@@ -357,7 +358,7 @@ export default function CalendarPage() {
     supabase.from("task_lists").select("*").order("position").then(async ({data})=>{
       if (data && data.length>0) { setLists(data as TaskList[]); return; }
       const rows = DEFAULT_LISTS.map((l,i)=>({...l,position:i}));
-      const {data:seeded} = await supabase.from("task_lists").insert(rows).select();
+      const {data:seeded} = await dbWrite.from("task_lists").insert(rows).select();
       if (seeded) setLists(seeded as TaskList[]);
     });
   }, []);
@@ -382,30 +383,30 @@ export default function CalendarPage() {
   async function addTask() {
     const text=newTaskText.trim(); if (!text) return;
     setNewTaskText(""); setAddingTask(false);
-    const {data}=await supabase.from("tasks").insert({text,completed:false,priority:"medium",list_id:activeListId,subtasks:[]}).select().single();
+    const {data}=await dbWrite.from("tasks").insert({text,completed:false,priority:"medium",list_id:activeListId,subtasks:[]}).select().single();
     if (data) setTasks(prev=>[...prev, data as Task]);
   }
   const updateTask = useCallback(async (id: string, fields: Partial<Task>)=>{
     setTasks(prev=>prev.map(t=>t.id===id?{...t,...fields}:t));
     if (selectedTask?.id===id) setSelectedTask(prev=>prev?{...prev,...fields}:prev);
-    await supabase.from("tasks").update(fields).eq("id",id);
+    await dbWrite.from("tasks").update(fields).eq("id",id);
   },[selectedTask?.id]);
   async function toggleTask(id: string, completed: boolean) { await updateTask(id,{completed:!completed}); }
   async function deleteTask(id: string) {
     setTasks(prev=>prev.filter(t=>t.id!==id));
     if (selectedTask?.id===id) setSelectedTask(null);
-    await supabase.from("tasks").delete().eq("id",id);
+    await dbWrite.from("tasks").delete().eq("id",id);
   }
   async function createList() {
     const name=newListName.trim(); if (!name) return;
     const color=LIST_PALETTE[lists.length%LIST_PALETTE.length];
-    const {data}=await supabase.from("task_lists").insert({name,color,position:lists.length}).select().single();
+    const {data}=await dbWrite.from("task_lists").insert({name,color,position:lists.length}).select().single();
     if (data) { setLists(prev=>[...prev,data as TaskList]); setActiveListId(data.id); }
     setNewListMode(false); setNewListName("");
   }
   async function deleteList(id: string) {
-    await supabase.from("task_lists").delete().eq("id",id);
-    await supabase.from("tasks").update({list_id:null}).eq("list_id",id);
+    await dbWrite.from("task_lists").delete().eq("id",id);
+    await dbWrite.from("tasks").update({list_id:null}).eq("list_id",id);
     setLists(prev=>prev.filter(l=>l.id!==id));
     if (activeListId===id) setActiveListId(null);
     setTasks(prev=>prev.map(t=>t.list_id===id?{...t,list_id:null}:t));

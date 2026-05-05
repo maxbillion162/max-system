@@ -19,6 +19,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { FeedbackControl } from "@/components/ui/FeedbackControl";
+import { dbWrite } from "@/lib/db-client";
 
 /* ════════════════════════════════════════════════════════════════════
    TYPES + CONSTANTS
@@ -513,8 +514,8 @@ export default function DisciplinePage() {
       milestones: d.milestones, subgoals: d.subgoals,
     };
     const { error } = d.id
-      ? await supabase.from("goals").update(row).eq("id", id)
-      : await supabase.from("goals").insert(row);
+      ? await dbWrite.from("goals").update(row).eq("id", id)
+      : await dbWrite.from("goals").insert(row);
     if (error) { alert(`Couldn't save: ${error.message}`); return; }
     await load();
   }
@@ -522,8 +523,8 @@ export default function DisciplinePage() {
   async function deleteGoal(id: string): Promise<boolean> {
     const prev = goals;
     setGoals(p => p.filter(g => g.id !== id));
-    const notesRes = await supabase.from("goal_notes").delete().eq("goal_id", id);
-    const goalRes  = await supabase.from("goals").delete().eq("id", id);
+    const notesRes = await dbWrite.from("goal_notes").delete().eq("goal_id", id);
+    const goalRes  = await dbWrite.from("goals").delete().eq("id", id);
     if (notesRes.error || goalRes.error) {
       setGoals(prev);
       alert(`Couldn't delete: ${(goalRes.error ?? notesRes.error)?.message}`);
@@ -534,7 +535,7 @@ export default function DisciplinePage() {
     const next = { ...links };
     for (const hid of Object.keys(next)) next[hid] = next[hid].filter(gid => gid !== id);
     setLinks(next);
-    await supabase.from("settings").upsert({ key: "habit_goal_links", value: next });
+    await dbWrite.from("settings").upsert({ key: "habit_goal_links", value: next });
     return true;
   }
 
@@ -543,7 +544,7 @@ export default function DisciplinePage() {
     if (!existing) return;
     const crossedMilestone = existing.milestones.find(m => existing.current < m.v && current >= m.v);
     setGoals(p => p.map(g => g.id === id ? { ...g, current } : g));
-    await supabase.from("goals").update({ current }).eq("id", id);
+    await dbWrite.from("goals").update({ current }).eq("id", id);
     if (crossedMilestone) {
       setCelebration({ label: `${crossedMilestone.l} milestone on ${existing.label}`, color: existing.color });
       await supabase.from("activity_log").insert({
@@ -560,7 +561,7 @@ export default function DisciplinePage() {
     if (!g) return;
     const next = g.subgoals.map((s, i) => i === idx ? { ...s, done: !s.done } : s);
     setGoals(p => p.map(x => x.id === goalId ? { ...x, subgoals: next } : x));
-    await supabase.from("goals").update({ subgoals: next }).eq("id", goalId);
+    await dbWrite.from("goals").update({ subgoals: next }).eq("id", goalId);
   }
 
   /* ─── Habit CRUD ─── */
@@ -568,18 +569,18 @@ export default function DisciplinePage() {
     const id = h.id ?? `h${Date.now()}`;
     if (h.id) {
       setHabits(p => p.map(x => x.id === id ? { ...x, name: h.name, cat: h.cat, color: h.color } : x));
-      await supabase.from("habits").update({ name: h.name, cat: h.cat, color: h.color }).eq("id", id);
+      await dbWrite.from("habits").update({ name: h.name, cat: h.cat, color: h.color }).eq("id", id);
     } else {
       setHabits(p => [...p, { id, name: h.name, cat: h.cat, color: h.color, best: 0 }]);
-      await supabase.from("habits").insert({ id, name: h.name, cat: h.cat, color: h.color, completed: false, streak: 0, best: 0, updated_at: new Date().toISOString() });
+      await dbWrite.from("habits").insert({ id, name: h.name, cat: h.cat, color: h.color, completed: false, streak: 0, best: 0, updated_at: new Date().toISOString() });
     }
   }
 
   async function deleteHabit(id: string): Promise<boolean> {
     const prev = habits;
     setHabits(p => p.filter(h => h.id !== id));
-    const logsRes = await supabase.from("habit_logs").delete().eq("habit_id", id);
-    const habRes  = await supabase.from("habits").delete().eq("id", id);
+    const logsRes = await dbWrite.from("habit_logs").delete().eq("habit_id", id);
+    const habRes  = await dbWrite.from("habits").delete().eq("id", id);
     if (logsRes.error || habRes.error) {
       setHabits(prev);
       alert(`Couldn't delete habit: ${(habRes.error ?? logsRes.error)?.message}`);
@@ -589,7 +590,7 @@ export default function DisciplinePage() {
     if (links[id]) {
       const next = { ...links }; delete next[id];
       setLinks(next);
-      await supabase.from("settings").upsert({ key: "habit_goal_links", value: next });
+      await dbWrite.from("settings").upsert({ key: "habit_goal_links", value: next });
     }
     return true;
   }
@@ -604,9 +605,9 @@ export default function DisciplinePage() {
       return next;
     });
     if (wasDone) {
-      await supabase.from("habit_logs").update({ completed: false }).eq("habit_id", habitId).eq("date", today);
+      await dbWrite.from("habit_logs").update({ completed: false }).eq("habit_id", habitId).eq("date", today);
     } else {
-      await supabase.from("habit_logs").upsert({ habit_id: habitId, date: today, completed: true });
+      await dbWrite.from("habit_logs").upsert({ habit_id: habitId, date: today, completed: true });
     }
   }
 
@@ -615,12 +616,12 @@ export default function DisciplinePage() {
     const id = `h${Date.now()}${Math.floor(Math.random() * 100)}`;
     const color = "#7DB8E8";
     setHabits(p => [...p, { id, name: h.name, cat: h.category, color, best: 0 }]);
-    await supabase.from("habits").insert({ id, name: h.name, cat: h.category, color, completed: false, streak: 0, best: 0, updated_at: new Date().toISOString() });
+    await dbWrite.from("habits").insert({ id, name: h.name, cat: h.category, color, completed: false, streak: 0, best: 0, updated_at: new Date().toISOString() });
     // Link immediately
     const next = { ...links };
     next[id] = [...(next[id] ?? []), goalId];
     setLinks(next);
-    await supabase.from("settings").upsert({ key: "habit_goal_links", value: next });
+    await dbWrite.from("settings").upsert({ key: "habit_goal_links", value: next });
   }
 
   /* ─── Linking ─── */
@@ -628,14 +629,14 @@ export default function DisciplinePage() {
     const next = { ...links };
     next[habitId] = [...(next[habitId] ?? []), goalId];
     setLinks(next);
-    await supabase.from("settings").upsert({ key: "habit_goal_links", value: next });
+    await dbWrite.from("settings").upsert({ key: "habit_goal_links", value: next });
   }
   async function unlinkHabitFromGoal(habitId: string, goalId: string) {
     const next = { ...links };
     next[habitId] = (next[habitId] ?? []).filter(gid => gid !== goalId);
     if (next[habitId].length === 0) delete next[habitId];
     setLinks(next);
-    await supabase.from("settings").upsert({ key: "habit_goal_links", value: next });
+    await dbWrite.from("settings").upsert({ key: "habit_goal_links", value: next });
   }
 
   /* ─── Derived ─── */
@@ -839,12 +840,12 @@ export default function DisciplinePage() {
                   onUnlinkHabit={hid => unlinkHabitFromGoal(hid, g.id)}
                   onAskSuggestions={() => setSuggestingGoalId(g.id)}
                   onAddNote={async text => {
-                    const { data } = await supabase.from("goal_notes").insert({ goal_id: g.id, text, created_at: new Date().toISOString() }).select("id,goal_id,text,created_at").single();
+                    const { data } = await dbWrite.from("goal_notes").insert({ goal_id: g.id, text, created_at: new Date().toISOString() }).select("id,goal_id,text,created_at").single();
                     if (data) setNotes(p => [...p, { id: String(data.id), goal_id: String(data.goal_id), text: String(data.text), created_at: String(data.created_at) }]);
                   }}
                   onDeleteNote={async nid => {
                     setNotes(p => p.filter(n => n.id !== nid));
-                    await supabase.from("goal_notes").delete().eq("id", nid);
+                    await dbWrite.from("goal_notes").delete().eq("id", nid);
                   }}
                 />
               ))}

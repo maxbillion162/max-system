@@ -5,6 +5,7 @@ import { HudCard } from "@/components/ui/HudCard";
 import { Sparkline } from "@/components/ui/Sparkline";
 import { FeedbackControl } from "@/components/ui/FeedbackControl";
 import { supabase } from "@/lib/supabase";
+import { dbWrite } from "@/lib/db-client";
 
 const BTC_FALLBACK = [88200, 89100, 91400, 90800, 92300, 93100, 94210];
 const XRP_FALLBACK = [2.31, 2.18, 2.25, 2.09, 2.14, 2.29, 2.18];
@@ -348,18 +349,18 @@ export default function Dashboard() {
     if (!text) return;
     setNewTaskText("");
     setAddingTask(false);
-    const { data } = await supabase.from("tasks").insert({ text, completed: false }).select().single();
+    const { data } = await dbWrite.from("tasks").insert({ text, completed: false }).select().single();
     if (data) setTasks(prev => [...prev, data]);
   }
 
   async function toggleTask(id: string, completed: boolean) {
     setTasks(prev => prev.map(t => t.id === id ? { ...t, completed: !completed } : t));
-    await supabase.from("tasks").update({ completed: !completed }).eq("id", id);
+    await dbWrite.from("tasks").update({ completed: !completed }).eq("id", id);
   }
 
   async function deleteTask(id: string) {
     setTasks(prev => prev.filter(t => t.id !== id));
-    await supabase.from("tasks").delete().eq("id", id);
+    await dbWrite.from("tasks").delete().eq("id", id);
   }
 
   async function toggleHabit(id: string, completed: boolean) {
@@ -367,11 +368,11 @@ export default function Dashboard() {
     setHabits(prev => prev.map(h => h.id === id ? { ...h, completed: newCompleted } : h));
     const today = new Date().toISOString().slice(0, 10);
     if (newCompleted) {
-      await supabase.from("habit_logs").upsert({ habit_id: id, date: today, completed: true }, { onConflict: "habit_id,date" });
+      await dbWrite.from("habit_logs").upsert({ habit_id: id, date: today, completed: true }, { onConflict: "habit_id,date" });
     } else {
-      await supabase.from("habit_logs").delete().eq("habit_id", id).eq("date", today);
+      await dbWrite.from("habit_logs").delete().eq("habit_id", id).eq("date", today);
     }
-    await supabase.from("habits").update({ completed: newCompleted }).eq("id", id);
+    await dbWrite.from("habits").update({ completed: newCompleted }).eq("id", id);
   }
 
   async function updateWealth(key: keyof typeof WEALTH_DEFAULTS, val: number) {

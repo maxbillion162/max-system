@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { dbWrite } from "@/lib/db-client";
 
 /* ── Types ── */
 interface Goal {
@@ -445,7 +446,7 @@ export default function GoalsPage() {
 
     if (!hasFullData) {
       // Seed defaults (handles both empty DB and old partial rows with no label)
-      await supabase.from("goals").upsert(GOALS_SEED.map(g=>({
+      await dbWrite.from("goals").upsert(GOALS_SEED.map(g=>({
         id:g.id, label:g.label, description:g.desc, current:g.current, target:g.target,
         unit:g.unit, deadline:g.deadline, color:g.colorHex, category:g.category,
         milestones:g.milestones, subgoals:g.subgoals,
@@ -496,7 +497,7 @@ export default function GoalsPage() {
 
   async function addGoal(g: Goal) {
     setGoals(p=>[...p,g]);
-    await supabase.from("goals").insert({
+    await dbWrite.from("goals").insert({
       id:g.id, label:g.label, description:g.desc, current:g.current, target:g.target,
       unit:g.unit, deadline:g.deadline, color:g.colorHex, category:g.category,
       milestones:g.milestones, subgoals:g.subgoals,
@@ -505,7 +506,7 @@ export default function GoalsPage() {
 
   async function saveGoal(id: string, updates: Partial<Goal>) {
     setGoals(p=>p.map(g=>g.id===id?{...g,...updates}:g));
-    await supabase.from("goals").update({
+    await dbWrite.from("goals").update({
       label:updates.label, description:updates.desc, current:updates.current,
       target:updates.target, unit:updates.unit, deadline:updates.deadline,
       color:updates.colorHex, category:updates.category,
@@ -520,8 +521,8 @@ export default function GoalsPage() {
     setGoals(p=>p.filter(g=>g.id!==id));
     setNotes(p=>p.filter(n=>n.goal_id!==id));
     // Delete notes first (FK-safe order), then goal
-    const notesRes = await supabase.from("goal_notes").delete().eq("goal_id",id);
-    const goalRes  = await supabase.from("goals").delete().eq("id",id);
+    const notesRes = await dbWrite.from("goal_notes").delete().eq("goal_id",id);
+    const goalRes  = await dbWrite.from("goals").delete().eq("id",id);
     if (notesRes.error || goalRes.error) {
       // Rollback — show the user their goal is still there
       setGoals(prevGoals);
@@ -541,14 +542,14 @@ export default function GoalsPage() {
 
   async function deleteNote(id: string) {
     setNotes(p=>p.filter(n=>n.id!==id));
-    await supabase.from("goal_notes").delete().eq("id",id);
+    await dbWrite.from("goal_notes").delete().eq("id",id);
   }
 
   async function toggleSubgoal(goalId: string, idx: number) {
     setGoals(p=>p.map(g=>{
       if (g.id!==goalId) return g;
       const next = g.subgoals.map((s,i)=>i===idx?{...s,done:!s.done}:s);
-      supabase.from("goals").update({subgoals:next}).eq("id",goalId);
+      dbWrite.from("goals").update({subgoals:next}).eq("id",goalId);
       return {...g,subgoals:next};
     }));
   }

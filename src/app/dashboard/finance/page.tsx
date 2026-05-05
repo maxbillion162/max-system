@@ -33,6 +33,7 @@ import { ScenarioTracker } from "@/components/finance/ScenarioTracker";
 import { cashFlowRunway, netWorthBreakdown, delta24h } from "@/lib/finance-math";
 import { normalizeAccountType } from "@/lib/plaid";
 import type { Account as FinAccount, AccountType, WealthSnapshot } from "@/types/finance";
+import { dbWrite } from "@/lib/db-client";
 
 /* ─────────────── Types ─────────────── */
 interface PlaidAccount   { id: string; plaid_account_id: string; plaid_item_id: string; name: string; official_name?: string|null; type: string; subtype: string; institution: string; mask: string | null; current_balance: number | null; available_balance: number | null; last_synced: string | null; account_type?: string | null; archived?: boolean | null; active?: boolean }
@@ -486,7 +487,7 @@ export default function FinancePage() {
 
   async function saveIncome(amount:number) {
     setIncome(amount);
-    await supabase.from("settings").upsert({key:"monthly_income",value:amount});
+    await dbWrite.from("settings").upsert({key:"monthly_income",value:amount});
   }
 
   async function saveAlloc(category:string, budgeted:number, id?:string) {
@@ -517,7 +518,7 @@ export default function FinancePage() {
     const rows=QUICK_DEFAULTS.map(d=>({...d,period_start:period,rollover:false}));
     const {data}=await supabase.from("budget_allocations").upsert(rows,{onConflict:"category,period_start"}).select();
     if (data) setAllocations(data);
-    await supabase.from("settings").upsert({key:"monthly_income",value:3000});
+    await dbWrite.from("settings").upsert({key:"monthly_income",value:3000});
     setIncome(3000);
   }
 
@@ -584,8 +585,8 @@ export default function FinancePage() {
   async function saveBills(updated:Bill[]) {
     setBills(updated);
     setSaving(true);
-    await supabase.from("bills").delete().neq("name","NEVER_MATCH");
-    await supabase.from("bills").insert(updated);
+    await dbWrite.from("bills").delete().neq("name","NEVER_MATCH");
+    await dbWrite.from("bills").insert(updated);
     setSaving(false);
   }
 

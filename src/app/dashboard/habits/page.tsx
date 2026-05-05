@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { HudCard } from "@/components/ui/HudCard";
 import { supabase } from "@/lib/supabase";
+import { dbWrite } from "@/lib/db-client";
 
 /* ── Types ── */
 interface Habit {
@@ -274,9 +275,9 @@ export default function HabitsPage() {
 
     // Persist
     if (nowDone) {
-      await supabase.from("habit_logs").upsert({ habit_id:habitId, date:today, completed:true });
+      await dbWrite.from("habit_logs").upsert({ habit_id:habitId, date:today, completed:true });
     } else {
-      await supabase.from("habit_logs").update({ completed:false }).eq("habit_id",habitId).eq("date",today);
+      await dbWrite.from("habit_logs").update({ completed:false }).eq("habit_id",habitId).eq("date",today);
     }
 
     // Update streak + completed in habits table
@@ -289,7 +290,7 @@ export default function HabitsPage() {
     const habit = habits.find(h=>h.id===habitId);
     const newBest = Math.max(habit?.best??0, newStreak);
     setHabits(prev=>prev.map(h=>h.id===habitId?{...h,best:newBest}:h));
-    await supabase.from("habits").update({ completed:nowDone, streak:newStreak, best:newBest }).eq("id",habitId);
+    await dbWrite.from("habits").update({ completed:nowDone, streak:newStreak, best:newBest }).eq("id",habitId);
 
     // Check for perfect day → award shield if all done
     // (done after state updates settle via effect)
@@ -301,22 +302,22 @@ export default function HabitsPage() {
     const full: Habit = { ...h, best: exists?.best ?? 0 };
     if (exists) {
       setHabits(prev=>prev.map(x=>x.id===h.id?full:x));
-      await supabase.from("habits").update({ name:h.label, cat:h.cat, color:h.color }).eq("id",h.id);
+      await dbWrite.from("habits").update({ name:h.label, cat:h.cat, color:h.color }).eq("id",h.id);
     } else {
       setHabits(prev=>[...prev,full]);
-      await supabase.from("habits").insert({ id:h.id, name:h.label, cat:h.cat, color:h.color, completed:false, streak:0, best:0, updated_at:new Date().toISOString() });
+      await dbWrite.from("habits").insert({ id:h.id, name:h.label, cat:h.cat, color:h.color, completed:false, streak:0, best:0, updated_at:new Date().toISOString() });
     }
   }
 
   async function deleteHabit(id: string) {
     setHabits(prev=>prev.filter(h=>h.id!==id));
-    await supabase.from("habits").delete().eq("id",id);
-    await supabase.from("habit_logs").delete().eq("habit_id",id);
+    await dbWrite.from("habits").delete().eq("id",id);
+    await dbWrite.from("habit_logs").delete().eq("habit_id",id);
   }
 
   async function savePpl(splits: PPLDay[]) {
     setPpl(splits);
-    await supabase.from("settings").upsert({ key:"ppl_split", value:{ splits } });
+    await dbWrite.from("settings").upsert({ key:"ppl_split", value:{ splits } });
   }
 
   async function useShield(habitId: string) {
@@ -333,8 +334,8 @@ export default function HabitsPage() {
     });
     const newShields = shields - 1;
     setShields(newShields);
-    await supabase.from("habit_logs").upsert({ habit_id:habitId, date:yStr, completed:true });
-    await supabase.from("settings").upsert({ key:"habit_shields", value:{ shields:newShields } });
+    await dbWrite.from("habit_logs").upsert({ habit_id:habitId, date:yStr, completed:true });
+    await dbWrite.from("settings").upsert({ key:"habit_shields", value:{ shields:newShields } });
   }
 
   /* ── Derived stats ── */

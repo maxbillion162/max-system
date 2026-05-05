@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
+import { dbWrite } from "@/lib/db-client";
 
 /* ─── Types ─────────────────────────────────────────────────────── */
 /** All categories consumed by the notify() pipeline. Keys must match NotifyCategory in src/lib/notify.ts. */
@@ -724,7 +725,7 @@ export default function SettingsPage() {
   useEffect(()=>{ loadSettings(); },[loadSettings]);
 
   async function saveSetting(key:string, value:unknown) {
-    await supabase.from("settings").upsert({ key, value }, { onConflict:"key" });
+    await dbWrite.from("settings").upsert({ key, value }, { onConflict:"key" });
   }
 
   const section = SECTIONS.find(s=>s.id===active)!;
