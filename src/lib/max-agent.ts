@@ -969,6 +969,7 @@ export async function runAgentStream(
   messages: AgentMessage[],
   injectContext: boolean,
   onEvent: (event: AgentEvent) => void,
+  surface?: string,
 ): Promise<void> {
   if (!process.env.ANTHROPIC_API_KEY) {
     onEvent({ t: "chunk", text: "M.A.X. offline — API key missing." });
@@ -1017,12 +1018,13 @@ export async function runAgentStream(
       }
     }
 
+    // Accumulate every iteration's text so persisted history matches what
+    // the user saw (Claude sometimes emits text before calling a tool).
+    fullText += localText;
+
     const finalMsg = await stream.finalMessage();
 
-    if (finalMsg.stop_reason !== "tool_use" || iterations >= MAX_ITERATIONS) {
-      fullText = localText;
-      break;
-    }
+    if (finalMsg.stop_reason !== "tool_use" || iterations >= MAX_ITERATIONS) break;
 
     iterations++;
 
@@ -1031,7 +1033,7 @@ export async function runAgentStream(
       toolUseBlocks.map(async (block) => ({
         type: "tool_result" as const,
         tool_use_id: block.id,
-        content: await executeTool(block.name, block.input as Record<string, unknown>),
+        content: await executeTool(block.name, block.input as Record<string, unknown>, surface),
       }))
     );
 
@@ -1048,7 +1050,7 @@ export interface AgentMessage {
   content: string;
 }
 
-export async function runAgent(messages: AgentMessage[], injectContext = true): Promise<string> {
+export async function runAgent(messages: AgentMessage[], injectContext = true, surface?: string): Promise<string> {
   if (!process.env.ANTHROPIC_API_KEY) return "M.A.X. offline — API key missing.";
 
   const apiMessages: Anthropic.MessageParam[] = messages.slice(-HISTORY_WINDOW).map(m => ({
@@ -1083,7 +1085,7 @@ export async function runAgent(messages: AgentMessage[], injectContext = true): 
       toolUseBlocks.map(async (block) => ({
         type: "tool_result" as const,
         tool_use_id: block.id,
-        content: await executeTool(block.name, block.input as Record<string, unknown>),
+        content: await executeTool(block.name, block.input as Record<string, unknown>, surface),
       }))
     );
 

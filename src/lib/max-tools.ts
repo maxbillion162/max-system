@@ -608,7 +608,7 @@ export async function saveTelegramMessage(role: "user" | "assistant", content: s
   const ct = encrypt(content);
   await Promise.all([
     supabase.from("telegram_history").insert({ role, content: ct }).then(() => {}, () => {}),
-    supabase.from("chat_messages").insert({ role, content: ct }).then(() => {}, () => {}),
+    supabase.from("chat_messages").insert({ role, content: ct, surface: "telegram" }).then(() => {}, () => {}),
   ]);
 }
 

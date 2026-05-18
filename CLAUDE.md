@@ -208,7 +208,7 @@ src/
 | `ira_funds` | IRA fund breakdown (symbol, name, nav, chg, value, shares) |
 | `bills` | Monthly bills (name, amt, due_day) |
 | `telegram_history` | Telegram conversation history (role, content, created_at) |
-| `chat_messages` | Unified conversation log — web chat, floating bubble, AND Telegram all write here. Has `surface` column. |
+| `chat_messages` | Unified conversation log — web chat, floating bubble, AND Telegram all write here. Has `surface` column ('web' / 'telegram') and `session_id` (web only; Telegram leaves it null). |
 | `notifications` | Real-time alerts (type, title, body, read, action_url). Written via `notify()` only — do not insert directly. |
 | `feedback` | 👍/👎 ratings on AI artifacts (artifact_type, artifact_id, rating ±1, note, metadata). Rolled up daily into learned preferences. |
 | `pending_actions` | Tier-3 agency: actions awaiting Telegram ✓/✗ approval. Executor + callback handler fully wired. |

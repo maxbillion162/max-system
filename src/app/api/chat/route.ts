@@ -29,7 +29,7 @@ export async function POST(request: Request) {
           await runAgentStream(normalized, true, (event) => {
             send(event);
             if (event.t === "done") fullText = event.full;
-          });
+          }, "web");
 
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
@@ -42,8 +42,8 @@ export async function POST(request: Request) {
             const last = normalized[normalized.length - 1];
             if (last.role === "user" && fullText) {
               await supabase.from("chat_messages").insert([
-                { role: "user",      content: encrypt(last.content) },
-                { role: "assistant", content: encrypt(fullText)     },
+                { role: "user",      content: encrypt(last.content), surface: "web", session_id: session_id ?? null },
+                { role: "assistant", content: encrypt(fullText),     surface: "web", session_id: session_id ?? null },
               ]).then(() => {}, () => {}); // non-fatal
             }
           }

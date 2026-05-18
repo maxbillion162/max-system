@@ -422,7 +422,7 @@ export async function POST(request: Request) {
         { role: "user", content: userContent },
       ];
 
-      reply = await runAgent(agentMessages, false);
+      reply = await runAgent(agentMessages, false, "telegram");
     }
 
     // Persist conversation
