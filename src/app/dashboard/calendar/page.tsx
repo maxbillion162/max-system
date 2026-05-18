@@ -885,9 +885,9 @@ export default function CalendarPage() {
                   const da=allDayForDay(d);
                   const dt=tasksForDay(d);
                   const db=billsForDay(d);
-                  const all=[...da,...de];
-                  const showItems=all.slice(0,2);
-                  const overflow=all.length+dt.length+db.length-2-db.length;
+                  // Show at most 2 timed events; all-day items render separately above.
+                  const shownTimed = de.slice(0, 2);
+                  const overflow = (da.length + de.length + dt.length) - (da.length + shownTimed.length + Math.min(dt.length, 1));
                   return (
                     <div key={i} onClick={()=>{setCursor(d);setView("day");}} style={{ minHeight:88,padding:"6px 6px",borderRadius:6,background:isT?"rgba(125,184,232,0.07)":"var(--surface)",border:`1px solid ${isT?"rgba(125,184,232,0.25)":"var(--border)"}`,cursor:"pointer",transition:"border-color .12s" }}
                       onMouseEnter={e=>!isT&&((e.currentTarget as HTMLElement).style.borderColor="rgba(255,255,255,0.1)")}
@@ -897,14 +897,8 @@ export default function CalendarPage() {
                         <span style={{ fontSize:11,fontWeight:isT?800:500,color:isT?"#fff":"var(--t2)" }}>{d.getDate()}</span>
                       </div>
                       <div style={{ display:"flex",flexDirection:"column",gap:2 }}>
-                        {showItems.map(e=>{
-                          const isAllDay=(e as GCalEvent).allDay!==undefined;
-                          if (!isAllDay) return null;
-                          const gcal=e as GCalEvent;
-                          const color=gcalColor(gcal);
-                          return <a key={gcal.id} href={gcal.htmlLink} target="_blank" rel="noreferrer" onClick={ev=>{ev.stopPropagation();setSelectedEvent(gcal);setSelectedTask(null);}} style={{ display:"block",padding:"2px 4px",borderRadius:3,fontSize:8,fontWeight:600,textDecoration:"none",background:`${color}15`,color,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{gcal.title}</a>;
-                        })}
-                        {de.slice(0,2).map(e=>{const color=gcalColor(e);return<div key={e.id} onClick={ev=>{ev.stopPropagation();setSelectedEvent(e);setSelectedTask(null);}} style={{ padding:"2px 4px",borderRadius:3,fontSize:8,fontWeight:600,cursor:"pointer",background:`${color}15`,color,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{e.title}</div>;})}
+                        {da.map(e=>{const color=gcalColor(e);return<div key={e.id} onClick={ev=>{ev.stopPropagation();setSelectedEvent(e);setSelectedTask(null);}} style={{ padding:"2px 4px",borderRadius:3,fontSize:8,fontWeight:700,cursor:"pointer",background:`${color}22`,color,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{e.title}</div>;})}
+                        {shownTimed.map(e=>{const color=gcalColor(e);return<div key={e.id} onClick={ev=>{ev.stopPropagation();setSelectedEvent(e);setSelectedTask(null);}} style={{ padding:"2px 4px",borderRadius:3,fontSize:8,fontWeight:600,cursor:"pointer",background:`${color}15`,color,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{e.title}</div>;})}
                         {dt.slice(0,1).map(t=><div key={t.id} onClick={ev=>{ev.stopPropagation();setSelectedTask(t);setSelectedEvent(null);}} style={{ padding:"2px 4px",borderRadius:3,fontSize:8,fontWeight:600,cursor:"pointer",background:`${PRIO_COLOR[t.priority??"medium"]}15`,color:PRIO_COLOR[t.priority??"medium"],overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>◎ {t.text}</div>)}
                         {db.map(b=><div key={b.id} title={`Bill: ${b.name} $${b.amt}`} style={{ padding:"2px 4px",borderRadius:3,fontSize:8,fontWeight:700,background:"rgba(200,90,90,0.12)",color:"var(--red)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>$ {b.name}</div>)}
                         {overflow>0&&<span style={{ fontSize:8,color:"var(--t4)",paddingLeft:2 }}>+{overflow} more</span>}
