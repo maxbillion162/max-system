@@ -124,6 +124,36 @@ export async function createCalendarEvent(title: string, start: string, end: str
   return { success: true, eventId: res.data.id, link: res.data.htmlLink };
 }
 
+export async function updateCalendarEvent(eventId: string, fields: { title?: string; start?: string; end?: string; description?: string; location?: string }) {
+  const auth = await getAuthenticatedClient();
+  if (!auth) return { error: "Google Calendar not connected" };
+  const calendar = google.calendar({ version: "v3", auth });
+  const requestBody: Record<string, unknown> = {};
+  if (fields.title       !== undefined) requestBody.summary     = fields.title;
+  if (fields.description !== undefined) requestBody.description = fields.description;
+  if (fields.location    !== undefined) requestBody.location    = fields.location;
+  if (fields.start       !== undefined) requestBody.start       = { dateTime: fields.start, timeZone: "America/New_York" };
+  if (fields.end         !== undefined) requestBody.end         = { dateTime: fields.end,   timeZone: "America/New_York" };
+  try {
+    const res = await calendar.events.patch({ calendarId: "primary", eventId, requestBody });
+    return { success: true, eventId: res.data.id };
+  } catch (err) {
+    return { error: String(err) };
+  }
+}
+
+export async function deleteCalendarEvent(eventId: string) {
+  const auth = await getAuthenticatedClient();
+  if (!auth) return { error: "Google Calendar not connected" };
+  const calendar = google.calendar({ version: "v3", auth });
+  try {
+    await calendar.events.delete({ calendarId: "primary", eventId });
+    return { success: true };
+  } catch (err) {
+    return { error: String(err) };
+  }
+}
+
 /* ────────────────────────────────── GMAIL ── */
 export async function readGmail(maxResults = 10) {
   const auth = await getAuthenticatedClient();

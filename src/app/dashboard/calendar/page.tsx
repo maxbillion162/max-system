@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { HudCard } from "@/components/ui/HudCard";
+import { FeatureHint } from "@/components/ui/FeatureHint";
 import { supabase } from "@/lib/supabase";
 import { dbWrite } from "@/lib/db-client";
 
@@ -18,6 +19,7 @@ interface GCalEvent {
   start: string; end: string; allDay: boolean; color: string | null;
   htmlLink: string; status: string;
 }
+interface Bill { id: string; name: string; amt: number; due_day: number }
 interface NLPreview {
   title: string; start: string; end: string;
   location?: string | null; description?: string | null;
@@ -105,8 +107,55 @@ function positionEvents(events: GCalEvent[]): PositionedEvent[] {
 }
 
 /* ── Event Detail ── */
-function EventDetail({ event, onClose }: { event: GCalEvent; onClose: ()=>void }) {
+function EventDetail({ event, onClose, onUpdate, onDelete }: {
+  event: GCalEvent;
+  onClose: ()=>void;
+  onUpdate: (id: string, fields: { title?: string; start?: string; end?: string; description?: string; location?: string }) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+}) {
   const color = gcalColor(event);
+  const [editing, setEditing] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  // Edit form state — initialized from event
+  const [eTitle, setETitle] = useState(event.title);
+  const [eStart, setEStart] = useState(event.allDay ? event.start : event.start.slice(0, 16));
+  const [eEnd,   setEEnd]   = useState(event.allDay ? event.end   : event.end.slice(0, 16));
+  const [eLoc,   setELoc]   = useState(event.location ?? "");
+  const [eDesc,  setEDesc]  = useState(event.description ?? "");
+
+  useEffect(() => {
+    setETitle(event.title);
+    setEStart(event.allDay ? event.start : event.start.slice(0, 16));
+    setEEnd(event.allDay ? event.end : event.end.slice(0, 16));
+    setELoc(event.location ?? "");
+    setEDesc(event.description ?? "");
+    setEditing(false); setConfirmDel(false);
+  }, [event.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function save() {
+    if (event.allDay) return; // All-day editing not supported in this surgical pass
+    setSaving(true);
+    const fields: Parameters<typeof onUpdate>[1] = {};
+    if (eTitle !== event.title)                fields.title       = eTitle;
+    if (eStart !== event.start.slice(0, 16))   fields.start       = new Date(eStart).toISOString();
+    if (eEnd   !== event.end.slice(0, 16))     fields.end         = new Date(eEnd).toISOString();
+    if (eLoc   !== (event.location ?? ""))     fields.location    = eLoc;
+    if (eDesc  !== (event.description ?? ""))  fields.description = eDesc;
+    await onUpdate(event.id, fields);
+    setSaving(false);
+    setEditing(false);
+  }
+
+  async function confirmDelete() {
+    setBusy(true);
+    await onDelete(event.id);
+    setBusy(false);
+    // Parent clears selectedEvent after delete; no need to setConfirmDel false.
+  }
+
   return (
     <div style={{ display:"flex", flexDirection:"column", height:"100%" }}>
       <button onClick={onClose} style={{ display:"flex",alignItems:"center",gap:6,background:"none",border:"none",cursor:"pointer",color:"var(--t4)",fontSize:11,fontWeight:600,padding:"0 0 14px",transition:"color .15s" }}
@@ -117,33 +166,76 @@ function EventDetail({ event, onClose }: { event: GCalEvent; onClose: ()=>void }
         Schedule
       </button>
       <div style={{ height:3, borderRadius:2, background:color, marginBottom:16 }} />
-      <h2 style={{ fontSize:17,fontWeight:800,color:"var(--t1)",lineHeight:1.3,marginBottom:14 }}>{event.title}</h2>
-      <div style={{ display:"flex",alignItems:"flex-start",gap:8,marginBottom:10 }}>
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--t4)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink:0,marginTop:2 }}>
-          <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
-        </svg>
-        <p style={{ fontSize:12,color:"var(--t2)",lineHeight:1.5 }}>{fmtEventTime(event)}</p>
-      </div>
-      {event.location&&(
-        <div style={{ display:"flex",alignItems:"flex-start",gap:8,marginBottom:10 }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--t4)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink:0,marginTop:2 }}>
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
-          </svg>
-          <p style={{ fontSize:12,color:"var(--t2)" }}>{event.location}</p>
-        </div>
-      )}
-      {event.description&&(
-        <div style={{ marginTop:8,marginBottom:16 }}>
-          <p style={{ fontSize:10,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",color:"var(--t4)",marginBottom:6 }}>Notes</p>
-          <p style={{ fontSize:12,color:"var(--t3)",lineHeight:1.7,whiteSpace:"pre-wrap",maxHeight:140,overflowY:"auto" }}>{event.description}</p>
-        </div>
-      )}
-      <div style={{ flex:1 }} />
-      {event.htmlLink&&(
-        <a href={event.htmlLink} target="_blank" rel="noreferrer" style={{ display:"block",padding:"10px 14px",borderRadius:8,background:"rgba(125,184,232,0.08)",border:"1px solid rgba(125,184,232,0.2)",color:"var(--blue)",fontSize:12,fontWeight:700,textDecoration:"none",textAlign:"center" }}
-          onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background="rgba(125,184,232,0.15)"}
-          onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background="rgba(125,184,232,0.08)"}
-        >Open in Google Calendar →</a>
+
+      {editing && !event.allDay ? (
+        <>
+          <p style={{ fontSize:10,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",color:"var(--blue)",marginBottom:6 }}>Title</p>
+          <input value={eTitle} onChange={e=>setETitle(e.target.value)} style={{ width:"100%",background:"var(--surface2)",border:"1px solid var(--border2)",borderRadius:6,padding:"8px 10px",fontSize:13,color:"var(--t1)",outline:"none",marginBottom:10 }}/>
+          <div style={{ display:"flex",gap:8,marginBottom:10 }}>
+            <div style={{ flex:1 }}>
+              <p style={{ fontSize:10,fontWeight:600,color:"var(--t3)",marginBottom:5 }}>Start</p>
+              <input type="datetime-local" value={eStart} onChange={e=>setEStart(e.target.value)} style={{ width:"100%",background:"var(--surface2)",border:"1px solid var(--border2)",borderRadius:6,padding:"7px 9px",fontSize:12,color:"var(--t1)",outline:"none",colorScheme:"dark" }}/>
+            </div>
+            <div style={{ flex:1 }}>
+              <p style={{ fontSize:10,fontWeight:600,color:"var(--t3)",marginBottom:5 }}>End</p>
+              <input type="datetime-local" value={eEnd} onChange={e=>setEEnd(e.target.value)} style={{ width:"100%",background:"var(--surface2)",border:"1px solid var(--border2)",borderRadius:6,padding:"7px 9px",fontSize:12,color:"var(--t1)",outline:"none",colorScheme:"dark" }}/>
+            </div>
+          </div>
+          <input value={eLoc} onChange={e=>setELoc(e.target.value)} placeholder="Location" style={{ width:"100%",background:"var(--surface2)",border:"1px solid var(--border2)",borderRadius:6,padding:"7px 10px",fontSize:12,color:"var(--t1)",outline:"none",marginBottom:10 }}/>
+          <textarea value={eDesc} onChange={e=>setEDesc(e.target.value)} placeholder="Description" rows={3} style={{ width:"100%",background:"var(--surface2)",border:"1px solid var(--border2)",borderRadius:6,padding:"7px 10px",fontSize:12,color:"var(--t1)",outline:"none",resize:"none",marginBottom:12,fontFamily:"inherit" }}/>
+          <div style={{ display:"flex",gap:8 }}>
+            <button onClick={save} disabled={saving||!eTitle.trim()} style={{ flex:1,padding:"8px",borderRadius:7,cursor:"pointer",fontSize:12,fontWeight:700,background:"rgba(95,176,125,0.12)",border:"1px solid rgba(95,176,125,0.3)",color:"var(--green)",opacity:saving?0.6:1 }}>{saving?"Saving…":"Save changes"}</button>
+            <button onClick={()=>setEditing(false)} style={{ padding:"8px 14px",borderRadius:7,cursor:"pointer",fontSize:12,background:"transparent",border:"1px solid var(--border2)",color:"var(--t3)" }}>Cancel</button>
+          </div>
+        </>
+      ) : (
+        <>
+          <h2 style={{ fontSize:17,fontWeight:800,color:"var(--t1)",lineHeight:1.3,marginBottom:14 }}>{event.title}</h2>
+          <div style={{ display:"flex",alignItems:"flex-start",gap:8,marginBottom:10 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--t4)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink:0,marginTop:2 }}>
+              <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+            </svg>
+            <p style={{ fontSize:12,color:"var(--t2)",lineHeight:1.5 }}>{fmtEventTime(event)}</p>
+          </div>
+          {event.location&&(
+            <div style={{ display:"flex",alignItems:"flex-start",gap:8,marginBottom:10 }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--t4)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink:0,marginTop:2 }}>
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+              </svg>
+              <p style={{ fontSize:12,color:"var(--t2)" }}>{event.location}</p>
+            </div>
+          )}
+          {event.description&&(
+            <div style={{ marginTop:8,marginBottom:16 }}>
+              <p style={{ fontSize:10,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",color:"var(--t4)",marginBottom:6 }}>Notes</p>
+              <p style={{ fontSize:12,color:"var(--t3)",lineHeight:1.7,whiteSpace:"pre-wrap",maxHeight:140,overflowY:"auto" }}>{event.description}</p>
+            </div>
+          )}
+          <div style={{ flex:1 }} />
+
+          {/* Action row — Edit / Delete / Open in GCal */}
+          <div style={{ display:"flex",gap:6,marginBottom:8 }}>
+            {!event.allDay && (
+              <button onClick={()=>setEditing(true)} style={{ flex:1,padding:"8px 10px",borderRadius:7,cursor:"pointer",fontSize:11,fontWeight:700,background:"rgba(125,184,232,0.08)",border:"1px solid rgba(125,184,232,0.2)",color:"var(--blue)" }}>Edit</button>
+            )}
+            <button onClick={()=>setConfirmDel(true)} disabled={busy} style={{ flex:1,padding:"8px 10px",borderRadius:7,cursor:"pointer",fontSize:11,fontWeight:700,background:"rgba(200,90,90,0.08)",border:"1px solid rgba(200,90,90,0.25)",color:"var(--red)",opacity:busy?0.6:1 }}>Delete</button>
+          </div>
+          {confirmDel && (
+            <div style={{ padding:"10px 12px",borderRadius:7,background:"rgba(200,90,90,0.06)",border:"1px solid rgba(200,90,90,0.2)",marginBottom:8 }}>
+              <p style={{ fontSize:11,color:"var(--t2)",marginBottom:8 }}>Delete this event permanently?</p>
+              <div style={{ display:"flex",gap:6 }}>
+                <button onClick={confirmDelete} disabled={busy} style={{ flex:1,padding:"6px",borderRadius:5,cursor:"pointer",fontSize:11,fontWeight:700,background:"rgba(200,90,90,0.18)",border:"1px solid rgba(200,90,90,0.4)",color:"var(--red)" }}>{busy?"Deleting…":"Yes, delete"}</button>
+                <button onClick={()=>setConfirmDel(false)} style={{ padding:"6px 12px",borderRadius:5,cursor:"pointer",fontSize:11,background:"transparent",border:"1px solid var(--border2)",color:"var(--t3)" }}>Cancel</button>
+              </div>
+            </div>
+          )}
+          {event.htmlLink&&(
+            <a href={event.htmlLink} target="_blank" rel="noreferrer" style={{ display:"block",padding:"8px 14px",borderRadius:7,background:"rgba(255,255,255,0.02)",border:"1px solid var(--border2)",color:"var(--t3)",fontSize:11,fontWeight:600,textDecoration:"none",textAlign:"center" }}
+              onMouseEnter={e=>(e.currentTarget as HTMLElement).style.color="var(--t2)"}
+              onMouseLeave={e=>(e.currentTarget as HTMLElement).style.color="var(--t3)"}
+            >Open in Google Calendar →</a>
+          )}
+        </>
       )}
     </div>
   );
@@ -340,6 +432,7 @@ export default function CalendarPage() {
   const [nlPreview,     setNlPreview]    = useState<NLPreview|null>(null);
   const [nlError,       setNlError]      = useState("");
   const [showTasks,     setShowTasks]    = useState(true);
+  const [bills,         setBills]        = useState<Bill[]>([]);
 
   const gridRef = useRef<HTMLDivElement>(null);
   const today   = new Date();
@@ -355,6 +448,7 @@ export default function CalendarPage() {
       }
     });
     supabase.from("tasks").select("*").order("created_at").then(({data})=>{ if(data) setTasks(data as Task[]); });
+    supabase.from("bills").select("*").order("due_day").then(({data})=>{ if(data) setBills(data as Bill[]); });
     supabase.from("task_lists").select("*").order("position").then(async ({data})=>{
       if (data && data.length>0) { setLists(data as TaskList[]); return; }
       const rows = DEFAULT_LISTS.map((l,i)=>({...l,position:i}));
@@ -422,6 +516,39 @@ export default function CalendarPage() {
     }
   }
 
+  async function updateGcalEvent(eventId: string, fields: { title?: string; start?: string; end?: string; description?: string; location?: string }) {
+    const res  = await fetch("/api/google/calendar",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({eventId,...fields})});
+    const data = await res.json();
+    if (data.success && data.event) {
+      const e = data.event;
+      setGcalEvents(prev=>prev.map(ev => ev.id===eventId ? {
+        ...ev,
+        title:       e.summary       ?? ev.title,
+        description: e.description   ?? ev.description,
+        location:    e.location      ?? ev.location,
+        start:       e.start?.dateTime ?? e.start?.date ?? ev.start,
+        end:         e.end?.dateTime   ?? e.end?.date   ?? ev.end,
+      } : ev));
+      setSelectedEvent(prev => prev && prev.id===eventId ? {
+        ...prev,
+        title:       e.summary       ?? prev.title,
+        description: e.description   ?? prev.description,
+        location:    e.location      ?? prev.location,
+        start:       e.start?.dateTime ?? e.start?.date ?? prev.start,
+        end:         e.end?.dateTime   ?? e.end?.date   ?? prev.end,
+      } : prev);
+    }
+  }
+
+  async function deleteGcalEvent(eventId: string) {
+    const res  = await fetch("/api/google/calendar",{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({eventId})});
+    const data = await res.json();
+    if (data.success) {
+      setGcalEvents(prev=>prev.filter(ev => ev.id !== eventId));
+      setSelectedEvent(null);
+    }
+  }
+
   /* ── NL event parsing ── */
   async function parseNL() {
     if (!nlInput.trim()) return;
@@ -468,6 +595,7 @@ export default function CalendarPage() {
   function tasksForDay(d: Date)  { return showTasks ? tasks.filter(t=>t.due_date&&isSameDay(new Date(t.due_date+"T00:00:00"),d)&&!t.completed) : []; }
   function eventsForDay(d: Date) { return gcalEvents.filter(e=>{ const s=new Date(e.allDay?e.start+"T00:00:00":e.start); return isSameDay(s,d); }); }
   function allDayForDay(d: Date) { return gcalEvents.filter(e=>e.allDay&&isSameDay(new Date(e.start+"T00:00:00"),d)); }
+  function billsForDay(d: Date)  { return bills.filter(b=>b.due_day===d.getDate()); }
 
   /* ── Filtered tasks ── */
   const filteredTasks = tasks.filter(t=>activeListId?t.list_id===activeListId:true);
@@ -506,7 +634,21 @@ export default function CalendarPage() {
       {/* Header */}
       <div style={{ display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:16 }}>
         <div>
-          <p style={{ fontSize:11,fontWeight:700,letterSpacing:"0.14em",textTransform:"uppercase",color:"var(--t3)",marginBottom:6 }}>Schedule & Tasks</p>
+          <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:6 }}>
+            <p style={{ fontSize:11,fontWeight:700,letterSpacing:"0.14em",textTransform:"uppercase",color:"var(--t3)" }}>Schedule & Tasks</p>
+            <FeatureHint
+              title="What this page can do"
+              items={[
+                "Day / week / month views — switch with the toggle",
+                "Create events: click a time slot OR type natural language ('gym Tuesday 7am')",
+                "Edit + delete events directly — no need to open Google Calendar",
+                "Tasks with due dates appear inline (toggle on/off in Settings → Preferences)",
+                "Bills auto-overlay on their due date in red",
+                "Click + drag the task list to organize work into lists (Personal / Work / M.A.X.)",
+                "Ask M.A.X. via chat or Telegram: 'reschedule dinner to 8pm', 'delete the dentist event', 'find a 2-hour block tomorrow'",
+              ]}
+            />
+          </div>
           <h1 style={{ fontSize:26,fontWeight:800,color:"var(--t1)",letterSpacing:"-0.02em" }}>{navLabel()}</h1>
         </div>
         <div style={{ display:"flex",alignItems:"center",gap:8 }}>
@@ -572,8 +714,8 @@ export default function CalendarPage() {
                   <p style={{ fontSize:28,fontWeight:900,color:"var(--t1)",lineHeight:1 }}>{cursor.getDate()}</p>
                 </div>
               </div>
-              {/* All-day / tasks row */}
-              {(allDayForDay(cursor).length>0||tasksForDay(cursor).length>0)&&(
+              {/* All-day / tasks / bills row */}
+              {(allDayForDay(cursor).length>0||tasksForDay(cursor).length>0||billsForDay(cursor).length>0)&&(
                 <div style={{ display:"flex",borderBottom:"1px solid var(--border)",padding:"6px 0" }}>
                   <div style={{ width:TIME_W,flexShrink:0,padding:"4px 8px 0",textAlign:"right" }}>
                     <span style={{ fontSize:9,color:"var(--t4)" }}>Tasks</span>
@@ -586,6 +728,11 @@ export default function CalendarPage() {
                     {tasksForDay(cursor).map(t=>(
                       <span key={t.id} onClick={()=>{setSelectedTask(t);setSelectedEvent(null);}} style={{ padding:"2px 8px",borderRadius:3,fontSize:10,fontWeight:600,cursor:"pointer",background:`${PRIO_COLOR[t.priority??"medium"]}15`,border:`1px solid ${PRIO_COLOR[t.priority??"medium"]}30`,color:PRIO_COLOR[t.priority??"medium"] }}>
                         ◎ {t.text}
+                      </span>
+                    ))}
+                    {billsForDay(cursor).map(b=>(
+                      <span key={b.id} title={`Bill due: ${b.name} — $${b.amt}`} style={{ padding:"2px 8px",borderRadius:3,fontSize:10,fontWeight:600,background:"rgba(200,90,90,0.12)",border:"1px solid rgba(200,90,90,0.3)",color:"var(--red)" }}>
+                        $ {b.name} ${b.amt}
                       </span>
                     ))}
                   </div>
@@ -658,11 +805,12 @@ export default function CalendarPage() {
               <div style={{ display:"grid",gridTemplateColumns:`${TIME_W}px repeat(7,1fr)`,borderBottom:"1px solid var(--border)",minHeight:24 }}>
                 <div style={{ padding:"4px 4px 0",textAlign:"right" }}><span style={{ fontSize:9,color:"var(--t4)" }}>Tasks</span></div>
                 {weekDays.map((d,i)=>{
-                  const dt=tasksForDay(d); const de=allDayForDay(d);
+                  const dt=tasksForDay(d); const de=allDayForDay(d); const db=billsForDay(d);
                   return (
                     <div key={i} style={{ borderLeft:"1px solid var(--border)",padding:"2px 2px",minHeight:24,display:"flex",flexWrap:"wrap",gap:2,alignContent:"flex-start" }}>
                       {de.map(e=>{const c=gcalColor(e);return<span key={e.id} onClick={()=>{setSelectedEvent(e);setSelectedTask(null);}} style={{ display:"block",width:"100%",padding:"1px 4px",borderRadius:2,fontSize:8,fontWeight:600,cursor:"pointer",background:`${c}20`,color:c,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{e.title}</span>;})}
                       {dt.slice(0,2).map(t=><span key={t.id} onClick={()=>{setSelectedTask(t);setSelectedEvent(null);}} style={{ display:"block",width:"100%",padding:"1px 4px",borderRadius:2,fontSize:8,fontWeight:600,cursor:"pointer",background:`${PRIO_COLOR[t.priority??"medium"]}15`,color:PRIO_COLOR[t.priority??"medium"],overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>◎ {t.text}</span>)}
+                      {db.map(b=><span key={b.id} title={`Bill: ${b.name} $${b.amt}`} style={{ display:"block",width:"100%",padding:"1px 4px",borderRadius:2,fontSize:8,fontWeight:700,background:"rgba(200,90,90,0.12)",color:"var(--red)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>$ {b.name}</span>)}
                       {dt.length>2&&<span style={{ fontSize:7,color:"var(--t4)",padding:"0 2px" }}>+{dt.length-2}</span>}
                     </div>
                   );
@@ -736,9 +884,10 @@ export default function CalendarPage() {
                   const de=eventsForDay(d).filter(e=>!e.allDay);
                   const da=allDayForDay(d);
                   const dt=tasksForDay(d);
+                  const db=billsForDay(d);
                   const all=[...da,...de];
                   const showItems=all.slice(0,2);
-                  const overflow=all.length+dt.length-2;
+                  const overflow=all.length+dt.length+db.length-2-db.length;
                   return (
                     <div key={i} onClick={()=>{setCursor(d);setView("day");}} style={{ minHeight:88,padding:"6px 6px",borderRadius:6,background:isT?"rgba(125,184,232,0.07)":"var(--surface)",border:`1px solid ${isT?"rgba(125,184,232,0.25)":"var(--border)"}`,cursor:"pointer",transition:"border-color .12s" }}
                       onMouseEnter={e=>!isT&&((e.currentTarget as HTMLElement).style.borderColor="rgba(255,255,255,0.1)")}
@@ -757,6 +906,7 @@ export default function CalendarPage() {
                         })}
                         {de.slice(0,2).map(e=>{const color=gcalColor(e);return<div key={e.id} onClick={ev=>{ev.stopPropagation();setSelectedEvent(e);setSelectedTask(null);}} style={{ padding:"2px 4px",borderRadius:3,fontSize:8,fontWeight:600,cursor:"pointer",background:`${color}15`,color,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{e.title}</div>;})}
                         {dt.slice(0,1).map(t=><div key={t.id} onClick={ev=>{ev.stopPropagation();setSelectedTask(t);setSelectedEvent(null);}} style={{ padding:"2px 4px",borderRadius:3,fontSize:8,fontWeight:600,cursor:"pointer",background:`${PRIO_COLOR[t.priority??"medium"]}15`,color:PRIO_COLOR[t.priority??"medium"],overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>◎ {t.text}</div>)}
+                        {db.map(b=><div key={b.id} title={`Bill: ${b.name} $${b.amt}`} style={{ padding:"2px 4px",borderRadius:3,fontSize:8,fontWeight:700,background:"rgba(200,90,90,0.12)",color:"var(--red)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>$ {b.name}</div>)}
                         {overflow>0&&<span style={{ fontSize:8,color:"var(--t4)",paddingLeft:2 }}>+{overflow} more</span>}
                       </div>
                     </div>
@@ -788,7 +938,7 @@ export default function CalendarPage() {
           {/* Main card */}
           <HudCard style={{ padding:"16px",flex:1 }}>
             {selectedEvent ? (
-              <EventDetail event={selectedEvent} onClose={()=>setSelectedEvent(null)} />
+              <EventDetail event={selectedEvent} onClose={()=>setSelectedEvent(null)} onUpdate={updateGcalEvent} onDelete={deleteGcalEvent} />
             ) : selectedTask ? (
               <TaskDetail task={selectedTask} lists={lists} onUpdate={updateTask} onDelete={deleteTask} onBack={()=>setSelectedTask(null)} />
             ) : (

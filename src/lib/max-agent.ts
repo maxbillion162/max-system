@@ -3,7 +3,7 @@ import {
   readHabits, toggleHabit, addHabit, deleteHabit,
   readTasks, addTask, completeTask, deleteTask, updateTask,
   readGoals, updateGoal, createGoal, deleteGoal,
-  readCalendar, createCalendarEvent,
+  readCalendar, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent,
   readGmail, draftEmail,
   readCrypto, readWeather, readNews,
   storeMemory, recallMemory, readAllMemories, deleteMemory,
@@ -115,9 +115,10 @@ Most things you can just do. A few require explicit confirmation. A few are off-
 
 **TIER 3 — Confirmation flow (call the tool — it will queue + ping Telegram for ✓/✗):**
 - Create a calendar event
+- Edit or delete a calendar event (title, time, location, description)
 - Send an SMS (Twilio)
 - Update wealth figures (savings, IRA, crypto holdings)
-- Delete anything — goal, task, habit
+- Delete anything — goal, task, habit, memory
 - Update a goal's target or deadline (not just progress)
 
 When you call a Tier-3 tool, the system intercepts it. The tool does NOT execute immediately. Instead:
@@ -127,7 +128,6 @@ When you call a Tier-3 tool, the system intercepts it. The tool does NOT execute
   4. Do NOT call the tool a second time. Do NOT chain a follow-up tool that depends on the queued action's result. Stop, summarize, wait.
 
 **TIER 4 — Gated — do not attempt (Max said these need to be earned):**
-- Rescheduling existing calendar events
 - Phone-based actions (dinner reservations, calls)
 - Sending email (drafts only, forever until Max changes this)
 - Any financial transaction (buying, selling, transferring)
@@ -214,6 +214,8 @@ const TOOL_LABELS: Record<string, string> = {
   delete_goal:           "Deleting goal…",
   read_calendar:         "Checking your calendar…",
   create_calendar_event: "Creating calendar event…",
+  update_calendar_event: "Updating calendar event…",
+  delete_calendar_event: "Deleting calendar event…",
   read_gmail:            "Checking your email…",
   draft_email:           "Drafting email…",
   send_email:            "Queuing email for your approval…",
@@ -405,6 +407,31 @@ const TOOLS: Anthropic.Tool[] = [
         location:    { type: "string", description: "Optional location" },
       },
       required: ["title", "start", "end"],
+    },
+  },
+  {
+    name: "update_calendar_event",
+    description: "Edit an existing Google Calendar event — title, time, location, or description. Tier-3: routes through Telegram approval. Only include the fields that are changing. Use read_calendar first to get the event ID.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        eventId:     { type: "string", description: "Event ID from read_calendar" },
+        title:       { type: "string", description: "New title (optional)" },
+        start:       { type: "string", description: "New start ISO 8601 (optional)" },
+        end:         { type: "string", description: "New end ISO 8601 (optional)" },
+        description: { type: "string", description: "New description (optional)" },
+        location:    { type: "string", description: "New location (optional)" },
+      },
+      required: ["eventId"],
+    },
+  },
+  {
+    name: "delete_calendar_event",
+    description: "Permanently delete a Google Calendar event. Tier-3: routes through Telegram approval. Confirm the event title in your reply before calling.",
+    input_schema: {
+      type: "object" as const,
+      properties: { eventId: { type: "string", description: "Event ID from read_calendar" } },
+      required: ["eventId"],
     },
   },
   {
@@ -740,6 +767,15 @@ function describeTier3Action(name: string, input: Record<string, unknown>): stri
     case "delete_task":   return `Delete task (id: ${input.id})`;
     case "delete_goal":   return `Delete goal (id: ${input.id})`;
     case "delete_memory": return `Delete memory (id: ${input.id})`;
+    case "delete_calendar_event": return `Delete calendar event (id: ${input.eventId})`;
+    case "update_calendar_event": {
+      const parts: string[] = [];
+      if (input.title)    parts.push(`title → ${input.title}`);
+      if (input.start)    parts.push(`start → ${new Date(input.start as string).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", hour12: true })}`);
+      if (input.end)      parts.push(`end → ${new Date(input.end as string).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", hour12: true })}`);
+      if (input.location) parts.push(`location → ${input.location}`);
+      return `Update event (id: ${input.eventId}): ${parts.join(", ") || "(no changes)"}`;
+    }
     default:              return `Run ${name}`;
   }
 }
@@ -780,6 +816,8 @@ async function executeTool(name: string, input: Record<string, unknown>, surface
       case "delete_goal":          return JSON.stringify(await deleteGoal(input.id as string));
       case "read_calendar":        return JSON.stringify(await readCalendar((input.days as number) ?? 7));
       case "create_calendar_event":return JSON.stringify(await createCalendarEvent(input.title as string, input.start as string, input.end as string, (input.description as string) ?? "", (input.location as string) ?? ""));
+      case "update_calendar_event":return JSON.stringify(await updateCalendarEvent(input.eventId as string, input as Parameters<typeof updateCalendarEvent>[1]));
+      case "delete_calendar_event":return JSON.stringify(await deleteCalendarEvent(input.eventId as string));
       case "read_gmail":           return wrapUntrusted("read_gmail", await readGmail((input.max_results as number) ?? 10));
       case "draft_email":          return JSON.stringify(await draftEmail(input.to as string, input.subject as string, input.body as string));
       case "read_crypto":          return JSON.stringify(await readCrypto());
