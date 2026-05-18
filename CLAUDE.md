@@ -245,13 +245,13 @@ This is the core of M.A.X. Understand it before touching anything AI-related.
 - **Tier 3** (Telegram ✓/✗ approval — fully wired): create/edit calendar, send SMS, send email, update wealth, delete anything, change goal target/deadline. The full executor flow is live in `pending-actions.ts`; agent calls Tier-3 tools and they route through `enqueuePendingAction()` → Telegram card → `resolvePendingAction()` on tap.
 - **Tier 4** (gated — do not execute): reschedule existing events, phone bookings, financial transactions
 
-**Tools (40 total):**
+**Tools (43 total):**
 - Habits: `read_habits`, `toggle_habit`, `add_habit`, `delete_habit`
 - Tasks: `read_tasks`, `add_task`, `complete_task`, `delete_task`, `update_task`
 - Goals: `read_goals`, `update_goal`, `create_goal`, `delete_goal`
 - Calendar: `read_calendar`, `create_calendar_event`, `update_calendar_event` (Tier-3), `delete_calendar_event` (Tier-3)
 - Gmail: `read_gmail`, `draft_email`, `send_email` (Tier-3)
-- Finance: `read_wealth`, `update_wealth`, `get_budget_status`, `get_transactions`, `read_bills`, `set_income`
+- Finance: `read_wealth`, `update_wealth`, `get_budget_status`, `get_transactions`, `read_bills`, `set_income`, `categorize_transaction`, `update_budget_allocation`, `add_manual_transaction`
 - Data: `read_crypto`, `read_weather`, `read_news`
 - Memory: `store_memory`, `recall_memory`, `read_all_memories`, `delete_memory` (Tier-3)
 - Search: `web_search` (Tavily), `browse_url` (Firecrawl), `search_reddit`

@@ -28,6 +28,7 @@ import { MerchantDrilldown } from "@/components/finance/MerchantDrilldown";
 import { InvestmentThesisCard } from "@/components/finance/InvestmentThesisCard";
 import { BillsCalendar } from "@/components/finance/BillsCalendar";
 import { ManualTxnModal } from "@/components/finance/ManualTxnModal";
+import { FeatureHint } from "@/components/ui/FeatureHint";
 import { QuarterlyReport } from "@/components/finance/QuarterlyReport";
 import { ScenarioTracker } from "@/components/finance/ScenarioTracker";
 import { cashFlowRunway, netWorthBreakdown, delta24h } from "@/lib/finance-math";
@@ -604,9 +605,25 @@ export default function FinancePage() {
         <div style={{ marginBottom: 22 }}>
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 16 }}>
             <div>
-              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.32em", color: "var(--blue)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", marginBottom: 6 }}>
-                FINANCE
-              </p>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.32em", color: "var(--blue)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
+                  FINANCE
+                </p>
+                <FeatureHint
+                  title="What this page can do"
+                  items={[
+                    "Live net worth + sparklines for BTC, XRP, IRA, savings",
+                    "Plaid-synced bank accounts (Account Hub) + manual transactions for cash spends",
+                    "Train M.A.X. on transaction categories — swipe to confirm, rule auto-saves",
+                    "Zero-based budget by category — drag, edit, reallocate, rollover",
+                    "Living Targets, Goal Allocator, Paycheck Planner modals",
+                    "Cash Flow Forecast, Net Worth Simulator, What-If Engine, Money DNA",
+                    "Subscription Audit + Merchant Drilldown + Quarterly Report",
+                    "Investment Thesis cards (BTC / XRP / IRA) — your reasoning saved over time",
+                    "Ask M.A.X. via chat: 'categorize Chipotle as Dining', 'add a $40 cash dinner from last night', 'bump my Dining budget to $400'",
+                  ]}
+                />
+              </div>
               <h1 style={{ fontSize: 22, fontWeight: 600, color: "var(--t1)", letterSpacing: "-0.01em" }}>
                 Autonomous CFO
               </h1>

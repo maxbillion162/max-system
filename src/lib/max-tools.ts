@@ -434,6 +434,59 @@ export async function readBills() {
   return data ?? [];
 }
 
+export async function categorizeTransaction(merchantNormalized: string, category: string) {
+  const { error: tErr } = await supabase
+    .from("transactions")
+    .update({ budget_category: category })
+    .eq("merchant_normalized", merchantNormalized);
+  if (tErr) return { error: tErr.message };
+  await supabase
+    .from("merchant_rules")
+    .upsert(
+      { merchant_pattern: merchantNormalized, category, confirmed: true },
+      { onConflict: "merchant_pattern" },
+    );
+  return { success: true };
+}
+
+export async function updateBudgetAllocation(category: string, budgeted: number, periodStart?: string) {
+  const period = periodStart ?? (new Date().toISOString().slice(0, 8) + "01");
+  const { data, error } = await supabase
+    .from("budget_allocations")
+    .upsert(
+      { category, budgeted, period_start: period, rollover: false },
+      { onConflict: "category,period_start" },
+    )
+    .select()
+    .single();
+  if (error) return { error: error.message };
+  return { success: true, allocation: data };
+}
+
+export async function addManualTransaction(date: string, amount: number, merchant: string, category = "Misc") {
+  if (!Number.isFinite(amount) || amount === 0) return { error: "amount must be non-zero" };
+  const m = merchant.trim();
+  if (!m) return { error: "merchant required" };
+  const id = `manual:${crypto.randomUUID()}`;
+  const { data, error } = await supabase
+    .from("transactions")
+    .insert({
+      plaid_transaction_id: id,
+      date,
+      amount,
+      merchant:             m,
+      merchant_normalized:  m.toLowerCase(),
+      category,
+      budget_category:      category,
+      source:               "manual",
+      pending:              false,
+    })
+    .select()
+    .single();
+  if (error) return { error: error.message };
+  return { success: true, transaction: data };
+}
+
 /* ────────────────────────────────── SETTINGS ── */
 export async function setIncome(amount: number) {
   const { error } = await supabase.from("settings").upsert({ key: "monthly_income", value: amount }, { onConflict: "key" });

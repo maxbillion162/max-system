@@ -12,6 +12,7 @@ import {
   createNotification, logActivity,
   getBudgetStatus, getRecentTransactions,
   readBills, setIncome,
+  categorizeTransaction, updateBudgetAllocation, addManualTransaction,
   browseUrl, searchPlaces, searchYelp, searchReddit, wolframQuery,
   spotifyNowPlaying, spotifyPlayback, spotifySearch, spotifyVolume,
   getStockQuote, getFearGreedIndex, sendSms,
@@ -236,6 +237,9 @@ const TOOL_LABELS: Record<string, string> = {
   get_transactions:      "Loading transactions…",
   read_bills:            "Checking upcoming bills…",
   set_income:            "Updating income…",
+  categorize_transaction:  "Categorizing transaction…",
+  update_budget_allocation:"Updating budget category…",
+  add_manual_transaction:  "Adding manual transaction…",
   browse_url:            "Browsing the web…",
   search_places:         "Finding places nearby…",
   search_yelp:           "Searching Yelp…",
@@ -593,6 +597,45 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "categorize_transaction",
+    description: "Assign a budget category to all of Max's transactions from a merchant. Use the lowercase merchant key (merchant_normalized) returned by get_transactions. Also stores a rule so future transactions from this merchant auto-categorize.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        merchant_normalized: { type: "string", description: "Lowercase merchant key (from get_transactions row)" },
+        category:            { type: "string", description: "Budget category to assign (e.g. 'Dining', 'Groceries', 'Transport')" },
+      },
+      required: ["merchant_normalized", "category"],
+    },
+  },
+  {
+    name: "update_budget_allocation",
+    description: "Set or change the budgeted dollar amount for a category for the current month (or a specific period). Creates the row if it doesn't exist.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        category:     { type: "string", description: "Category name (e.g. 'Dining', 'Rent', 'Savings')" },
+        budgeted:     { type: "number", description: "Dollar amount to allocate" },
+        period_start: { type: "string", description: "Optional period start YYYY-MM-01 (defaults to current month)" },
+      },
+      required: ["category", "budgeted"],
+    },
+  },
+  {
+    name: "add_manual_transaction",
+    description: "Add a manual transaction for cash spends Plaid can't see (e.g. cash tip, Venmo to a friend). Positive amount = outflow, matching Plaid sign convention.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        date:     { type: "string", description: "Transaction date YYYY-MM-DD" },
+        amount:   { type: "number", description: "Dollar amount; positive = outflow" },
+        merchant: { type: "string", description: "Merchant or recipient name" },
+        category: { type: "string", description: "Budget category (default 'Misc')" },
+      },
+      required: ["date", "amount", "merchant"],
+    },
+  },
+  {
     name: "create_notification",
     description: "Push a notification to Max's dashboard bell. Use for important alerts or completed actions.",
     input_schema: {
@@ -835,6 +878,9 @@ async function executeTool(name: string, input: Record<string, unknown>, surface
       case "get_transactions":     return JSON.stringify(await getRecentTransactions((input.limit as number) ?? 20));
       case "read_bills":           return JSON.stringify(await readBills());
       case "set_income":           return JSON.stringify(await setIncome(input.amount as number));
+      case "categorize_transaction":  return JSON.stringify(await categorizeTransaction(input.merchant_normalized as string, input.category as string));
+      case "update_budget_allocation":return JSON.stringify(await updateBudgetAllocation(input.category as string, input.budgeted as number, input.period_start as string | undefined));
+      case "add_manual_transaction":  return JSON.stringify(await addManualTransaction(input.date as string, input.amount as number, input.merchant as string, (input.category as string) ?? "Misc"));
       case "create_notification":  return JSON.stringify(await createNotification(input.type as string, input.title as string, input.body as string, input.action_url as string | undefined));
       case "log_activity":         return JSON.stringify(await logActivity(input.type as string, input.description as string));
       case "browse_url":           return wrapUntrusted("browse_url", await browseUrl(input.url as string));
