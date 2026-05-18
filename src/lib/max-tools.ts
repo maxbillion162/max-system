@@ -232,6 +232,12 @@ export async function readAllMemories() {
   return data.map(r => ({ ...r, content: decrypt(r.content) ?? "" }));
 }
 
+export async function deleteMemory(id: string) {
+  const { error } = await supabase.from("memories").delete().eq("id", id);
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
 /* ────────────────────────────────── GOALS ── */
 export async function updateGoal(id: string, current: number) {
   const { data, error } = await supabase.from("goals").update({ current }).eq("id", id).select().single();

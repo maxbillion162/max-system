@@ -6,7 +6,8 @@ import {
   readCalendar, createCalendarEvent,
   readGmail, draftEmail,
   readCrypto, readWeather, readNews,
-  storeMemory, recallMemory, readAllMemories,
+  storeMemory, recallMemory, readAllMemories, deleteMemory,
+  sendTelegramMessage,
   updateWealth, readWealth, webSearch,
   createNotification, logActivity,
   getBudgetStatus, getRecentTransactions,
@@ -222,6 +223,8 @@ const TOOL_LABELS: Record<string, string> = {
   store_memory:          "Storing to memory…",
   recall_memory:         "Searching memory…",
   read_all_memories:     "Loading memories…",
+  delete_memory:         "Removing memory…",
+  send_telegram:         "Pinging Telegram…",
   update_wealth:         "Updating financial data…",
   read_wealth:           "Reading portfolio…",
   web_search:            "Searching the web…",
@@ -508,6 +511,24 @@ const TOOLS: Anthropic.Tool[] = [
     input_schema: { type: "object" as const, properties: {}, required: [] },
   },
   {
+    name: "delete_memory",
+    description: "Permanently delete a stored memory. Use read_all_memories or recall_memory first to get the ID. Confirm the memory content in your reply before calling — routes through Telegram approval automatically.",
+    input_schema: {
+      type: "object" as const,
+      properties: { id: { type: "string", description: "Memory ID from read_all_memories or recall_memory" } },
+      required: ["id"],
+    },
+  },
+  {
+    name: "send_telegram",
+    description: "Push a message to Max's Telegram. Use sparingly for high-signal proactive insights or when Max explicitly asks for a Telegram delivery. Plain text or light Markdown; keep under 200 words.",
+    input_schema: {
+      type: "object" as const,
+      properties: { text: { type: "string", description: "Message body to send to Telegram" } },
+      required: ["text"],
+    },
+  },
+  {
     name: "web_search",
     description: "Search the web for live information — news, prices, events, research.",
     input_schema: {
@@ -718,6 +739,7 @@ function describeTier3Action(name: string, input: Record<string, unknown>): stri
     case "delete_habit":  return `Delete habit (id: ${input.id})`;
     case "delete_task":   return `Delete task (id: ${input.id})`;
     case "delete_goal":   return `Delete goal (id: ${input.id})`;
+    case "delete_memory": return `Delete memory (id: ${input.id})`;
     default:              return `Run ${name}`;
   }
 }
@@ -768,6 +790,8 @@ async function executeTool(name: string, input: Record<string, unknown>, surface
       case "store_memory":         return JSON.stringify(await storeMemory(input.content as string, (input.tags as string[]) ?? []));
       case "recall_memory":        return JSON.stringify(await recallMemory(input.query as string));
       case "read_all_memories":    return JSON.stringify(await readAllMemories());
+      case "delete_memory":        return JSON.stringify(await deleteMemory(input.id as string));
+      case "send_telegram":        return JSON.stringify(await sendTelegramMessage(input.text as string));
       case "web_search":           return wrapUntrusted("web_search", await webSearch(input.query as string));
       case "get_budget_status":    return JSON.stringify(await getBudgetStatus());
       case "get_transactions":     return JSON.stringify(await getRecentTransactions((input.limit as number) ?? 20));

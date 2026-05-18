@@ -411,7 +411,7 @@ export default function ChatPage() {
             </div>
             {[
               { label: "Habits & Tasks", color: "#7DB8E8", items: ["Check off my morning habit", "Add a high-priority task for tomorrow", "What habits do I still need to do today?", "Delete the 'Read 30 min' habit", "Mark my workout as done"] },
-              { label: "Goals", color: "#9b8afb", items: ["Update my emergency fund to $3,200", "Create a goal to read 12 books this year", "How am I tracking on my goals?", "Add a milestone to my income goal"] },
+              { label: "Goals", color: "#9b8afb", items: ["Update my emergency fund to $3,200", "Create a goal to read 12 books this year", "How am I tracking on my goals?"] },
               { label: "Calendar & Email", color: "#7DB8E8", items: ["What's on my calendar this week?", "Schedule a gym session tomorrow at 7am", "Check my inbox for urgent emails", "Draft a follow-up email to my recruiter"] },
               { label: "Finance", color: "#2dd48a", items: ["How's my budget looking this month?", "What are my upcoming bills?", "Project my savings if I add $400/month", "What's AAPL trading at?", "Update my IRA to $2,900"] },
               { label: "Crypto & Markets", color: "#C85A5A", items: ["What's BTC doing right now?", "What's the crypto fear & greed index?", "Show me my net worth", "How much is my XRP worth?"] },

@@ -35,6 +35,7 @@ export const TIER_3_TOOLS = new Set([
   "delete_habit",
   "delete_task",
   "delete_goal",
+  "delete_memory",
   "send_email",   // P4 — real Gmail send. Auto-send forbidden by CLAUDE.md, so always Tier-3.
 ]);
 
