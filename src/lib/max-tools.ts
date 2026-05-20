@@ -154,6 +154,80 @@ export async function deleteCalendarEvent(eventId: string) {
   }
 }
 
+/* ────────────────────────────────── EMAIL INTEL ── */
+export async function readEmailIntel(filter: "action" | "waiting" | "newsletter" | "fyi" | "noise" | "all" = "action", limit = 20) {
+  let q = supabase
+    .from("email_intel")
+    .select("thread_id, classification, summary, why_important, action_required, importance_score, snooze_until, archived, starred, subject, sender_name, sender_email, preview, unread, last_message_at")
+    .eq("archived", false)
+    .order("importance_score", { ascending: false })
+    .order("last_message_at", { ascending: false })
+    .limit(limit);
+  if (filter !== "all") q = q.eq("classification", filter);
+  const { data, error } = await q;
+  if (error) return { error: error.message };
+  return data ?? [];
+}
+
+export async function archiveEmail(threadId: string) {
+  const { error } = await supabase.from("email_intel").update({ archived: true }).eq("thread_id", threadId);
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
+export async function starEmail(threadId: string, starred = true) {
+  const { error } = await supabase.from("email_intel").update({ starred }).eq("thread_id", threadId);
+  if (error) return { error: error.message };
+  return { success: true, starred };
+}
+
+export async function snoozeEmail(threadId: string, until: string) {
+  // until = ISO 8601 timestamp or YYYY-MM-DD (treated as that date 9am ET)
+  const ts = until.length === 10 ? `${until}T09:00:00-04:00` : until;
+  const { error } = await supabase.from("email_intel").update({ snooze_until: ts }).eq("thread_id", threadId);
+  if (error) return { error: error.message };
+  return { success: true, snooze_until: ts };
+}
+
+export async function reclassifyEmail(threadId: string, classification: "action" | "waiting" | "newsletter" | "fyi" | "noise") {
+  const { error } = await supabase
+    .from("email_intel")
+    .update({ classification, classification_source: "manual" })
+    .eq("thread_id", threadId);
+  if (error) return { error: error.message };
+  return { success: true, classification };
+}
+
+export async function markEmailRead(threadId: string, read = true) {
+  const { error } = await supabase.from("email_intel").update({ unread: !read }).eq("thread_id", threadId);
+  if (error) return { error: error.message };
+  return { success: true, read };
+}
+
+export async function createEmailRule(opts: {
+  name: string;
+  condition_type: "sender_email" | "sender_domain" | "subject_contains" | "body_contains" | "has_label";
+  condition_value: string;
+  action_classification: "action" | "waiting" | "newsletter" | "fyi" | "noise";
+  priority?: number;
+}) {
+  const { data, error } = await supabase
+    .from("email_rules")
+    .insert({
+      name:                  opts.name,
+      condition_type:        opts.condition_type,
+      condition_value:       opts.condition_value,
+      action_classification: opts.action_classification,
+      priority:              opts.priority ?? 50,
+      active:                true,
+      source:                "manual",
+    })
+    .select()
+    .single();
+  if (error) return { error: error.message };
+  return { success: true, rule: data };
+}
+
 /* ────────────────────────────────── GMAIL ── */
 export async function readGmail(maxResults = 10) {
   const auth = await getAuthenticatedClient();

@@ -7,6 +7,7 @@ import {
   linkHabitToGoal, unlinkHabitFromGoal, updateHabitColor,
   readCalendar, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent,
   readGmail, draftEmail,
+  readEmailIntel, archiveEmail, starEmail, snoozeEmail, reclassifyEmail, markEmailRead, createEmailRule,
   readCrypto, readWeather, readNews,
   storeMemory, recallMemory, readAllMemories, deleteMemory,
   sendTelegramMessage,
@@ -229,6 +230,13 @@ const TOOL_LABELS: Record<string, string> = {
   read_gmail:            "Checking your email…",
   draft_email:           "Drafting email…",
   send_email:            "Queuing email for your approval…",
+  read_email_intel:      "Reading inbox intel…",
+  archive_email:         "Archiving email…",
+  star_email:            "Starring email…",
+  snooze_email:          "Snoozing email…",
+  reclassify_email:      "Reclassifying email…",
+  mark_email_read:       "Marking email read…",
+  create_email_rule:     "Saving email rule…",
   read_crypto:           "Checking crypto prices…",
   read_weather:          "Checking Orlando weather…",
   read_news:             "Scanning latest news…",
@@ -557,6 +565,90 @@ const TOOLS: Anthropic.Tool[] = [
         body:    { type: "string", description: "Email body" },
       },
       required: ["to", "subject", "body"],
+    },
+  },
+  {
+    name: "read_email_intel",
+    description: "Read Max's classified inbox — emails Claude has already scored by importance. Returns subject/sender/preview/summary/why_important plus the classification (action/waiting/newsletter/fyi/noise). Prefer this over read_gmail when triaging inbox.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        filter: { type: "string", enum: ["action", "waiting", "newsletter", "fyi", "noise", "all"], description: "Classification filter (default 'action')" },
+        limit:  { type: "number", description: "Max threads to return (default 20)" },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "archive_email",
+    description: "Archive an email thread — removes it from the active inbox view. Reversible (just sets archived=true).",
+    input_schema: {
+      type: "object" as const,
+      properties: { thread_id: { type: "string", description: "Thread ID from read_email_intel" } },
+      required: ["thread_id"],
+    },
+  },
+  {
+    name: "star_email",
+    description: "Star or unstar an email thread.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        thread_id: { type: "string", description: "Thread ID" },
+        starred:   { type: "boolean", description: "true to star, false to unstar (default true)" },
+      },
+      required: ["thread_id"],
+    },
+  },
+  {
+    name: "snooze_email",
+    description: "Hide an email thread until a future time. Accepts ISO 8601 timestamp or YYYY-MM-DD (snoozes until 9am ET that day).",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        thread_id: { type: "string", description: "Thread ID" },
+        until:     { type: "string", description: "ISO timestamp or YYYY-MM-DD" },
+      },
+      required: ["thread_id", "until"],
+    },
+  },
+  {
+    name: "reclassify_email",
+    description: "Override Claude's classification on an email thread. Sets source to 'manual'. After reclassifying, consider whether create_email_rule would prevent the same misclassification in the future.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        thread_id:      { type: "string", description: "Thread ID" },
+        classification: { type: "string", enum: ["action", "waiting", "newsletter", "fyi", "noise"], description: "New classification" },
+      },
+      required: ["thread_id", "classification"],
+    },
+  },
+  {
+    name: "mark_email_read",
+    description: "Mark an email thread as read (or unread).",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        thread_id: { type: "string", description: "Thread ID" },
+        read:      { type: "boolean", description: "true = read (default), false = unread" },
+      },
+      required: ["thread_id"],
+    },
+  },
+  {
+    name: "create_email_rule",
+    description: "Create a trainable rule that auto-classifies future matching emails. Use when Max reclassifies and the same pattern likely repeats.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        name:                  { type: "string", description: "Short human-readable rule name" },
+        condition_type:        { type: "string", enum: ["sender_email", "sender_domain", "subject_contains", "body_contains", "has_label"], description: "What part of the email to match" },
+        condition_value:       { type: "string", description: "Value to match (e.g. 'newsletter@company.com', 'github.com', 'invoice')" },
+        action_classification: { type: "string", enum: ["action", "waiting", "newsletter", "fyi", "noise"], description: "Classification to apply when matched" },
+        priority:              { type: "number", description: "Lower runs first (default 50)" },
+      },
+      required: ["name", "condition_type", "condition_value", "action_classification"],
     },
   },
   {
@@ -977,6 +1069,13 @@ async function executeTool(name: string, input: Record<string, unknown>, surface
       case "delete_calendar_event":return JSON.stringify(await deleteCalendarEvent(input.eventId as string));
       case "read_gmail":           return wrapUntrusted("read_gmail", await readGmail((input.max_results as number) ?? 10));
       case "draft_email":          return JSON.stringify(await draftEmail(input.to as string, input.subject as string, input.body as string));
+      case "read_email_intel":     return wrapUntrusted("read_email_intel", await readEmailIntel((input.filter as Parameters<typeof readEmailIntel>[0]) ?? "action", (input.limit as number) ?? 20));
+      case "archive_email":        return JSON.stringify(await archiveEmail(input.thread_id as string));
+      case "star_email":           return JSON.stringify(await starEmail(input.thread_id as string, (input.starred as boolean) ?? true));
+      case "snooze_email":         return JSON.stringify(await snoozeEmail(input.thread_id as string, input.until as string));
+      case "reclassify_email":     return JSON.stringify(await reclassifyEmail(input.thread_id as string, input.classification as Parameters<typeof reclassifyEmail>[1]));
+      case "mark_email_read":      return JSON.stringify(await markEmailRead(input.thread_id as string, (input.read as boolean) ?? true));
+      case "create_email_rule":    return JSON.stringify(await createEmailRule(input as Parameters<typeof createEmailRule>[0]));
       case "read_crypto":          return JSON.stringify(await readCrypto());
       case "read_wealth":          return JSON.stringify(await readWealth());
       case "update_wealth":        return JSON.stringify(await updateWealth(input as Parameters<typeof updateWealth>[0]));

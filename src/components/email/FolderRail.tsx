@@ -2,6 +2,7 @@
 
 import type { EmailClassification } from "./types";
 import { CLASSIFICATION_META, MONO } from "./types";
+import { FeatureHint } from "@/components/ui/FeatureHint";
 
 export type FolderId = "all" | "starred" | "snoozed" | "archived" | EmailClassification;
 
@@ -53,9 +54,24 @@ export function FolderRail(props: Props) {
     }}>
       {/* Header */}
       <div style={{ padding: "16px 14px 12px", borderBottom: "1px solid var(--border)" }}>
-        <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.32em", color: "var(--blue)", fontFamily: MONO, marginBottom: 4 }}>
-          M.A.X. EMAIL
-        </p>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+          <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.32em", color: "var(--blue)", fontFamily: MONO }}>
+            M.A.X. EMAIL
+          </p>
+          <FeatureHint
+            title="What this page can do"
+            items={[
+              "Smart folders: Action / Waiting / Newsletter / FYI / Noise — auto-classified by Claude",
+              "Briefing strip up top — what needs attention right now",
+              "Star, snooze, archive, mark read with keyboard shortcuts (j/k/r/e/s/t/*/?)",
+              "Reclassify a thread + one-click 'make this a rule' for future emails",
+              "Trainable rules engine: match sender / domain / subject / body / label",
+              "Reply drawer with M.A.X.-drafted voice-matched replies",
+              "Real send (Tier-3 — always Telegram approval)",
+              "Ask M.A.X. via chat: 'archive the Stripe thread', 'snooze the recruiter until Monday', 'turn all newsletters from substack.com into Newsletter automatically'",
+            ]}
+          />
+        </div>
         <p style={{ fontSize: 10, color: "var(--t4)", letterSpacing: "0.06em" }}>
           {props.connected ? "● gmail live" : "○ not connected"}
         </p>
