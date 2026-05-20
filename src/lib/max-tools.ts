@@ -268,7 +268,86 @@ export async function deleteMemory(id: string) {
   return { success: true };
 }
 
+/* ────────────────────────────────── HABIT META ── */
+export async function updateHabitColor(id: string, color: string) {
+  const { error } = await supabase.from("habits").update({ color }).eq("id", id);
+  if (error) return { error: error.message };
+  return { success: true, id, color };
+}
+
+/* ────────────────────────────────── HABIT ↔ GOAL LINKS ── */
+async function loadHabitGoalLinks(): Promise<Record<string, string[]>> {
+  const { data } = await supabase.from("settings").select("value").eq("key", "habit_goal_links").maybeSingle();
+  return (data?.value as Record<string, string[]> | null) ?? {};
+}
+async function saveHabitGoalLinks(links: Record<string, string[]>) {
+  await supabase.from("settings").upsert({ key: "habit_goal_links", value: links });
+}
+
+export async function linkHabitToGoal(habitId: string, goalId: string) {
+  const links = await loadHabitGoalLinks();
+  const list  = links[habitId] ?? [];
+  if (!list.includes(goalId)) list.push(goalId);
+  links[habitId] = list;
+  await saveHabitGoalLinks(links);
+  return { success: true, habitId, goalId };
+}
+
+export async function unlinkHabitFromGoal(habitId: string, goalId: string) {
+  const links = await loadHabitGoalLinks();
+  const list  = (links[habitId] ?? []).filter(g => g !== goalId);
+  if (list.length === 0) delete links[habitId];
+  else links[habitId] = list;
+  await saveHabitGoalLinks(links);
+  return { success: true, habitId, goalId };
+}
+
+/* ────────────────────────────────── GOAL NOTES / MILESTONES / SUBGOALS ── */
+export async function addGoalNote(goalId: string, text: string) {
+  const t = text.trim();
+  if (!t) return { error: "text required" };
+  const { data, error } = await supabase.from("goal_notes").insert({ goal_id: goalId, text: t }).select().single();
+  if (error) return { error: error.message };
+  return { success: true, note: data };
+}
+
+export async function addGoalMilestone(goalId: string, label: string, value: number) {
+  const { data: g, error: gErr } = await supabase.from("goals").select("milestones").eq("id", goalId).maybeSingle();
+  if (gErr || !g) return { error: gErr?.message ?? "goal not found" };
+  const existing = Array.isArray(g.milestones) ? (g.milestones as { l: string; v: number }[]) : [];
+  const next = [...existing, { l: label, v: value }].sort((a, b) => a.v - b.v);
+  const { error } = await supabase.from("goals").update({ milestones: next }).eq("id", goalId);
+  if (error) return { error: error.message };
+  return { success: true, milestones: next };
+}
+
+export async function toggleSubgoal(goalId: string, subgoalText: string) {
+  const { data: g, error: gErr } = await supabase.from("goals").select("subgoals").eq("id", goalId).maybeSingle();
+  if (gErr || !g) return { error: gErr?.message ?? "goal not found" };
+  const subgoals = Array.isArray(g.subgoals) ? (g.subgoals as { text: string; done: boolean }[]) : [];
+  const idx = subgoals.findIndex(s => s.text.toLowerCase() === subgoalText.toLowerCase());
+  if (idx === -1) return { error: `subgoal "${subgoalText}" not found on this goal` };
+  const next = subgoals.map((s, i) => i === idx ? { ...s, done: !s.done } : s);
+  const { error } = await supabase.from("goals").update({ subgoals: next }).eq("id", goalId);
+  if (error) return { error: error.message };
+  return { success: true, subgoal: next[idx] };
+}
+
 /* ────────────────────────────────── GOALS ── */
+export async function updateGoalMeta(id: string, fields: { target?: number; deadline?: string | null; label?: string; description?: string; unit?: string; category?: string }) {
+  const patch: Record<string, unknown> = {};
+  if (fields.target      !== undefined) patch.target      = fields.target;
+  if (fields.deadline    !== undefined) patch.deadline    = fields.deadline;
+  if (fields.label       !== undefined) patch.label       = fields.label;
+  if (fields.description !== undefined) patch.description = fields.description;
+  if (fields.unit        !== undefined) patch.unit        = fields.unit;
+  if (fields.category    !== undefined) patch.category    = fields.category;
+  if (Object.keys(patch).length === 0) return { error: "no fields to update" };
+  const { data, error } = await supabase.from("goals").update(patch).eq("id", id).select().single();
+  if (error) return { error: error.message };
+  return { success: true, goal: data };
+}
+
 export async function updateGoal(id: string, current: number) {
   const { data, error } = await supabase.from("goals").update({ current }).eq("id", id).select().single();
   if (error) return { error: error.message };

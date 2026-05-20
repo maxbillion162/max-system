@@ -3,6 +3,8 @@ import {
   readHabits, toggleHabit, addHabit, deleteHabit,
   readTasks, addTask, completeTask, deleteTask, updateTask,
   readGoals, updateGoal, createGoal, deleteGoal,
+  updateGoalMeta, addGoalNote, addGoalMilestone, toggleSubgoal,
+  linkHabitToGoal, unlinkHabitFromGoal, updateHabitColor,
   readCalendar, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent,
   readGmail, draftEmail,
   readCrypto, readWeather, readNews,
@@ -213,6 +215,13 @@ const TOOL_LABELS: Record<string, string> = {
   update_goal:           "Updating goal progress…",
   create_goal:           "Creating goal…",
   delete_goal:           "Deleting goal…",
+  update_goal_meta:      "Updating goal details…",
+  add_goal_note:         "Adding goal note…",
+  add_goal_milestone:    "Adding milestone…",
+  toggle_subgoal:        "Toggling subgoal…",
+  link_habit_to_goal:    "Linking habit to goal…",
+  unlink_habit_from_goal:"Unlinking habit from goal…",
+  update_habit_color:    "Updating habit color…",
   read_calendar:         "Checking your calendar…",
   create_calendar_event: "Creating calendar event…",
   update_calendar_event: "Updating calendar event…",
@@ -378,6 +387,96 @@ const TOOLS: Anthropic.Tool[] = [
         current:     { type: "number",  description: "Current progress (default 0)" },
       },
       required: ["label", "target", "unit", "category"],
+    },
+  },
+  {
+    name: "update_goal_meta",
+    description: "Update a goal's target, deadline, label, description, unit, or category (NOT just progress — use update_goal for progress). Tier-3: routes through Telegram approval. Only include fields that are changing.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        id:          { type: "string", description: "Goal ID from read_goals" },
+        target:      { type: "number", description: "New numeric target (optional)" },
+        deadline:    { type: "string", description: "New deadline YYYY-MM-DD, or empty string to clear (optional)" },
+        label:       { type: "string", description: "New label (optional)" },
+        description: { type: "string", description: "New description (optional)" },
+        unit:        { type: "string", description: "New unit (optional)" },
+        category:    { type: "string", description: "New category (optional)" },
+      },
+      required: ["id"],
+    },
+  },
+  {
+    name: "add_goal_note",
+    description: "Add a note / journal entry to a goal. Use for context, decisions, reflections about progress.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        goal_id: { type: "string", description: "Goal ID from read_goals" },
+        text:    { type: "string", description: "Note text" },
+      },
+      required: ["goal_id", "text"],
+    },
+  },
+  {
+    name: "add_goal_milestone",
+    description: "Add a milestone (a smaller checkpoint on the way to the target) to a goal. Example: 'First $1000' at value 1000 on a $10K goal.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        goal_id: { type: "string", description: "Goal ID from read_goals" },
+        label:   { type: "string", description: "Milestone label" },
+        value:   { type: "number", description: "Target value for this milestone" },
+      },
+      required: ["goal_id", "label", "value"],
+    },
+  },
+  {
+    name: "toggle_subgoal",
+    description: "Toggle a subgoal between done/not done on a goal. Match by text (case-insensitive).",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        goal_id:      { type: "string", description: "Goal ID from read_goals" },
+        subgoal_text: { type: "string", description: "Exact text of the subgoal to toggle" },
+      },
+      required: ["goal_id", "subgoal_text"],
+    },
+  },
+  {
+    name: "link_habit_to_goal",
+    description: "Create a link between a habit and a goal — completing the habit will be associated with progress on this goal.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        habit_id: { type: "string", description: "Habit ID from read_habits" },
+        goal_id:  { type: "string", description: "Goal ID from read_goals" },
+      },
+      required: ["habit_id", "goal_id"],
+    },
+  },
+  {
+    name: "unlink_habit_from_goal",
+    description: "Remove the link between a habit and a goal.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        habit_id: { type: "string", description: "Habit ID" },
+        goal_id:  { type: "string", description: "Goal ID" },
+      },
+      required: ["habit_id", "goal_id"],
+    },
+  },
+  {
+    name: "update_habit_color",
+    description: "Change a habit's display color.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        id:    { type: "string", description: "Habit ID" },
+        color: { type: "string", description: "Hex color (e.g. '#4589FF')" },
+      },
+      required: ["id", "color"],
     },
   },
   {
@@ -811,6 +910,14 @@ function describeTier3Action(name: string, input: Record<string, unknown>): stri
     case "delete_goal":   return `Delete goal (id: ${input.id})`;
     case "delete_memory": return `Delete memory (id: ${input.id})`;
     case "delete_calendar_event": return `Delete calendar event (id: ${input.eventId})`;
+    case "update_goal_meta": {
+      const parts: string[] = [];
+      if (input.target   !== undefined) parts.push(`target → ${input.target}`);
+      if (input.deadline !== undefined) parts.push(`deadline → ${input.deadline || "(cleared)"}`);
+      if (input.label    !== undefined) parts.push(`label → ${input.label}`);
+      if (input.category !== undefined) parts.push(`category → ${input.category}`);
+      return `Update goal (id: ${input.id}): ${parts.join(", ") || "(no changes)"}`;
+    }
     case "update_calendar_event": {
       const parts: string[] = [];
       if (input.title)    parts.push(`title → ${input.title}`);
@@ -857,6 +964,13 @@ async function executeTool(name: string, input: Record<string, unknown>, surface
       case "update_goal":          return JSON.stringify(await updateGoal(input.id as string, input.current as number));
       case "create_goal":          return JSON.stringify(await createGoal(input.label as string, input.target as number, input.unit as string, input.category as string, input.description as string | undefined, input.deadline as string | undefined, (input.current as number) ?? 0));
       case "delete_goal":          return JSON.stringify(await deleteGoal(input.id as string));
+      case "update_goal_meta":     return JSON.stringify(await updateGoalMeta(input.id as string, input as Parameters<typeof updateGoalMeta>[1]));
+      case "add_goal_note":        return JSON.stringify(await addGoalNote(input.goal_id as string, input.text as string));
+      case "add_goal_milestone":   return JSON.stringify(await addGoalMilestone(input.goal_id as string, input.label as string, input.value as number));
+      case "toggle_subgoal":       return JSON.stringify(await toggleSubgoal(input.goal_id as string, input.subgoal_text as string));
+      case "link_habit_to_goal":   return JSON.stringify(await linkHabitToGoal(input.habit_id as string, input.goal_id as string));
+      case "unlink_habit_from_goal":return JSON.stringify(await unlinkHabitFromGoal(input.habit_id as string, input.goal_id as string));
+      case "update_habit_color":   return JSON.stringify(await updateHabitColor(input.id as string, input.color as string));
       case "read_calendar":        return JSON.stringify(await readCalendar((input.days as number) ?? 7));
       case "create_calendar_event":return JSON.stringify(await createCalendarEvent(input.title as string, input.start as string, input.end as string, (input.description as string) ?? "", (input.location as string) ?? ""));
       case "update_calendar_event":return JSON.stringify(await updateCalendarEvent(input.eventId as string, input as Parameters<typeof updateCalendarEvent>[1]));

@@ -245,10 +245,10 @@ This is the core of M.A.X. Understand it before touching anything AI-related.
 - **Tier 3** (Telegram ✓/✗ approval — fully wired): create/edit calendar, send SMS, send email, update wealth, delete anything, change goal target/deadline. The full executor flow is live in `pending-actions.ts`; agent calls Tier-3 tools and they route through `enqueuePendingAction()` → Telegram card → `resolvePendingAction()` on tap.
 - **Tier 4** (gated — do not execute): reschedule existing events, phone bookings, financial transactions
 
-**Tools (43 total):**
-- Habits: `read_habits`, `toggle_habit`, `add_habit`, `delete_habit`
+**Tools (50 total):**
+- Habits: `read_habits`, `toggle_habit`, `add_habit`, `delete_habit`, `update_habit_color`
 - Tasks: `read_tasks`, `add_task`, `complete_task`, `delete_task`, `update_task`
-- Goals: `read_goals`, `update_goal`, `create_goal`, `delete_goal`
+- Goals: `read_goals`, `update_goal`, `create_goal`, `delete_goal`, `update_goal_meta` (Tier-3), `add_goal_note`, `add_goal_milestone`, `toggle_subgoal`, `link_habit_to_goal`, `unlink_habit_from_goal`
 - Calendar: `read_calendar`, `create_calendar_event`, `update_calendar_event` (Tier-3), `delete_calendar_event` (Tier-3)
 - Gmail: `read_gmail`, `draft_email`, `send_email` (Tier-3)
 - Finance: `read_wealth`, `update_wealth`, `get_budget_status`, `get_transactions`, `read_bills`, `set_income`, `categorize_transaction`, `update_budget_allocation`, `add_manual_transaction`

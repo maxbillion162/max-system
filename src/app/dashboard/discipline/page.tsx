@@ -19,6 +19,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { FeedbackControl } from "@/components/ui/FeedbackControl";
+import { FeatureHint } from "@/components/ui/FeatureHint";
 import { dbWrite } from "@/lib/db-client";
 
 /* ════════════════════════════════════════════════════════════════════
@@ -776,7 +777,24 @@ export default function DisciplinePage() {
       {/* ═══ HEADER ═══ */}
       <header style={{ marginBottom: 24, display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
         <div>
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.32em", textTransform: "uppercase", color: "var(--blue)", opacity: 0.7, marginBottom: 6, fontFamily: MONO }}>Discipline</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.32em", textTransform: "uppercase", color: "var(--blue)", opacity: 0.7, fontFamily: MONO }}>Discipline</p>
+            <FeatureHint
+              title="What this page can do"
+              items={[
+                "Daily habit toggle + streak tracking (4 levels: Recruit → Untouchable)",
+                "30-day completion heatmap per habit",
+                "Goals with current/target/deadline + ON TRACK / CRUSHING / OVERDUE labels",
+                "Milestones — smaller checkpoints on the way to the target",
+                "Subgoals — checklist items within a goal",
+                "Goal notes — journal entries / reflections per goal",
+                "Link habits to goals — completion feeds the linked goal's progress",
+                "Edit habit color, category, name; reorder; archive",
+                "Milestone celebration animation when you hit one",
+                "Ask M.A.X. via chat: 'link my gym habit to the squat goal', 'add a milestone First 5K at value 5000', 'check off the workout subgoal', 'add a note to my income goal: closed first deal'",
+              ]}
+            />
+          </div>
           <h1 style={{ fontSize: 32, fontWeight: 800, color: "var(--t1)", letterSpacing: "-0.02em" }}>Today's Execution</h1>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
