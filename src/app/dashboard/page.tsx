@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { HudCard } from "@/components/ui/HudCard";
 import { Sparkline } from "@/components/ui/Sparkline";
 import { FeedbackControl } from "@/components/ui/FeedbackControl";
+import { FeatureHint } from "@/components/ui/FeatureHint";
 import { supabase } from "@/lib/supabase";
 import { dbWrite } from "@/lib/db-client";
 
@@ -103,9 +104,9 @@ function generateInsights(params: {
   habits: Habit[]; goals: FullGoal[];
   weather: LiveWeather | null;
   hour: number;
-}): { icon: string; text: string; color: string; priority: number }[] {
+}): { icon: string; text: string; color: string; priority: number; action?: { label: string; href: string } }[] {
   const { btc, xrp, btcAmt, xrpAmt, cryptoGain, habits, goals, weather, hour } = params;
-  const insights: { icon: string; text: string; color: string; priority: number }[] = [];
+  const insights: { icon: string; text: string; color: string; priority: number; action?: { label: string; href: string } }[] = [];
 
   // Crypto
   if (btc) {
@@ -117,6 +118,7 @@ function generateInsights(params: {
         text: `BTC ${btc.change24h > 0 ? "up" : "down"} ${Math.abs(btc.change24h).toFixed(1)}% today — your ${btcAmt} BTC ${btc.change24h > 0 ? "gained" : "lost"} $${Math.abs(dailyChange).toFixed(0)}. ${btc.change7d > 0 ? `Up ${btc.change7d.toFixed(1)}% this week.` : `Down ${Math.abs(btc.change7d).toFixed(1)}% this week.`}`,
         color: btc.change24h > 0 ? "var(--green)" : "var(--red)",
         priority: 1,
+        action: { label: "Open portfolio", href: "/dashboard/finance" },
       });
     } else {
       insights.push({
@@ -135,6 +137,7 @@ function generateInsights(params: {
       text: `XRP ${xrp.change24h > 0 ? "surging" : "dropping"} ${Math.abs(xrp.change24h).toFixed(1)}% — your 200 XRP ${xrp.change24h > 0 ? "gained" : "lost"} $${Math.abs(xrpGain).toFixed(0)} today.`,
       color: xrp.change24h > 0 ? "var(--green)" : "var(--red)",
       priority: 1,
+      action: { label: "Open portfolio", href: "/dashboard/finance" },
     });
   }
 
@@ -144,6 +147,7 @@ function generateInsights(params: {
       text: `Crypto up $${cryptoGain.toFixed(0)} today. Consider whether to take partial profits or hold into next resistance.`,
       color: "var(--green)",
       priority: 2,
+      action: { label: "Review thesis", href: "/dashboard/finance" },
     });
   }
 
@@ -164,11 +168,12 @@ function generateInsights(params: {
         : `${remaining} habit${remaining > 1 ? "s" : ""} still open tonight. Close them out before you sleep.`,
       color: pct >= 50 ? "var(--amber)" : "var(--red)",
       priority: hour >= 18 ? 1 : 3,
+      action: { label: "Open habits", href: "/dashboard/discipline" },
     });
   }
 
   if (!gymDone && hour >= 15) {
-    insights.push({ icon: "↑", text: "Gym not logged yet. Don't let today be the day the streak breaks.", color: "var(--amber)", priority: 2 });
+    insights.push({ icon: "↑", text: "Gym not logged yet. Don't let today be the day the streak breaks.", color: "var(--amber)", priority: 2, action: { label: "Log gym", href: "/dashboard/discipline" } });
   }
 
   // Goals
@@ -181,6 +186,7 @@ function generateInsights(params: {
       text: `Emergency fund at ${pctDone.toFixed(0)}% ($${emergencyGoal.current.toLocaleString()}/$10K). Need $${remaining.toLocaleString()} more — at $200/mo that's ${Math.ceil(remaining / 200)} months.`,
       color: "var(--blue)",
       priority: 4,
+      action: { label: "Update savings", href: "/dashboard/finance" },
     });
   }
 
@@ -488,7 +494,22 @@ export default function Dashboard() {
       {/* ── HEADER ── */}
       <div className="afu" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
-          <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 6 }}>{dayLabel}</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)" }}>{dayLabel}</p>
+            <FeatureHint
+              title="What this page can do"
+              items={[
+                "Live net worth + Robinhood/Schwab/Plaid balances roll up here",
+                "BTC + XRP sparklines, world clocks, Orlando weather",
+                "M.A.X. Brief — Claude-generated proactive read on your day (top of right column)",
+                "M.A.X. Insights — fall-back deterministic intel with one-tap actions to the relevant page",
+                "Habits quick-check + goal progress bars + budget snap summary",
+                "News briefing strip (filtered by your topic interests)",
+                "Inline-editable wealth fields (click any number)",
+                "Ask M.A.X. via chat / Telegram to mutate anything you see here",
+              ]}
+            />
+          </div>
           <h1 style={{ fontSize: 30, fontWeight: 800, color: "var(--t1)", letterSpacing: "-0.02em", marginBottom: 8 }}>{greeting}, Max.</h1>
           <div style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 12, color: "var(--t3)" }}>
             <span>{habitsDone}/{habits.length || 6} habits</span>
@@ -1089,7 +1110,19 @@ export default function Dashboard() {
                   {insights.map((ins, i) => (
                     <li key={i} style={{ display: "flex", gap: 9, alignItems: "flex-start" }}>
                       <span style={{ color: ins.color, fontWeight: 800, fontSize: 14, flexShrink: 0, lineHeight: 1.6 }}>{ins.icon}</span>
-                      <span>{ins.text}</span>
+                      <span style={{ flex: 1 }}>
+                        {ins.text}
+                        {ins.action && (
+                          <a href={ins.action.href} style={{
+                            display: "inline-block", marginLeft: 8, padding: "1px 8px", borderRadius: 3,
+                            fontSize: 10, fontWeight: 700, letterSpacing: "0.04em",
+                            background: "rgba(125,184,232,0.08)", border: "1px solid rgba(125,184,232,0.22)",
+                            color: "var(--blue)", textDecoration: "none", whiteSpace: "nowrap",
+                          }}>
+                            {ins.action.label} →
+                          </a>
+                        )}
+                      </span>
                     </li>
                   ))}
                 </ul>
