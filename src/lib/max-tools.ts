@@ -640,6 +640,56 @@ export async function addManualTransaction(date: string, amount: number, merchan
   return { success: true, transaction: data };
 }
 
+/* ────────────────────────────────── ARCHIVE ── */
+export async function clearChatHistory(opts?: { surface?: "web" | "telegram" | "all" }) {
+  const target = opts?.surface ?? "all";
+  let q = supabase.from("chat_messages").delete().neq("id", -1); // delete everything (workaround for delete-without-filter restriction)
+  if (target !== "all") q = supabase.from("chat_messages").delete().eq("surface", target);
+  const { error } = await q;
+  if (error) return { error: error.message };
+  return { success: true, scope: target };
+}
+
+/* ────────────────────────────────── SETTINGS PREFS ── */
+async function patchSettingsObject(key: string, patch: Record<string, unknown>) {
+  const { data } = await supabase.from("settings").select("value").eq("key", key).maybeSingle();
+  const current = (data?.value as Record<string, unknown> | null) ?? {};
+  const next = { ...current, ...patch };
+  await supabase.from("settings").upsert({ key, value: next }, { onConflict: "key" });
+  return next;
+}
+
+export async function updateNotificationPref(prefKey: string, enabled: boolean) {
+  const next = await patchSettingsObject("notification_prefs", { [prefKey]: enabled });
+  return { success: true, prefs: next };
+}
+
+export async function updatePrivacyPref(prefKey: string, enabled: boolean) {
+  const next = await patchSettingsObject("privacy_prefs", { [prefKey]: enabled });
+  return { success: true, prefs: next };
+}
+
+export async function updatePreference(prefKey: string, value: string | number | boolean) {
+  const next = await patchSettingsObject("preferences", { [prefKey]: value });
+  return { success: true, prefs: next };
+}
+
+/* ────────────────────────────────── FEED ── */
+export async function setFeedTopicOverride(topic: string) {
+  const t = topic.trim();
+  const date = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" }); // YYYY-MM-DD ET
+  await supabase.from("settings").upsert(
+    { key: "feed_topic_override", value: { topic: t, date } },
+    { onConflict: "key" },
+  );
+  return { success: true, topic: t, date };
+}
+
+export async function clearFeedTopicOverride() {
+  await supabase.from("settings").delete().eq("key", "feed_topic_override");
+  return { success: true };
+}
+
 /* ────────────────────────────────── SETTINGS ── */
 export async function setIncome(amount: number) {
   const { error } = await supabase.from("settings").upsert({ key: "monthly_income", value: amount }, { onConflict: "key" });

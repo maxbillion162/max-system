@@ -39,6 +39,7 @@ export const TIER_3_TOOLS = new Set([
   "update_calendar_event",
   "delete_calendar_event",
   "update_goal_meta",
+  "clear_chat_history",
   "send_email",   // P4 — real Gmail send. Auto-send forbidden by CLAUDE.md, so always Tier-3.
 ]);
 

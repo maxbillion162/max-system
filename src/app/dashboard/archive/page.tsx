@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { HudCard } from "@/components/ui/HudCard";
+import { FeatureHint } from "@/components/ui/FeatureHint";
 
 interface ChatMessage {
   id: string;
@@ -140,7 +141,20 @@ export default function ArchivePage() {
       {/* Header */}
       <div className="afu" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
-          <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 6 }}>M.A.X. History</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)" }}>M.A.X. History</p>
+            <FeatureHint
+              title="What this page can do"
+              items={[
+                "Two tabs: Web Chat conversations + Telegram exchanges",
+                "Sessions grouped by date (Today / Yesterday / This Week / Older)",
+                "Search across all conversation content",
+                "Click a session to read the full thread",
+                "New conversations are now session-scoped (older pre-fix chats may collapse)",
+                "Ask M.A.X. via chat: 'wipe my chat history' (Tier-3 — Telegram confirms)",
+              ]}
+            />
+          </div>
           <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--t1)", letterSpacing: "-0.02em" }}>Archive</h1>
         </div>
         <div style={{ display: "flex", gap: 8 }}>

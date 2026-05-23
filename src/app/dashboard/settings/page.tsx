@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { dbWrite } from "@/lib/db-client";
+import { FeatureHint } from "@/components/ui/FeatureHint";
 
 /* ─── Types ─────────────────────────────────────────────────────── */
 /** All categories consumed by the notify() pipeline. Keys must match NotifyCategory in src/lib/notify.ts. */
@@ -736,7 +737,24 @@ export default function SettingsPage() {
       {/* Left nav */}
       <div style={{width:220,borderRight:"1px solid var(--border)",padding:"40px 0",flexShrink:0}}>
         <div style={{padding:"0 24px 24px",borderBottom:"1px solid var(--border)",marginBottom:12}}>
-          <p style={{fontSize:10,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:"rgba(125,184,232,0.5)",marginBottom:8}}>M.A.X. OS</p>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+            <p style={{fontSize:10,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:"rgba(125,184,232,0.5)"}}>M.A.X. OS</p>
+            <FeatureHint
+              title="What this page can do"
+              items={[
+                "Feed — manage topic interests + which sources M.A.X. pulls from",
+                "Notifications — 13 categories, all opt-in default OFF (Telegram + dashboard bell)",
+                "Integrations — Google OAuth status, Telegram connection, Plaid",
+                "Budget — period reset day, rollover defaults",
+                "Privacy — blur net worth / transactions / income on screen",
+                "Preferences — calendar default view, tasks-on-calendar",
+                "M.A.X. Intelligence — what M.A.X. knows about you, capability toggles",
+                "Behind the Scenes — recent agent actions, scheduled jobs, memory count",
+                "Data — export goals/notes as JSON, clear chat history",
+                "Ask M.A.X. via chat: 'turn on bill alerts', 'blur my net worth', 'switch calendar default to day view'",
+              ]}
+            />
+          </div>
           <h1 style={{fontSize:20,fontWeight:800,color:"var(--t1)",letterSpacing:"-0.02em",margin:0}}>Settings</h1>
         </div>
         <nav style={{padding:"0 12px"}}>

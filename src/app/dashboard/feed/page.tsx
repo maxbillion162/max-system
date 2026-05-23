@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { HudCard } from "@/components/ui/HudCard";
 import { FeedbackControl } from "@/components/ui/FeedbackControl";
+import { FeatureHint } from "@/components/ui/FeatureHint";
+import { supabase } from "@/lib/supabase";
 
 interface NewsItem {
   title: string; source: string; tag: string; link: string;
@@ -95,6 +97,18 @@ export default function FeedPage() {
         else localStorage.removeItem("feed-topic");
       }
     } catch {}
+
+    // Also read the agent-set override from settings table — supersedes localStorage if newer.
+    (async () => {
+      try {
+        const { data } = await supabase.from("settings").select("value").eq("key", "feed_topic_override").maybeSingle();
+        const v = data?.value as { topic: string; date: string } | undefined;
+        if (v && v.date === todayStr() && v.topic) {
+          setTopicOverride(v.topic);
+          setTopicInput(v.topic);
+        }
+      } catch {}
+    })();
   },[]);
 
   function toggleSave(link: string) {
@@ -180,7 +194,23 @@ export default function FeedPage() {
       {/* Header */}
       <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:14}}>
         <div>
-          <p style={{fontSize:11,fontWeight:700,letterSpacing:"0.14em",textTransform:"uppercase",color:"var(--t3)",marginBottom:6}}>M.A.X. Intelligence</p>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+            <p style={{fontSize:11,fontWeight:700,letterSpacing:"0.14em",textTransform:"uppercase",color:"var(--t3)"}}>M.A.X. Intelligence</p>
+            <FeatureHint
+              title="What this page can do"
+              items={[
+                "Live ticker — breaking headlines, pause on hover",
+                "M.A.X. Brief — Claude synthesizes top 20 articles into a single read",
+                "Top 3 Picks — Claude ranks the most relevant articles for you with reasoning",
+                "Topic override — focus the feed on one subject for today (resets at midnight ET)",
+                "Saved articles sidebar (★ to save)",
+                "Coverage-by-topic + top-sources breakdown",
+                "Live BTC + XRP prices and 24h / 7d changes",
+                "World clocks: NY · London · Tokyo · Singapore · Dubai · Hong Kong",
+                "Ask M.A.X. via chat: 'make my feed about AI agents today' / 'clear the topic'",
+              ]}
+            />
+          </div>
           <h1 style={{fontSize:28,fontWeight:800,color:"var(--t1)",letterSpacing:"-0.02em"}}>World Intel Feed</h1>
         </div>
         <div style={{textAlign:"right"}}>

@@ -16,6 +16,9 @@ import {
   getBudgetStatus, getRecentTransactions,
   readBills, setIncome,
   categorizeTransaction, updateBudgetAllocation, addManualTransaction,
+  setFeedTopicOverride, clearFeedTopicOverride,
+  updateNotificationPref, updatePrivacyPref, updatePreference,
+  clearChatHistory,
   browseUrl, searchPlaces, searchYelp, searchReddit, wolframQuery,
   spotifyNowPlaying, spotifyPlayback, spotifySearch, spotifyVolume,
   getStockQuote, getFearGreedIndex, sendSms,
@@ -257,6 +260,12 @@ const TOOL_LABELS: Record<string, string> = {
   categorize_transaction:  "Categorizing transaction…",
   update_budget_allocation:"Updating budget category…",
   add_manual_transaction:  "Adding manual transaction…",
+  set_feed_topic_override: "Setting today's feed topic…",
+  clear_feed_topic_override:"Clearing feed topic…",
+  update_notification_pref: "Updating notification preference…",
+  update_privacy_pref:      "Updating privacy preference…",
+  update_preference:        "Updating preference…",
+  clear_chat_history:       "Wiping chat history…",
   browse_url:            "Browsing the web…",
   search_places:         "Finding places nearby…",
   search_yelp:           "Searching Yelp…",
@@ -827,6 +836,67 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "update_notification_pref",
+    description: "Toggle a single notification category on or off. Categories: habit_nudge, calendar_alerts, bill_alerts, max_insight, habit_coach, budget_alerts, goal_milestone, market_update, paycheck_detected, anomaly_alert, weekly_recap, evening_checkin, goal_checkin. All default OFF — Max must explicitly enable.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        pref_key: { type: "string", description: "Notification category key" },
+        enabled:  { type: "boolean", description: "true = on, false = off" },
+      },
+      required: ["pref_key", "enabled"],
+    },
+  },
+  {
+    name: "update_privacy_pref",
+    description: "Toggle a privacy blur setting. Keys: blur_net_worth, blur_transactions, blur_income.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        pref_key: { type: "string", description: "Privacy key (blur_net_worth / blur_transactions / blur_income)" },
+        enabled:  { type: "boolean", description: "true = blur on, false = blur off" },
+      },
+      required: ["pref_key", "enabled"],
+    },
+  },
+  {
+    name: "update_preference",
+    description: "Set a general preference. Known keys: calendar_default_view ('day'|'week'|'month'), tasks_in_calendar (boolean).",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        pref_key: { type: "string", description: "Preference key" },
+        value:    { description: "New value (string, number, or boolean)" },
+      },
+      required: ["pref_key", "value"],
+    },
+  },
+  {
+    name: "clear_chat_history",
+    description: "Permanently wipe Max's chat history. Tier-3: routes through Telegram approval. Scope: 'web', 'telegram', or 'all' (default).",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        surface: { type: "string", enum: ["web", "telegram", "all"], description: "Which surface's history to clear (default 'all')" },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "set_feed_topic_override",
+    description: "Set today's news feed topic override. The Feed page will filter to this topic until end of day ET. Use when Max asks for news on a specific subject.",
+    input_schema: {
+      type: "object" as const,
+      properties: { topic: { type: "string", description: "Topic to focus the feed on (e.g. 'AI agents', 'XRP regulation', 'Federal Reserve')" } },
+      required: ["topic"],
+    },
+  },
+  {
+    name: "clear_feed_topic_override",
+    description: "Remove the feed topic override and return to Max's default interests.",
+    input_schema: { type: "object" as const, properties: {}, required: [] },
+  },
+  {
     name: "create_notification",
     description: "Push a notification to Max's dashboard bell. Use for important alerts or completed actions.",
     input_schema: {
@@ -1002,6 +1072,8 @@ function describeTier3Action(name: string, input: Record<string, unknown>): stri
     case "delete_goal":   return `Delete goal (id: ${input.id})`;
     case "delete_memory": return `Delete memory (id: ${input.id})`;
     case "delete_calendar_event": return `Delete calendar event (id: ${input.eventId})`;
+    case "clear_chat_history":
+      return `Wipe chat history (${input.surface ?? "all"} surface${input.surface === "all" || !input.surface ? "s" : ""})`;
     case "update_goal_meta": {
       const parts: string[] = [];
       if (input.target   !== undefined) parts.push(`target → ${input.target}`);
@@ -1094,6 +1166,12 @@ async function executeTool(name: string, input: Record<string, unknown>, surface
       case "categorize_transaction":  return JSON.stringify(await categorizeTransaction(input.merchant_normalized as string, input.category as string));
       case "update_budget_allocation":return JSON.stringify(await updateBudgetAllocation(input.category as string, input.budgeted as number, input.period_start as string | undefined));
       case "add_manual_transaction":  return JSON.stringify(await addManualTransaction(input.date as string, input.amount as number, input.merchant as string, (input.category as string) ?? "Misc"));
+      case "set_feed_topic_override": return JSON.stringify(await setFeedTopicOverride(input.topic as string));
+      case "clear_feed_topic_override":return JSON.stringify(await clearFeedTopicOverride());
+      case "update_notification_pref":return JSON.stringify(await updateNotificationPref(input.pref_key as string, input.enabled as boolean));
+      case "update_privacy_pref":     return JSON.stringify(await updatePrivacyPref(input.pref_key as string, input.enabled as boolean));
+      case "update_preference":       return JSON.stringify(await updatePreference(input.pref_key as string, input.value as string | number | boolean));
+      case "clear_chat_history":      return JSON.stringify(await clearChatHistory({ surface: input.surface as "web" | "telegram" | "all" | undefined }));
       case "create_notification":  return JSON.stringify(await createNotification(input.type as string, input.title as string, input.body as string, input.action_url as string | undefined));
       case "log_activity":         return JSON.stringify(await logActivity(input.type as string, input.description as string));
       case "browse_url":           return wrapUntrusted("browse_url", await browseUrl(input.url as string));
