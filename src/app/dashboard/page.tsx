@@ -1015,32 +1015,61 @@ export default function Dashboard() {
               const items = newsByTag[tag] ?? [];
               const isActive = activeTag === tag;
               return (
-                <div key={tag}
-                  onClick={() => setActiveTag(isActive ? null : tag)}
-                  style={{
-                    borderRadius: 7, overflow: "hidden", cursor: "pointer",
-                    background: isActive ? `rgba(${cfg.rgb},0.08)` : "var(--surface2)",
-                    border: `1px solid ${isActive ? `rgba(${cfg.rgb},0.4)` : "var(--border)"}`,
-                    borderTop: `2px solid ${cfg.color}`, transition: "all .18s",
-                  }}
-                  onMouseEnter={e => { if (!isActive) { const el = e.currentTarget as HTMLElement; el.style.borderColor = `rgba(${cfg.rgb},0.3)`; el.style.background = `rgba(${cfg.rgb},0.04)`; } }}
-                  onMouseLeave={e => { if (!isActive) { const el = e.currentTarget as HTMLElement; el.style.borderColor = "var(--border)"; el.style.background = "var(--surface2)"; } }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px 7px" }}>
-                    <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: cfg.color }}>{tag}</span>
-                    <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                      {isActive && <span style={{ fontSize: 9, color: cfg.color, opacity: 0.7 }}>expanded</span>}
+                <div key={tag} style={{
+                  gridColumn: isActive ? "1 / -1" : "auto",
+                  borderRadius: 7, overflow: "hidden",
+                  background: isActive ? `rgba(${cfg.rgb},0.06)` : "var(--surface2)",
+                  border: `1px solid ${isActive ? `rgba(${cfg.rgb},0.35)` : "var(--border)"}`,
+                  borderTop: `2px solid ${cfg.color}`,
+                  transition: "background 0.25s, border-color 0.25s",
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px 7px", cursor: "pointer" }}
+                    onClick={() => setActiveTag(isActive ? null : tag)}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                      <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: cfg.color }}>{tag}</span>
                       <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 10, background: `rgba(${cfg.rgb},0.15)`, color: cfg.color }}>{items.length}</span>
                     </div>
+                    {isActive ? (
+                      <button onClick={e => { e.stopPropagation(); setActiveTag(null); }} style={{
+                        background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
+                        borderRadius: 4, padding: "3px 9px", fontSize: 10, fontWeight: 600, color: "var(--t2)",
+                        cursor: "pointer", display: "flex", alignItems: "center", gap: 4, transition: "all .15s",
+                      }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = cfg.color; (e.currentTarget as HTMLElement).style.borderColor = `rgba(${cfg.rgb},0.4)`; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--t2)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.1)"; }}>
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                        Collapse
+                      </button>
+                    ) : (
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={cfg.color} strokeWidth="2" strokeLinecap="round" style={{ opacity: 0.45, transition: "opacity .15s" }}><path d="M6 9l6 6 6-6"/></svg>
+                    )}
                   </div>
-                  <div style={{ padding: "0 12px 10px", display: "flex", flexDirection: "column", gap: 7 }}>
-                    {items.slice(0, 2).map((n, i) => (
-                      <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }} onClick={e => e.stopPropagation()}>
-                        <div style={{ fontSize: 11, fontWeight: 600, color: "var(--t1)", lineHeight: 1.4 }}>{n.title}</div>
-                        <div style={{ fontSize: 10, color: "var(--t3)", marginTop: 2 }}>{n.source}{n.pubDate ? ` · ${timeAgo(n.pubDate)}` : ""}</div>
-                      </a>
-                    ))}
-                    {items.length > 2 && <span style={{ fontSize: 10, fontWeight: 600, color: cfg.color, opacity: 0.65 }}>+{items.length - 2} more — click to expand</span>}
+                  <div style={{ maxHeight: isActive ? "1200px" : "112px", overflow: "hidden", transition: "max-height 0.4s cubic-bezier(0.4,0,0.2,1)" }}>
+                    {isActive ? (
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, padding: "2px 12px 12px" }}>
+                        {items.map((n, i) => (
+                          <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+                            <div style={{ padding: "10px 11px", borderRadius: 5, background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)", borderLeft: `2px solid rgba(${cfg.rgb},0.4)`, transition: "all .15s", display: "flex", flexDirection: "column", gap: 4 }}
+                              onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.background = `rgba(${cfg.rgb},0.05)`; el.style.borderColor = `rgba(${cfg.rgb},0.3)`; el.style.borderLeftColor = cfg.color; }}
+                              onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = "rgba(255,255,255,0.02)"; el.style.borderColor = "var(--border)"; el.style.borderLeftColor = `rgba(${cfg.rgb},0.4)`; }}>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--t1)", lineHeight: 1.45 }}>{n.title}</div>
+                              {n.snippet && <div style={{ fontSize: 10, color: "var(--t2)", lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{n.snippet}</div>}
+                              <div style={{ fontSize: 10, color: "var(--t3)", marginTop: 1 }}>{n.source}{n.pubDate ? ` · ${timeAgo(n.pubDate)}` : ""}</div>
+                            </div>
+                          </a>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ padding: "0 12px 10px", display: "flex", flexDirection: "column", gap: 7 }}>
+                        {items.slice(0, 2).map((n, i) => (
+                          <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }} onClick={e => e.stopPropagation()}>
+                            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--t1)", lineHeight: 1.4 }}>{n.title}</div>
+                            <div style={{ fontSize: 10, color: "var(--t3)", marginTop: 2 }}>{n.source}{n.pubDate ? ` · ${timeAgo(n.pubDate)}` : ""}</div>
+                          </a>
+                        ))}
+                        {items.length > 2 && <span style={{ fontSize: 10, fontWeight: 600, color: cfg.color, opacity: 0.6 }}>+{items.length - 2} more</span>}
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -1056,50 +1085,69 @@ export default function Dashboard() {
             const polItems = polBuckets[politicsFilter];
             const tabs: { id: "world" | "us" | "florida"; label: string }[] = [{ id: "us", label: "US" }, { id: "world", label: "World" }, { id: "florida", label: "Florida" }];
             return (
-              <div style={{ marginBottom: 8, borderRadius: 7, overflow: "hidden", border: `1px solid ${isActive ? `rgba(${cfg.rgb},0.4)` : "var(--border)"}`, borderTop: `2px solid ${cfg.color}`, background: isActive ? `rgba(${cfg.rgb},0.06)` : "var(--surface2)", transition: "all .18s" }}>
-                {/* Header row */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px 0" }}>
-                  <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: cfg.color }}>Politics</span>
-                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                    {isActive && <span style={{ fontSize: 9, color: cfg.color, opacity: 0.7 }}>expanded</span>}
+              <div style={{ marginBottom: 8, borderRadius: 7, overflow: "hidden", border: `1px solid ${isActive ? `rgba(${cfg.rgb},0.35)` : "var(--border)"}`, borderTop: `2px solid ${cfg.color}`, background: isActive ? `rgba(${cfg.rgb},0.06)` : "var(--surface2)", transition: "background 0.25s, border-color 0.25s" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px 0", cursor: "pointer" }}
+                  onClick={() => setActiveTag(isActive ? null : "Politics")}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                    <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: cfg.color }}>Politics</span>
                     <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 10, background: `rgba(${cfg.rgb},0.15)`, color: cfg.color }}>{allPol.length}</span>
                   </div>
+                  {isActive ? (
+                    <button onClick={e => { e.stopPropagation(); setActiveTag(null); }} style={{
+                      background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
+                      borderRadius: 4, padding: "3px 9px", fontSize: 10, fontWeight: 600, color: "var(--t2)",
+                      cursor: "pointer", display: "flex", alignItems: "center", gap: 4, transition: "all .15s",
+                    }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = cfg.color; (e.currentTarget as HTMLElement).style.borderColor = `rgba(${cfg.rgb},0.4)`; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--t2)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.1)"; }}>
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                      Collapse
+                    </button>
+                  ) : (
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={cfg.color} strokeWidth="2" strokeLinecap="round" style={{ opacity: 0.45 }}><path d="M6 9l6 6 6-6"/></svg>
+                  )}
                 </div>
-                {/* Sub-filter tabs */}
                 <div style={{ display: "flex", gap: 6, padding: "8px 14px 0" }}>
                   {tabs.map(t => (
-                    <button key={t.id}
-                      onClick={() => { setPoliticsFilter(t.id); setActiveTag("Politics"); }}
-                      style={{
-                        fontSize: 10, fontWeight: 700, padding: "4px 11px", borderRadius: 4, cursor: "pointer",
-                        background: politicsFilter === t.id ? `rgba(${cfg.rgb},0.18)` : "rgba(255,255,255,0.04)",
-                        border: `1px solid ${politicsFilter === t.id ? `rgba(${cfg.rgb},0.45)` : "var(--border)"}`,
-                        color: politicsFilter === t.id ? cfg.color : "var(--t2)",
-                        transition: "all .15s",
-                      }}
-                    >
-                      {t.label}
-                      <span style={{ marginLeft: 5, fontSize: 9, opacity: 0.7 }}>{polBuckets[t.id].length}</span>
+                    <button key={t.id} onClick={e => { e.stopPropagation(); setPoliticsFilter(t.id); if (!isActive) setActiveTag("Politics"); }} style={{
+                      fontSize: 10, fontWeight: 700, padding: "4px 11px", borderRadius: 4, cursor: "pointer",
+                      background: politicsFilter === t.id ? `rgba(${cfg.rgb},0.18)` : "rgba(255,255,255,0.04)",
+                      border: `1px solid ${politicsFilter === t.id ? `rgba(${cfg.rgb},0.45)` : "var(--border)"}`,
+                      color: politicsFilter === t.id ? cfg.color : "var(--t2)", transition: "all .15s",
+                    }}>
+                      {t.label}<span style={{ marginLeft: 5, fontSize: 9, opacity: 0.7 }}>{polBuckets[t.id].length}</span>
                     </button>
                   ))}
                 </div>
-                {/* Articles preview (2-col) */}
-                <div style={{ cursor: "pointer", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 14px", padding: "10px 14px 12px" }}
-                  onClick={() => setActiveTag(isActive ? null : "Politics")}>
-                  {polItems.length === 0 ? (
-                    <p style={{ fontSize: 11, color: "var(--t3)", gridColumn: "1/-1" }}>No {politicsFilter} articles</p>
-                  ) : polItems.slice(0, 4).map((n, i) => (
-                    <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }} onClick={e => e.stopPropagation()}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: "var(--t1)", lineHeight: 1.4 }}>{n.title}</div>
-                      <div style={{ fontSize: 10, color: "var(--t3)", marginTop: 2 }}>{n.source}{n.pubDate ? ` · ${timeAgo(n.pubDate)}` : ""}</div>
-                    </a>
-                  ))}
+                <div style={{ maxHeight: isActive ? "1200px" : "120px", overflow: "hidden", transition: "max-height 0.4s cubic-bezier(0.4,0,0.2,1)" }}>
+                  {isActive ? (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, padding: "10px 14px 12px" }}>
+                      {polItems.length === 0 ? (
+                        <p style={{ fontSize: 11, color: "var(--t3)", gridColumn: "1/-1", padding: "8px 0" }}>No {politicsFilter} articles right now.</p>
+                      ) : polItems.map((n, i) => (
+                        <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }} onClick={e => e.stopPropagation()}>
+                          <div style={{ padding: "10px 11px", borderRadius: 5, background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)", borderLeft: `2px solid rgba(${cfg.rgb},0.4)`, transition: "all .15s", display: "flex", flexDirection: "column", gap: 4 }}
+                            onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.background = `rgba(${cfg.rgb},0.05)`; el.style.borderColor = `rgba(${cfg.rgb},0.3)`; el.style.borderLeftColor = cfg.color; }}
+                            onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = "rgba(255,255,255,0.02)"; el.style.borderColor = "var(--border)"; el.style.borderLeftColor = `rgba(${cfg.rgb},0.4)`; }}>
+                            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--t1)", lineHeight: 1.45 }}>{n.title}</div>
+                            {n.snippet && <div style={{ fontSize: 10, color: "var(--t2)", lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{n.snippet}</div>}
+                            <div style={{ fontSize: 10, color: "var(--t3)", marginTop: 1 }}>{n.source}{n.pubDate ? ` · ${timeAgo(n.pubDate)}` : ""}</div>
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "5px 14px", padding: "10px 14px 12px" }}>
+                      {polItems.slice(0, 4).map((n, i) => (
+                        <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }} onClick={e => e.stopPropagation()}>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--t1)", lineHeight: 1.4 }}>{n.title}</div>
+                          <div style={{ fontSize: 10, color: "var(--t3)", marginTop: 2 }}>{n.source}{n.pubDate ? ` · ${timeAgo(n.pubDate)}` : ""}</div>
+                        </a>
+                      ))}
+                      {polItems.length === 0 && <p style={{ fontSize: 11, color: "var(--t3)", gridColumn: "1/-1" }}>No {politicsFilter} articles</p>}
+                    </div>
+                  )}
                 </div>
-                {polItems.length > 4 && !isActive && (
-                  <div style={{ padding: "0 14px 10px" }}>
-                    <span style={{ fontSize: 10, fontWeight: 600, color: cfg.color, opacity: 0.65 }}>+{polItems.length - 4} more — click to expand</span>
-                  </div>
-                )}
               </div>
             );
           })()}
@@ -1111,114 +1159,66 @@ export default function Dashboard() {
               const items = newsByTag[tag] ?? [];
               const isActive = activeTag === tag;
               return (
-                <div key={tag}
-                  onClick={() => setActiveTag(isActive ? null : tag)}
-                  style={{
-                    borderRadius: 7, overflow: "hidden", cursor: "pointer",
-                    background: isActive ? `rgba(${cfg.rgb},0.08)` : "var(--surface2)",
-                    border: `1px solid ${isActive ? `rgba(${cfg.rgb},0.4)` : "var(--border)"}`,
-                    borderTop: `2px solid ${cfg.color}`, transition: "all .18s",
-                  }}
-                  onMouseEnter={e => { if (!isActive) { const el = e.currentTarget as HTMLElement; el.style.borderColor = `rgba(${cfg.rgb},0.3)`; el.style.background = `rgba(${cfg.rgb},0.04)`; } }}
-                  onMouseLeave={e => { if (!isActive) { const el = e.currentTarget as HTMLElement; el.style.borderColor = "var(--border)"; el.style.background = "var(--surface2)"; } }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px 7px" }}>
-                    <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: cfg.color }}>{tag}</span>
-                    <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                      {isActive && <span style={{ fontSize: 9, color: cfg.color, opacity: 0.7 }}>expanded</span>}
+                <div key={tag} style={{
+                  gridColumn: isActive ? "1 / -1" : "auto",
+                  borderRadius: 7, overflow: "hidden",
+                  background: isActive ? `rgba(${cfg.rgb},0.06)` : "var(--surface2)",
+                  border: `1px solid ${isActive ? `rgba(${cfg.rgb},0.35)` : "var(--border)"}`,
+                  borderTop: `2px solid ${cfg.color}`,
+                  transition: "background 0.25s, border-color 0.25s",
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px 7px", cursor: "pointer" }}
+                    onClick={() => setActiveTag(isActive ? null : tag)}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                      <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: cfg.color }}>{tag}</span>
                       <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 10, background: `rgba(${cfg.rgb},0.15)`, color: cfg.color }}>{items.length}</span>
                     </div>
+                    {isActive ? (
+                      <button onClick={e => { e.stopPropagation(); setActiveTag(null); }} style={{
+                        background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
+                        borderRadius: 4, padding: "3px 9px", fontSize: 10, fontWeight: 600, color: "var(--t2)",
+                        cursor: "pointer", display: "flex", alignItems: "center", gap: 4, transition: "all .15s",
+                      }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = cfg.color; (e.currentTarget as HTMLElement).style.borderColor = `rgba(${cfg.rgb},0.4)`; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--t2)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.1)"; }}>
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                        Collapse
+                      </button>
+                    ) : (
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={cfg.color} strokeWidth="2" strokeLinecap="round" style={{ opacity: 0.45, transition: "opacity .15s" }}><path d="M6 9l6 6 6-6"/></svg>
+                    )}
                   </div>
-                  <div style={{ padding: "0 12px 10px", display: "flex", flexDirection: "column", gap: 7 }}>
-                    {items.slice(0, 3).map((n, i) => (
-                      <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }} onClick={e => e.stopPropagation()}>
-                        <div style={{ fontSize: 11, fontWeight: 600, color: "var(--t1)", lineHeight: 1.4 }}>{n.title}</div>
-                        <div style={{ fontSize: 10, color: "var(--t3)", marginTop: 2 }}>{n.source}{n.pubDate ? ` · ${timeAgo(n.pubDate)}` : ""}</div>
-                      </a>
-                    ))}
-                    {items.length > 3 && <span style={{ fontSize: 10, fontWeight: 600, color: cfg.color, opacity: 0.65 }}>+{items.length - 3} more — click to expand</span>}
+                  <div style={{ maxHeight: isActive ? "1200px" : "120px", overflow: "hidden", transition: "max-height 0.4s cubic-bezier(0.4,0,0.2,1)" }}>
+                    {isActive ? (
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, padding: "2px 12px 12px" }}>
+                        {items.map((n, i) => (
+                          <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+                            <div style={{ padding: "10px 11px", borderRadius: 5, background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)", borderLeft: `2px solid rgba(${cfg.rgb},0.4)`, transition: "all .15s", display: "flex", flexDirection: "column", gap: 4 }}
+                              onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.background = `rgba(${cfg.rgb},0.05)`; el.style.borderColor = `rgba(${cfg.rgb},0.3)`; el.style.borderLeftColor = cfg.color; }}
+                              onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = "rgba(255,255,255,0.02)"; el.style.borderColor = "var(--border)"; el.style.borderLeftColor = `rgba(${cfg.rgb},0.4)`; }}>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--t1)", lineHeight: 1.45 }}>{n.title}</div>
+                              {n.snippet && <div style={{ fontSize: 10, color: "var(--t2)", lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{n.snippet}</div>}
+                              <div style={{ fontSize: 10, color: "var(--t3)", marginTop: 1 }}>{n.source}{n.pubDate ? ` · ${timeAgo(n.pubDate)}` : ""}</div>
+                            </div>
+                          </a>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ padding: "0 12px 10px", display: "flex", flexDirection: "column", gap: 7 }}>
+                        {items.slice(0, 3).map((n, i) => (
+                          <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }} onClick={e => e.stopPropagation()}>
+                            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--t1)", lineHeight: 1.4 }}>{n.title}</div>
+                            <div style={{ fontSize: 10, color: "var(--t3)", marginTop: 2 }}>{n.source}{n.pubDate ? ` · ${timeAgo(n.pubDate)}` : ""}</div>
+                          </a>
+                        ))}
+                        {items.length > 3 && <span style={{ fontSize: 10, fontWeight: 600, color: cfg.color, opacity: 0.6 }}>+{items.length - 3} more</span>}
+                      </div>
+                    )}
                   </div>
                 </div>
               );
             })}
           </div>
-
-          {/* ── Expansion drawer ── */}
-          {activeTag && (() => {
-            const cfg = CAT_CFG[activeTag] ?? CAT_CFG.AI;
-            const isPolitics = activeTag === "Politics";
-            const allPol = newsByTag.Politics ?? [];
-            const polBuckets = { world: allPol.filter(n => classifyPolitics(n.title, n.snippet) === "world"), us: allPol.filter(n => classifyPolitics(n.title, n.snippet) === "us"), florida: allPol.filter(n => classifyPolitics(n.title, n.snippet) === "florida") };
-            const expandItems = isPolitics ? polBuckets[politicsFilter] : (newsByTag[activeTag] ?? []);
-            const tabs: { id: "world" | "us" | "florida"; label: string }[] = [{ id: "us", label: "US" }, { id: "world", label: "World" }, { id: "florida", label: "Florida" }];
-            return (
-              <div style={{ marginTop: 10, borderTop: `2px solid rgba(${cfg.rgb},0.3)`, paddingTop: 14 }}>
-                {/* Drawer header */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: isPolitics ? 10 : 14 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: cfg.color, display: "inline-block" }} />
-                    <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: cfg.color }}>{activeTag}</span>
-                    <span style={{ fontSize: 10, color: "var(--t3)" }}>{expandItems.length} articles</span>
-                  </div>
-                  <button onClick={() => setActiveTag(null)} style={{
-                    background: "rgba(255,255,255,0.05)", border: "1px solid var(--border)", borderRadius: 4,
-                    padding: "3px 10px", fontSize: 10, fontWeight: 600, color: "var(--t2)", cursor: "pointer",
-                    display: "flex", alignItems: "center", gap: 5, transition: "all .15s",
-                  }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = `rgba(${cfg.rgb},0.4)`; (e.currentTarget as HTMLElement).style.color = cfg.color; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLElement).style.color = "var(--t2)"; }}
-                  >
-                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                    Close
-                  </button>
-                </div>
-
-                {/* Politics tabs in drawer */}
-                {isPolitics && (
-                  <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-                    {tabs.map(t => (
-                      <button key={t.id} onClick={() => setPoliticsFilter(t.id)} style={{
-                        fontSize: 10, fontWeight: 700, padding: "4px 12px", borderRadius: 4, cursor: "pointer",
-                        background: politicsFilter === t.id ? `rgba(${cfg.rgb},0.18)` : "rgba(255,255,255,0.04)",
-                        border: `1px solid ${politicsFilter === t.id ? `rgba(${cfg.rgb},0.45)` : "var(--border)"}`,
-                        color: politicsFilter === t.id ? cfg.color : "var(--t2)", transition: "all .15s",
-                      }}>
-                        {t.label} <span style={{ opacity: 0.7, fontSize: 9 }}>{polBuckets[t.id].length}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Article cards — 2-col grid */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  {expandItems.length === 0 ? (
-                    <p style={{ fontSize: 12, color: "var(--t3)", gridColumn: "1/-1", padding: "12px 0" }}>No articles in this category.</p>
-                  ) : expandItems.map((n, i) => (
-                    <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
-                      <div style={{
-                        padding: "12px 14px", borderRadius: 6, height: "100%",
-                        background: "var(--surface2)", border: "1px solid var(--border)",
-                        borderLeft: `2px solid rgba(${cfg.rgb},0.5)`,
-                        transition: "all .15s", display: "flex", flexDirection: "column", gap: 5,
-                      }}
-                        onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = `rgba(${cfg.rgb},0.4)`; el.style.background = `rgba(${cfg.rgb},0.04)`; }}
-                        onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = "var(--border)"; el.style.borderLeftColor = `rgba(${cfg.rgb},0.5)`; el.style.background = "var(--surface2)"; }}
-                      >
-                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)", lineHeight: 1.5, flex: 1 }}>{n.title}</div>
-                        {n.snippet && <div style={{ fontSize: 10, color: "var(--t2)", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{n.snippet}</div>}
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 2 }}>
-                          <span style={{ fontSize: 10, fontWeight: 600, color: "var(--t3)" }}>{n.source}{n.pubDate ? ` · ${timeAgo(n.pubDate)}` : ""}</span>
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={cfg.color} strokeWidth="2" strokeLinecap="round" style={{ opacity: 0.6, flexShrink: 0 }}>
-                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-                          </svg>
-                        </div>
-                      </div>
-                    </a>
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
 
         </HudCard>
 
