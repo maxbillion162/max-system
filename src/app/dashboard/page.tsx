@@ -25,6 +25,21 @@ const WEALTH_DEFAULTS = { ira: 2720, savings: 2800, btc_amount: 0.02, xrp_amount
 
 const INTEL_CATEGORIES = ["Finance", "Crypto", "Politics", "AI", "Tech"] as const;
 
+const CAT_CFG: Record<string, { color: string; rgb: string }> = {
+  Finance:  { color: "#5FB07D", rgb: "95,176,125"  },
+  Crypto:   { color: "#F0A832", rgb: "240,168,50"  },
+  Politics: { color: "#2DD4BF", rgb: "45,212,191"  },
+  AI:       { color: "#7DB8E8", rgb: "125,184,232" },
+  Tech:     { color: "#9B8AFB", rgb: "155,138,251" },
+};
+
+function classifyPolitics(title: string, snippet: string): "florida" | "us" | "world" {
+  const t = (title + " " + (snippet ?? "")).toLowerCase();
+  if (/\bflorida\b|desantis|orlando|miami|tampa|tallahassee|\bfl\b/.test(t)) return "florida";
+  if (/\bcongress\b|\bsenate\b|\btrump\b|\bbiden\b|\bharris\b|white house|\bwashington\b|\bfederal\b|supreme court|democrat|republican|\bgop\b/.test(t)) return "us";
+  return "world";
+}
+
 const NEWS_FALLBACK: NewsItem[] = [
   { title: "Fed holds rates steady — markets await next inflation print", source: "Reuters", tag: "Finance", link: "#", snippet: "", pubDate: "", breaking: false },
   { title: "BTC breaks $97K resistance for first time this week", source: "CoinDesk", tag: "Crypto", link: "#", snippet: "", pubDate: "", breaking: true },
@@ -281,6 +296,7 @@ export default function Dashboard() {
   const [briefLoading, setBriefLoading] = useState(false);
   const [budgetSnap,   setBudgetSnap]   = useState<BudgetSnap | null>(null);
   const [activeTag, setActiveTag]       = useState<string | null>(null as string | null);
+  const [politicsFilter, setPoliticsFilter] = useState<"world" | "us" | "florida">("us");
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000);
@@ -928,120 +944,272 @@ export default function Dashboard() {
         </HudCard>
 
         {/* Intel Feed */}
-        {(() => {
-          const CAT_CFG: Record<string, { color: string; rgb: string }> = {
-            Finance:  { color: "#5FB07D", rgb: "95,176,125"  },
-            Crypto:   { color: "#F0A832", rgb: "240,168,50"  },
-            Politics: { color: "#C85A5A", rgb: "200,90,90"   },
-            AI:       { color: "#7DB8E8", rgb: "125,184,232" },
-            Tech:     { color: "#9B8AFB", rgb: "155,138,251" },
-          };
+        <HudCard delay={.1} style={{ padding: "20px 24px" }}>
 
-          function IntelCard({ tag, collapse }: { tag: string; collapse: number }) {
-            const cfg = CAT_CFG[tag];
-            const items = newsByTag[tag] ?? [];
-            const isActive = activeTag === tag;
-            const shown = isActive ? items.slice(0, 6) : items.slice(0, collapse);
-            return (
-              <div
-                onClick={() => setActiveTag(isActive ? null : tag)}
-                style={{
-                  borderRadius: 7, overflow: "hidden", cursor: "pointer",
-                  background: isActive ? `rgba(${cfg.rgb},0.07)` : "var(--surface2)",
-                  border: `1px solid ${isActive ? `rgba(${cfg.rgb},0.35)` : "var(--border)"}`,
-                  transition: "all .18s",
-                  borderTop: `2px solid ${cfg.color}`,
-                }}
-                onMouseEnter={e => { if (!isActive) { (e.currentTarget as HTMLElement).style.borderColor = `rgba(${cfg.rgb},0.3)`; (e.currentTarget as HTMLElement).style.background = `rgba(${cfg.rgb},0.04)`; } }}
-                onMouseLeave={e => { if (!isActive) { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLElement).style.background = "var(--surface2)"; } }}
-              >
-                {/* Card header */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px 8px" }}>
-                  <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: cfg.color }}>{tag}</span>
+          {/* Header */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+            <div>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 2 }}>Intel Feed</p>
+              <p style={{ fontSize: 11, color: "var(--t2)" }}>{allNews.length} articles · live</p>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--green)", animation: "pulse-dot 2s ease-in-out infinite", display: "inline-block" }} />
+              <span style={{ fontSize: 11, fontWeight: 600, color: "var(--t2)" }}>Live</span>
+            </div>
+          </div>
+
+          {/* ── BREAKING — distinct featured layout, left-border style (no top border) ── */}
+          {breakingNews.length > 0 && (
+            <div style={{
+              display: "flex", gap: 0, borderRadius: 7, marginBottom: 10, overflow: "hidden",
+              border: "1px solid rgba(200,90,90,0.3)", background: "rgba(200,90,90,0.05)",
+            }}>
+              {/* Red left stripe */}
+              <div style={{ width: 4, background: "var(--red)", flexShrink: 0 }} />
+              <div style={{ flex: 1, padding: "11px 14px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                   <span style={{
-                    fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 10,
-                    background: `rgba(${cfg.rgb},0.15)`, color: cfg.color,
-                  }}>{items.length}</span>
+                    fontSize: 9, fontWeight: 900, letterSpacing: "0.14em", textTransform: "uppercase",
+                    color: "#fff", background: "var(--red)", padding: "3px 7px", borderRadius: 3,
+                  }}>● BREAKING</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: "rgba(200,90,90,0.8)" }}>{breakingNews.length} story{breakingNews.length !== 1 ? "s" : ""}</span>
                 </div>
-                {/* Articles */}
-                <div style={{ padding: "0 12px 10px", display: "flex", flexDirection: "column", gap: 8 }}>
-                  {items.length === 0 ? (
-                    <p style={{ fontSize: 11, color: "var(--t3)", margin: 0 }}>No articles</p>
-                  ) : (
-                    shown.map((n, i) => (
-                      <a key={i} href={n.link} target="_blank" rel="noopener noreferrer"
-                        style={{ textDecoration: "none", display: "block" }}
-                        onClick={e => e.stopPropagation()}
-                      >
-                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)", lineHeight: 1.45 }}>{n.title}</div>
-                        <div style={{ fontSize: 10, color: "var(--t3)", marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
-                          <span>{n.source}</span>
-                          {n.pubDate && <><span style={{ opacity: 0.4 }}>·</span><span>{timeAgo(n.pubDate)}</span></>}
-                        </div>
-                      </a>
-                    ))
+                {/* Featured lead story */}
+                <a href={breakingNews[0].link} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", display: "block", marginBottom: 8 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--t1)", lineHeight: 1.45, marginBottom: 3 }}>{breakingNews[0].title}</div>
+                  {breakingNews[0].snippet && (
+                    <div style={{ fontSize: 11, color: "var(--t2)", lineHeight: 1.5, marginBottom: 4 }}>{breakingNews[0].snippet.slice(0, 140)}{breakingNews[0].snippet.length > 140 ? "…" : ""}</div>
                   )}
-                  {!isActive && items.length > collapse && (
-                    <span style={{ fontSize: 10, fontWeight: 600, color: cfg.color, opacity: 0.7 }}>+{items.length - collapse} more →</span>
-                  )}
-                </div>
+                  <div style={{ fontSize: 10, color: "var(--t3)" }}>{breakingNews[0].source}{breakingNews[0].pubDate ? ` · ${timeAgo(breakingNews[0].pubDate)}` : ""}</div>
+                </a>
+                {/* Secondary stories */}
+                {breakingNews.slice(1, 3).map((n, i) => (
+                  <a key={i} href={n.link} target="_blank" rel="noopener noreferrer"
+                    style={{ textDecoration: "none", display: "flex", alignItems: "baseline", gap: 6, paddingTop: 7, borderTop: "1px solid rgba(200,90,90,0.15)" }}>
+                    <span style={{ fontSize: 10, color: "rgba(200,90,90,0.5)", flexShrink: 0, fontWeight: 700 }}>›</span>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)", lineHeight: 1.4 }}>{n.title}</div>
+                      <div style={{ fontSize: 10, color: "var(--t3)", marginTop: 1 }}>{n.source}{n.pubDate ? ` · ${timeAgo(n.pubDate)}` : ""}</div>
+                    </div>
+                  </a>
+                ))}
               </div>
-            );
-          }
+            </div>
+          )}
 
-          return (
-            <HudCard delay={.1} style={{ padding: "20px 24px" }}>
-              {/* Header */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                <div>
-                  <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 2 }}>Intel Feed</p>
-                  <p style={{ fontSize: 11, color: "var(--t2)" }}>{allNews.length} articles · live</p>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--green)", animation: "pulse-dot 2s ease-in-out infinite", display: "inline-block" }} />
-                  <span style={{ fontSize: 11, fontWeight: 600, color: "var(--t2)" }}>Live</span>
-                </div>
-              </div>
-
-              {/* Breaking strip */}
-              {breakingNews.length > 0 && (
-                <div style={{
-                  padding: "11px 14px", borderRadius: 7, marginBottom: 12,
-                  background: "rgba(200,90,90,0.08)", border: "1px solid rgba(200,90,90,0.25)",
-                  borderTop: "2px solid var(--red)",
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 9 }}>
-                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--red)", animation: "pulse-dot 1.4s ease-in-out infinite", display: "inline-block" }} />
-                    <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", color: "var(--red)", textTransform: "uppercase" }}>Breaking</span>
-                    <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 10, background: "rgba(200,90,90,0.2)", color: "var(--red)", marginLeft: 2 }}>{breakingNews.length}</span>
+          {/* ── Finance | Crypto ── */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
+            {(["Finance", "Crypto"] as const).map(tag => {
+              const cfg = CAT_CFG[tag];
+              const items = newsByTag[tag] ?? [];
+              const isActive = activeTag === tag;
+              return (
+                <div key={tag}
+                  onClick={() => setActiveTag(isActive ? null : tag)}
+                  style={{
+                    borderRadius: 7, overflow: "hidden", cursor: "pointer",
+                    background: isActive ? `rgba(${cfg.rgb},0.08)` : "var(--surface2)",
+                    border: `1px solid ${isActive ? `rgba(${cfg.rgb},0.4)` : "var(--border)"}`,
+                    borderTop: `2px solid ${cfg.color}`, transition: "all .18s",
+                  }}
+                  onMouseEnter={e => { if (!isActive) { const el = e.currentTarget as HTMLElement; el.style.borderColor = `rgba(${cfg.rgb},0.3)`; el.style.background = `rgba(${cfg.rgb},0.04)`; } }}
+                  onMouseLeave={e => { if (!isActive) { const el = e.currentTarget as HTMLElement; el.style.borderColor = "var(--border)"; el.style.background = "var(--surface2)"; } }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px 7px" }}>
+                    <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: cfg.color }}>{tag}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                      {isActive && <span style={{ fontSize: 9, color: cfg.color, opacity: 0.7 }}>expanded</span>}
+                      <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 10, background: `rgba(${cfg.rgb},0.15)`, color: cfg.color }}>{items.length}</span>
+                    </div>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {breakingNews.slice(0, 2).map((n, i) => (
-                      <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)", lineHeight: 1.45 }}>{n.title}</div>
+                  <div style={{ padding: "0 12px 10px", display: "flex", flexDirection: "column", gap: 7 }}>
+                    {items.slice(0, 2).map((n, i) => (
+                      <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }} onClick={e => e.stopPropagation()}>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: "var(--t1)", lineHeight: 1.4 }}>{n.title}</div>
                         <div style={{ fontSize: 10, color: "var(--t3)", marginTop: 2 }}>{n.source}{n.pubDate ? ` · ${timeAgo(n.pubDate)}` : ""}</div>
                       </a>
                     ))}
+                    {items.length > 2 && <span style={{ fontSize: 10, fontWeight: 600, color: cfg.color, opacity: 0.65 }}>+{items.length - 2} more — click to expand</span>}
                   </div>
                 </div>
-              )}
+              );
+            })}
+          </div>
 
-              {/* 3-col row */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 8 }}>
-                {(["Finance", "Crypto", "Politics"] as const).map(tag => (
-                  <IntelCard key={tag} tag={tag} collapse={2} />
-                ))}
+          {/* ── Politics (full width + World/US/Florida tabs) ── */}
+          {(() => {
+            const cfg = CAT_CFG.Politics;
+            const allPol = newsByTag.Politics ?? [];
+            const isActive = activeTag === "Politics";
+            const polBuckets = { world: allPol.filter(n => classifyPolitics(n.title, n.snippet) === "world"), us: allPol.filter(n => classifyPolitics(n.title, n.snippet) === "us"), florida: allPol.filter(n => classifyPolitics(n.title, n.snippet) === "florida") };
+            const polItems = polBuckets[politicsFilter];
+            const tabs: { id: "world" | "us" | "florida"; label: string }[] = [{ id: "us", label: "US" }, { id: "world", label: "World" }, { id: "florida", label: "Florida" }];
+            return (
+              <div style={{ marginBottom: 8, borderRadius: 7, overflow: "hidden", border: `1px solid ${isActive ? `rgba(${cfg.rgb},0.4)` : "var(--border)"}`, borderTop: `2px solid ${cfg.color}`, background: isActive ? `rgba(${cfg.rgb},0.06)` : "var(--surface2)", transition: "all .18s" }}>
+                {/* Header row */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px 0" }}>
+                  <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: cfg.color }}>Politics</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    {isActive && <span style={{ fontSize: 9, color: cfg.color, opacity: 0.7 }}>expanded</span>}
+                    <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 10, background: `rgba(${cfg.rgb},0.15)`, color: cfg.color }}>{allPol.length}</span>
+                  </div>
+                </div>
+                {/* Sub-filter tabs */}
+                <div style={{ display: "flex", gap: 6, padding: "8px 14px 0" }}>
+                  {tabs.map(t => (
+                    <button key={t.id}
+                      onClick={() => { setPoliticsFilter(t.id); setActiveTag("Politics"); }}
+                      style={{
+                        fontSize: 10, fontWeight: 700, padding: "4px 11px", borderRadius: 4, cursor: "pointer",
+                        background: politicsFilter === t.id ? `rgba(${cfg.rgb},0.18)` : "rgba(255,255,255,0.04)",
+                        border: `1px solid ${politicsFilter === t.id ? `rgba(${cfg.rgb},0.45)` : "var(--border)"}`,
+                        color: politicsFilter === t.id ? cfg.color : "var(--t2)",
+                        transition: "all .15s",
+                      }}
+                    >
+                      {t.label}
+                      <span style={{ marginLeft: 5, fontSize: 9, opacity: 0.7 }}>{polBuckets[t.id].length}</span>
+                    </button>
+                  ))}
+                </div>
+                {/* Articles preview (2-col) */}
+                <div style={{ cursor: "pointer", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 14px", padding: "10px 14px 12px" }}
+                  onClick={() => setActiveTag(isActive ? null : "Politics")}>
+                  {polItems.length === 0 ? (
+                    <p style={{ fontSize: 11, color: "var(--t3)", gridColumn: "1/-1" }}>No {politicsFilter} articles</p>
+                  ) : polItems.slice(0, 4).map((n, i) => (
+                    <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }} onClick={e => e.stopPropagation()}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: "var(--t1)", lineHeight: 1.4 }}>{n.title}</div>
+                      <div style={{ fontSize: 10, color: "var(--t3)", marginTop: 2 }}>{n.source}{n.pubDate ? ` · ${timeAgo(n.pubDate)}` : ""}</div>
+                    </a>
+                  ))}
+                </div>
+                {polItems.length > 4 && !isActive && (
+                  <div style={{ padding: "0 14px 10px" }}>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: cfg.color, opacity: 0.65 }}>+{polItems.length - 4} more — click to expand</span>
+                  </div>
+                )}
               </div>
+            );
+          })()}
 
-              {/* 2-col row */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {(["AI", "Tech"] as const).map(tag => (
-                  <IntelCard key={tag} tag={tag} collapse={3} />
-                ))}
+          {/* ── AI | Tech ── */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {(["AI", "Tech"] as const).map(tag => {
+              const cfg = CAT_CFG[tag];
+              const items = newsByTag[tag] ?? [];
+              const isActive = activeTag === tag;
+              return (
+                <div key={tag}
+                  onClick={() => setActiveTag(isActive ? null : tag)}
+                  style={{
+                    borderRadius: 7, overflow: "hidden", cursor: "pointer",
+                    background: isActive ? `rgba(${cfg.rgb},0.08)` : "var(--surface2)",
+                    border: `1px solid ${isActive ? `rgba(${cfg.rgb},0.4)` : "var(--border)"}`,
+                    borderTop: `2px solid ${cfg.color}`, transition: "all .18s",
+                  }}
+                  onMouseEnter={e => { if (!isActive) { const el = e.currentTarget as HTMLElement; el.style.borderColor = `rgba(${cfg.rgb},0.3)`; el.style.background = `rgba(${cfg.rgb},0.04)`; } }}
+                  onMouseLeave={e => { if (!isActive) { const el = e.currentTarget as HTMLElement; el.style.borderColor = "var(--border)"; el.style.background = "var(--surface2)"; } }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px 7px" }}>
+                    <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: cfg.color }}>{tag}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                      {isActive && <span style={{ fontSize: 9, color: cfg.color, opacity: 0.7 }}>expanded</span>}
+                      <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 10, background: `rgba(${cfg.rgb},0.15)`, color: cfg.color }}>{items.length}</span>
+                    </div>
+                  </div>
+                  <div style={{ padding: "0 12px 10px", display: "flex", flexDirection: "column", gap: 7 }}>
+                    {items.slice(0, 3).map((n, i) => (
+                      <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }} onClick={e => e.stopPropagation()}>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: "var(--t1)", lineHeight: 1.4 }}>{n.title}</div>
+                        <div style={{ fontSize: 10, color: "var(--t3)", marginTop: 2 }}>{n.source}{n.pubDate ? ` · ${timeAgo(n.pubDate)}` : ""}</div>
+                      </a>
+                    ))}
+                    {items.length > 3 && <span style={{ fontSize: 10, fontWeight: 600, color: cfg.color, opacity: 0.65 }}>+{items.length - 3} more — click to expand</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ── Expansion drawer ── */}
+          {activeTag && (() => {
+            const cfg = CAT_CFG[activeTag] ?? CAT_CFG.AI;
+            const isPolitics = activeTag === "Politics";
+            const allPol = newsByTag.Politics ?? [];
+            const polBuckets = { world: allPol.filter(n => classifyPolitics(n.title, n.snippet) === "world"), us: allPol.filter(n => classifyPolitics(n.title, n.snippet) === "us"), florida: allPol.filter(n => classifyPolitics(n.title, n.snippet) === "florida") };
+            const expandItems = isPolitics ? polBuckets[politicsFilter] : (newsByTag[activeTag] ?? []);
+            const tabs: { id: "world" | "us" | "florida"; label: string }[] = [{ id: "us", label: "US" }, { id: "world", label: "World" }, { id: "florida", label: "Florida" }];
+            return (
+              <div style={{ marginTop: 10, borderTop: `2px solid rgba(${cfg.rgb},0.3)`, paddingTop: 14 }}>
+                {/* Drawer header */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: isPolitics ? 10 : 14 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: cfg.color, display: "inline-block" }} />
+                    <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: cfg.color }}>{activeTag}</span>
+                    <span style={{ fontSize: 10, color: "var(--t3)" }}>{expandItems.length} articles</span>
+                  </div>
+                  <button onClick={() => setActiveTag(null)} style={{
+                    background: "rgba(255,255,255,0.05)", border: "1px solid var(--border)", borderRadius: 4,
+                    padding: "3px 10px", fontSize: 10, fontWeight: 600, color: "var(--t2)", cursor: "pointer",
+                    display: "flex", alignItems: "center", gap: 5, transition: "all .15s",
+                  }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = `rgba(${cfg.rgb},0.4)`; (e.currentTarget as HTMLElement).style.color = cfg.color; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLElement).style.color = "var(--t2)"; }}
+                  >
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    Close
+                  </button>
+                </div>
+
+                {/* Politics tabs in drawer */}
+                {isPolitics && (
+                  <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+                    {tabs.map(t => (
+                      <button key={t.id} onClick={() => setPoliticsFilter(t.id)} style={{
+                        fontSize: 10, fontWeight: 700, padding: "4px 12px", borderRadius: 4, cursor: "pointer",
+                        background: politicsFilter === t.id ? `rgba(${cfg.rgb},0.18)` : "rgba(255,255,255,0.04)",
+                        border: `1px solid ${politicsFilter === t.id ? `rgba(${cfg.rgb},0.45)` : "var(--border)"}`,
+                        color: politicsFilter === t.id ? cfg.color : "var(--t2)", transition: "all .15s",
+                      }}>
+                        {t.label} <span style={{ opacity: 0.7, fontSize: 9 }}>{polBuckets[t.id].length}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Article cards — 2-col grid */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  {expandItems.length === 0 ? (
+                    <p style={{ fontSize: 12, color: "var(--t3)", gridColumn: "1/-1", padding: "12px 0" }}>No articles in this category.</p>
+                  ) : expandItems.map((n, i) => (
+                    <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+                      <div style={{
+                        padding: "12px 14px", borderRadius: 6, height: "100%",
+                        background: "var(--surface2)", border: "1px solid var(--border)",
+                        borderLeft: `2px solid rgba(${cfg.rgb},0.5)`,
+                        transition: "all .15s", display: "flex", flexDirection: "column", gap: 5,
+                      }}
+                        onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = `rgba(${cfg.rgb},0.4)`; el.style.background = `rgba(${cfg.rgb},0.04)`; }}
+                        onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = "var(--border)"; el.style.borderLeftColor = `rgba(${cfg.rgb},0.5)`; el.style.background = "var(--surface2)"; }}
+                      >
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)", lineHeight: 1.5, flex: 1 }}>{n.title}</div>
+                        {n.snippet && <div style={{ fontSize: 10, color: "var(--t2)", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{n.snippet}</div>}
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 2 }}>
+                          <span style={{ fontSize: 10, fontWeight: 600, color: "var(--t3)" }}>{n.source}{n.pubDate ? ` · ${timeAgo(n.pubDate)}` : ""}</span>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={cfg.color} strokeWidth="2" strokeLinecap="round" style={{ opacity: 0.6, flexShrink: 0 }}>
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                          </svg>
+                        </div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
               </div>
-            </HudCard>
-          );
-        })()}
+            );
+          })()}
+
+        </HudCard>
 
 
         </div>{/* end center column */}
