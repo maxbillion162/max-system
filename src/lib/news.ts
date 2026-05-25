@@ -9,7 +9,6 @@ export interface NewsItem {
   pubDate: string;
   snippet: string;
   breaking?: boolean;
-  relevance?: number;
 }
 
 // Category-specific feeds only — no generic site RSS that bleeds in deals/reviews
@@ -72,25 +71,6 @@ const SLOP_PATTERNS = [
   /\b(giveaway|win a|enter to win)\b/i,
 ];
 
-// Max's profile — what he actually cares about, used to score relevance
-const MAX_INTERESTS = [
-  { pattern: /\b(ai|artificial intelligence|llm|large language model|claude|gpt|openai|anthropic|gemini|agent|copilot|chatgpt|foundation model|generative|transformer)\b/i, score: 6 },
-  { pattern: /\b(bitcoin|btc|xrp|ripple|crypto|blockchain|defi|coinbase|binance|ethereum|solana|token|nft|web3)\b/i, score: 6 },
-  { pattern: /\b(startup|entrepreneur|founder|venture capital|vc|series [a-c]|fundrais|unicorn|ipo|exit|acquisition)\b/i, score: 5 },
-  { pattern: /\b(sales|account manager|crm|salesforce|revenue|quota|pipeline|b2b|saas|go.?to.?market|gtm)\b/i, score: 5 },
-  { pattern: /\b(stock market|s&p 500|nasdaq|dow jones|fed|federal reserve|interest rate|inflation|recession|earnings|gdp)\b/i, score: 4 },
-  { pattern: /\b(investing|investment|portfolio|roth ira|401k|etf|dividend|compound interest|wealth|net worth|personal finance)\b/i, score: 4 },
-  { pattern: /\b(florida|orlando|miami|tampa|tallahassee|desantis)\b/i, score: 3 },
-  { pattern: /\b(software|developer|programming|open.?source|github|api|cloud|data center|semiconductor|chip|nvidia|apple|google|microsoft|meta|amazon)\b/i, score: 2 },
-  { pattern: /\b(automation|robotics|autonomous|self.?driving|drone)\b/i, score: 2 },
-];
-
-// Low-importance patterns — down-rank these
-const LOW_IMPORTANCE = [
-  /\b(celebrity|kardashian|taylor swift|nba|nfl|mlb|super bowl|oscars|grammy|emmys|golden globe)\b/i,
-  /\b(recipe|food|restaurant|diet|workout tip|fitness hack|skincare|fashion|beauty)\b/i,
-  /\b(horoscope|zodiac|astrology)\b/i,
-];
 
 function stripHtml(html: string): string {
   return html?.replace(/<[^>]+>/g, "").replace(/&[a-z]+;/gi, " ").trim().slice(0, 220) ?? "";
@@ -104,27 +84,6 @@ function isBreaking(title: string): boolean {
 function isSlop(title: string, snippet: string): boolean {
   const text = title + " " + snippet;
   return SLOP_PATTERNS.some(p => p.test(text));
-}
-
-function scoreRelevance(title: string, snippet: string): number {
-  const text = title + " " + (snippet ?? "");
-  let score = 0;
-  for (const { pattern, score: pts } of MAX_INTERESTS) {
-    if (pattern.test(text)) score += pts;
-  }
-  for (const pattern of LOW_IMPORTANCE) {
-    if (pattern.test(text)) score -= 4;
-  }
-  return score;
-}
-
-function recencyBoost(pubDate: string): number {
-  const hoursAgo = (Date.now() - new Date(pubDate).getTime()) / 3600000;
-  if (hoursAgo < 2)  return 8;
-  if (hoursAgo < 6)  return 6;
-  if (hoursAgo < 12) return 4;
-  if (hoursAgo < 24) return 2;
-  return 0;
 }
 
 export async function fetchNews(count = 200): Promise<NewsItem[]> {
@@ -143,8 +102,6 @@ export async function fetchNews(count = 200): Promise<NewsItem[]> {
           if (title.length < 12) continue;
           if (isSlop(title, snippet)) continue;
 
-          const relevance = scoreRelevance(title, snippet) + recencyBoost(pubDate);
-
           items.push({
             title,
             link:     item.link ?? "",
@@ -154,7 +111,6 @@ export async function fetchNews(count = 200): Promise<NewsItem[]> {
             pubDate,
             snippet,
             breaking: isBreaking(title),
-            relevance,
           });
         }
       } catch {
@@ -172,8 +128,8 @@ export async function fetchNews(count = 200): Promise<NewsItem[]> {
     return true;
   });
 
-  // Sort by combined relevance + recency score (descending)
+  // Sort by publish date — freshest first within each category
   return deduped
-    .sort((a, b) => (b.relevance ?? 0) - (a.relevance ?? 0))
+    .sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime())
     .slice(0, count);
 }
