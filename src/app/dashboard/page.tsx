@@ -262,7 +262,6 @@ export default function Dashboard() {
   const [crypto, setCrypto]   = useState<LiveCrypto[]>([]);
   const [weather, setWeather] = useState<LiveWeather | null>(null);
   const [news, setNews]       = useState<NewsItem[]>([]);
-  const [activeTag, setActiveTag] = useState("All");
   const [habits, setHabits]       = useState<Habit[]>([]);
   const [goals, setGoals]         = useState<FullGoal[]>([]);
   const [wealth, setWealth]       = useState(WEALTH_DEFAULTS);
@@ -281,7 +280,7 @@ export default function Dashboard() {
   const [briefGenAt,   setBriefGenAt]   = useState<string | null>(null);
   const [briefLoading, setBriefLoading] = useState(false);
   const [budgetSnap,   setBudgetSnap]   = useState<BudgetSnap | null>(null);
-  const [activeTag, setActiveTag]       = useState<string | null>(null);
+  const [activeTag, setActiveTag]       = useState<string | null>(null as string | null);
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000);
