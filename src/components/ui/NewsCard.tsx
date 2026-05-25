@@ -101,9 +101,8 @@ export function NewsCard({ title, snippet, source, pubDate, link, accentColor, a
 
         <div style={{
           display: "flex", alignItems: "center", gap: 2,
-          opacity: hovered || rating !== null ? 1 : 0,
+          opacity: rating !== null ? 1 : hovered ? 0.85 : 0.3,
           transition: "opacity 0.18s",
-          pointerEvents: hovered || rating !== null ? "auto" : "none",
         }}>
           {submitted ? (
             <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.06em", color: accentCol }}>
