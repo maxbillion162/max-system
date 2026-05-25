@@ -23,7 +23,7 @@ interface BudgetSnap  { totalSpent: number; totalBudgeted: number; topOver: { ca
 
 const WEALTH_DEFAULTS = { ira: 2720, savings: 2800, btc_amount: 0.02, xrp_amount: 200 };
 
-const ALL_TAGS = ["All", "Breaking", "Finance", "Crypto", "Politics", "AI", "Tech"];
+const INTEL_CATEGORIES = ["Finance", "Crypto", "Politics", "AI", "Tech"] as const;
 
 const NEWS_FALLBACK: NewsItem[] = [
   { title: "Fed holds rates steady — markets await next inflation print", source: "Reuters", tag: "Finance", link: "#", snippet: "", pubDate: "", breaking: false },
@@ -272,12 +272,16 @@ export default function Dashboard() {
   const [newTaskText, setNewTaskText] = useState("");
   const [alertDismissed, setAlertDismissed] = useState(false);
   const [calEvents, setCalEvents]           = useState<CalEvent[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<CalEvent[]>([]);
   const [calConnected, setCalConnected]     = useState<boolean | null>(null);
+  const [weatherLocName, setWeatherLocName] = useState("Orlando");
+  const [weatherSyncing, setWeatherSyncing] = useState(false);
   const [priv, setPriv]                     = useState(true);
   const [brief,        setBrief]        = useState<BriefLine[]>([]);
   const [briefGenAt,   setBriefGenAt]   = useState<string | null>(null);
   const [briefLoading, setBriefLoading] = useState(false);
   const [budgetSnap,   setBudgetSnap]   = useState<BudgetSnap | null>(null);
+  const [activeTag, setActiveTag]       = useState<string | null>(null);
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000);
@@ -307,14 +311,20 @@ export default function Dashboard() {
     });
     supabase.from("tasks").select("id,text,completed,priority,due_date").order("created_at").then(({ data }) => { if (data) setTasks(data as Task[]); });
 
-    // Fetch today's calendar events
+    // Fetch today's + upcoming calendar events (3 days)
     const todayStart = new Date(); todayStart.setHours(0,0,0,0);
     const todayEnd   = new Date(); todayEnd.setHours(23,59,59,999);
-    fetch(`/api/google/calendar?timeMin=${todayStart.toISOString()}&timeMax=${todayEnd.toISOString()}`)
+    const upcomingEnd = new Date(todayStart.getTime() + 4 * 86400000); // +4 days
+    fetch(`/api/google/calendar?timeMin=${todayStart.toISOString()}&timeMax=${upcomingEnd.toISOString()}`)
       .then(r => r.json())
       .then(j => {
         setCalConnected(j.connected ?? false);
-        if (j.events) setCalEvents(j.events as CalEvent[]);
+        if (j.events) {
+          const all = j.events as CalEvent[];
+          const todayStr = todayStart.toISOString().slice(0, 10);
+          setCalEvents(all.filter(e => (e.start ?? "").slice(0, 10) === todayStr || e.allDay));
+          setUpcomingEvents(all.filter(e => (e.start ?? "").slice(0, 10) > todayStr));
+        }
       })
       .catch(() => setCalConnected(false));
 
@@ -381,6 +391,24 @@ export default function Dashboard() {
     await dbWrite.from("habits").update({ completed: newCompleted }).eq("id", id);
   }
 
+  function syncWeatherLocation() {
+    if (!navigator.geolocation) return;
+    setWeatherSyncing(true);
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const { latitude: lat, longitude: lon } = pos.coords;
+        fetch(`/api/weather?lat=${lat}&lon=${lon}&name=Your+Location`)
+          .then(r => r.json())
+          .then(j => {
+            if (j.data) { setWeather(j.data); setWeatherLocName(j.data.location ?? "Your Location"); }
+          })
+          .catch(() => {})
+          .finally(() => setWeatherSyncing(false));
+      },
+      () => setWeatherSyncing(false),
+    );
+  }
+
   async function updateWealth(key: keyof typeof WEALTH_DEFAULTS, val: number) {
     const updated = { ...wealth, [key]: val };
     setWealth(updated);
@@ -416,9 +444,11 @@ export default function Dashboard() {
   const ringC      = 2 * Math.PI * 22;
   const ringDash   = habits.length > 0 ? ringC - (habitsDone / habits.length) * ringC : ringC;
 
-  const displayNews = (news.length ? news : NEWS_FALLBACK).filter(n =>
-    activeTag === "All" ? true : activeTag === "Breaking" ? n.breaking : n.tag === activeTag
-  );
+  const allNews = news.length ? news : NEWS_FALLBACK;
+  const breakingNews = allNews.filter(n => n.breaking);
+  const newsByTag = Object.fromEntries(
+    INTEL_CATEGORIES.map(tag => [tag, allNews.filter(n => n.tag === tag)])
+  ) as Record<string, NewsItem[]>;
 
   const insights = generateInsights({ btc, xrp, btcAmt: wealth.btc_amount, xrpAmt: wealth.xrp_amount, netWorth, cryptoGain, habits, goals, weather, hour: h });
 
@@ -621,7 +651,32 @@ export default function Dashboard() {
 
           {/* Weather */}
           <HudCard delay={.08} style={{ padding: "20px 20px 16px" }}>
-            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 14 }}>Orlando Weather</p>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)" }}>{weatherLocName} Weather</p>
+              <button
+                onClick={syncWeatherLocation}
+                disabled={weatherSyncing}
+                title="Sync to your current location"
+                style={{
+                  display: "flex", alignItems: "center", gap: 5,
+                  padding: "4px 9px", borderRadius: 4, cursor: weatherSyncing ? "default" : "pointer",
+                  background: "rgba(125,184,232,0.06)", border: "1px solid rgba(125,184,232,0.18)",
+                  color: weatherSyncing ? "var(--t4)" : "var(--blue)", fontSize: 10, fontWeight: 700,
+                  letterSpacing: "0.05em", transition: "all .15s", flexShrink: 0,
+                }}
+                onMouseEnter={e => { if (!weatherSyncing) (e.currentTarget as HTMLElement).style.background = "rgba(125,184,232,0.12)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(125,184,232,0.06)"; }}
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+                  style={{ animation: weatherSyncing ? "spin-slow 1s linear infinite" : "none" }}>
+                  {weatherSyncing
+                    ? <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                    : <><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></>
+                  }
+                </svg>
+                {weatherSyncing ? "Syncing…" : "Sync to location"}
+              </button>
+            </div>
             {weather ? (
               <>
                 {/* Main temp + icon row */}
@@ -781,36 +836,45 @@ export default function Dashboard() {
 
         {/* Schedule */}
         <HudCard delay={.09} style={{ padding: "20px 24px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)" }}>Today&apos;s Schedule</p>
             <a href="/dashboard/calendar" style={{ fontSize: 11, color: "var(--blue)", textDecoration: "none" }}>Full calendar →</a>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {calConnected === false ? (
-              <a href="/api/auth/google" style={{
-                display: "flex", alignItems: "center", gap: 8, padding: "12px", borderRadius: 6,
-                background: "rgba(125,184,232,0.05)", border: "1px dashed rgba(125,184,232,0.2)",
-                textDecoration: "none",
-              }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
-                </svg>
-                <span style={{ fontSize: 12, color: "var(--blue)", fontWeight: 600 }}>Connect Google Calendar</span>
-              </a>
-            ) : calEvents.length === 0 && calConnected ? (
-              <p style={{ fontSize: 12, color: "var(--t4)", padding: "8px 0", textAlign: "center" }}>No events today.</p>
-            ) : calConnected === null ? (
-              <p style={{ fontSize: 12, color: "var(--t4)", padding: "8px 0" }}>Loading…</p>
-            ) : (
-              calEvents.map((ev, i) => {
+
+          {/* Today's events */}
+          {calConnected === false ? (
+            <a href="/api/auth/google" style={{
+              display: "flex", alignItems: "center", gap: 8, padding: "12px", borderRadius: 6,
+              background: "rgba(125,184,232,0.05)", border: "1px dashed rgba(125,184,232,0.2)",
+              textDecoration: "none",
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round">
+                <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+              </svg>
+              <span style={{ fontSize: 12, color: "var(--blue)", fontWeight: 600 }}>Connect Google Calendar</span>
+            </a>
+          ) : calConnected === null ? (
+            <p style={{ fontSize: 12, color: "var(--t4)", padding: "8px 0" }}>Loading…</p>
+          ) : calEvents.length === 0 ? (
+            <div style={{
+              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+              padding: "18px 0 14px", gap: 6,
+            }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--border2)" strokeWidth="1.5" strokeLinecap="round">
+                <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+              </svg>
+              <p style={{ fontSize: 12, color: "var(--t4)", margin: 0 }}>No events today</p>
+              <p style={{ fontSize: 11, color: "var(--t4)", margin: 0, opacity: 0.6 }}>Your schedule is clear</p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: upcomingEvents.length > 0 ? 16 : 0 }}>
+              {calEvents.map((ev, i) => {
                 const start   = new Date(ev.start);
                 const end     = new Date(ev.end);
                 const timeStr = ev.allDay ? "All day" : start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
                 const durMs   = end.getTime() - start.getTime();
                 const durMin  = Math.round(durMs / 60000);
-                const durStr  = durMin >= 60
-                  ? `${Math.floor(durMin/60)}h${durMin%60 ? ` ${durMin%60}m` : ""}`
-                  : `${durMin}m`;
+                const durStr  = durMin >= 60 ? `${Math.floor(durMin/60)}h${durMin%60 ? ` ${durMin%60}m` : ""}` : `${durMin}m`;
                 const isPast  = !ev.allDay && end < new Date();
                 return (
                   <div key={ev.id ?? i} style={{
@@ -826,17 +890,51 @@ export default function Dashboard() {
                     </div>
                   </div>
                 );
-              })
-            )}
-          </div>
+              })}
+            </div>
+          )}
+
+          {/* What's Next */}
+          {upcomingEvents.length > 0 && (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, marginTop: calEvents.length > 0 ? 4 : 0 }}>
+                <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+                <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--t4)", flexShrink: 0 }}>What&apos;s Next</span>
+                <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                {upcomingEvents.slice(0, 4).map((ev, i) => {
+                  const start    = new Date(ev.start);
+                  const dayLabel = start.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+                  const timeStr  = ev.allDay ? "All day" : start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+                  return (
+                    <div key={ev.id ?? i} style={{
+                      display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 4,
+                      background: "var(--surface2)", borderLeft: "2px solid rgba(125,184,232,0.25)",
+                    }}>
+                      <div style={{ flexShrink: 0, textAlign: "center", minWidth: 38 }}>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: "var(--t4)", letterSpacing: "0.05em" }}>{dayLabel.split(",")[0].toUpperCase()}</div>
+                        <div style={{ fontSize: 10, color: "var(--t3)" }}>{timeStr}</div>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--t2)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ev.title}</div>
+                        {ev.location && <div style={{ fontSize: 10, color: "var(--t4)", marginTop: 1 }}>{ev.location}</div>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </HudCard>
 
         {/* Intel Feed */}
-        <HudCard delay={.1} style={{ padding: "20px 24px", display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+        <HudCard delay={.1} style={{ padding: "20px 24px" }}>
+          {/* Header */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <div>
               <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 2 }}>Intel Feed</p>
-              <p style={{ fontSize: 11, color: "var(--t3)" }}>{(news.length || NEWS_FALLBACK.length)} articles · live</p>
+              <p style={{ fontSize: 11, color: "var(--t4)" }}>{allNews.length} articles · live</p>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--green)", animation: "pulse-dot 2s ease-in-out infinite", display: "inline-block" }} />
@@ -844,57 +942,105 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Filter tabs */}
-          <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 14 }}>
-            {ALL_TAGS.map(tag => (
-              <button key={tag} onClick={() => setActiveTag(tag)} style={{
-                fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 3, cursor: "pointer",
-                background: activeTag === tag ? "rgba(125,184,232,0.15)" : "transparent",
-                border: `1px solid ${activeTag === tag ? "rgba(125,184,232,0.4)" : "var(--border)"}`,
-                color: activeTag === tag ? "var(--blue)" : "var(--t3)",
-                transition: "all .15s",
-              }}>
-                {tag === "Breaking" ? "● Breaking" : tag}
-              </button>
-            ))}
+          {/* Breaking strip */}
+          {breakingNews.length > 0 && (
+            <div style={{
+              padding: "12px 14px", borderRadius: 6, marginBottom: 14,
+              background: "rgba(200,90,90,0.06)", border: "1px solid rgba(200,90,90,0.18)",
+              borderLeft: "3px solid var(--red)",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--red)", animation: "pulse-dot 1.4s ease-in-out infinite", display: "inline-block", flexShrink: 0 }} />
+                <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", color: "var(--red)", textTransform: "uppercase" }}>Breaking</span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                {breakingNews.slice(0, 2).map((n, i) => (
+                  <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)", lineHeight: 1.45 }}>{n.title}</div>
+                    <div style={{ fontSize: 10, color: "var(--t4)", marginTop: 2 }}>{n.source}{n.pubDate ? ` · ${timeAgo(n.pubDate)}` : ""}</div>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Category sub-modules — 3 col top, 2 col bottom */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
+            {(["Finance", "Crypto", "Politics"] as const).map(tag => {
+              const items = newsByTag[tag] ?? [];
+              const isActive = activeTag === tag;
+              return (
+                <div key={tag} style={{
+                  padding: "12px 13px", borderRadius: 6,
+                  background: isActive ? "rgba(125,184,232,0.06)" : "var(--surface2)",
+                  border: `1px solid ${isActive ? "rgba(125,184,232,0.25)" : "var(--border)"}`,
+                  cursor: "pointer", transition: "all .15s",
+                }}
+                  onClick={() => setActiveTag(isActive ? null : tag)}
+                  onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.borderColor = "rgba(125,184,232,0.2)"; }}
+                  onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; }}
+                >
+                  <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: isActive ? "var(--blue)" : "var(--t4)", marginBottom: 8 }}>{tag}</div>
+                  {items.length === 0 ? (
+                    <p style={{ fontSize: 11, color: "var(--t4)" }}>No articles</p>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {(isActive ? items.slice(0, 5) : items.slice(0, 2)).map((n, i) => (
+                        <a key={i} href={n.link} target="_blank" rel="noopener noreferrer"
+                          style={{ textDecoration: "none" }}
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <div style={{ fontSize: 11, fontWeight: 500, color: "var(--t2)", lineHeight: 1.4 }}>{n.title}</div>
+                          <div style={{ fontSize: 10, color: "var(--t4)", marginTop: 2 }}>{n.source}{n.pubDate ? ` · ${timeAgo(n.pubDate)}` : ""}</div>
+                        </a>
+                      ))}
+                      {!isActive && items.length > 2 && (
+                        <span style={{ fontSize: 10, color: "var(--t4)" }}>+{items.length - 2} more</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
-          <div style={{ height: 1, background: "var(--border)", marginBottom: 12 }} />
-
-          {/* Articles */}
-          <div style={{ maxHeight: 520, overflowY: "auto", display: "flex", flexDirection: "column" }}>
-            {displayNews.slice(0, 20).map((n, i) => (
-              <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{
-                display: "block", padding: "13px 10px", textDecoration: "none",
-                borderLeft: n.breaking ? "2px solid var(--red)" : "2px solid transparent",
-                borderBottom: i < displayNews.slice(0, 20).length - 1 ? "1px solid var(--border)" : "none",
-                background: n.breaking ? "rgba(200,90,90,0.02)" : "transparent",
-                borderRadius: n.breaking ? "0 4px 4px 0" : 0,
-                transition: "background .15s",
-              }}
-                onMouseEnter={e => (e.currentTarget.style.background = "var(--surface2)")}
-                onMouseLeave={e => (e.currentTarget.style.background = n.breaking ? "rgba(200,90,90,0.02)" : "transparent")}
-              >
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 5 }}>
-                  {n.breaking && (
-                    <span style={{ fontSize: 9, fontWeight: 800, color: "var(--red)", background: "rgba(200,90,90,0.1)", border: "1px solid rgba(200,90,90,0.25)", borderRadius: 3, padding: "2px 5px", flexShrink: 0, marginTop: 1, letterSpacing: "0.05em" }}>LIVE</span>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {(["AI", "Tech"] as const).map(tag => {
+              const items = newsByTag[tag] ?? [];
+              const isActive = activeTag === tag;
+              return (
+                <div key={tag} style={{
+                  padding: "12px 13px", borderRadius: 6,
+                  background: isActive ? "rgba(125,184,232,0.06)" : "var(--surface2)",
+                  border: `1px solid ${isActive ? "rgba(125,184,232,0.25)" : "var(--border)"}`,
+                  cursor: "pointer", transition: "all .15s",
+                }}
+                  onClick={() => setActiveTag(isActive ? null : tag)}
+                  onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.borderColor = "rgba(125,184,232,0.2)"; }}
+                  onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; }}
+                >
+                  <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: isActive ? "var(--blue)" : "var(--t4)", marginBottom: 8 }}>{tag}</div>
+                  {items.length === 0 ? (
+                    <p style={{ fontSize: 11, color: "var(--t4)" }}>No articles</p>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {(isActive ? items.slice(0, 5) : items.slice(0, 3)).map((n, i) => (
+                        <a key={i} href={n.link} target="_blank" rel="noopener noreferrer"
+                          style={{ textDecoration: "none" }}
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <div style={{ fontSize: 11, fontWeight: 500, color: "var(--t2)", lineHeight: 1.4 }}>{n.title}</div>
+                          <div style={{ fontSize: 10, color: "var(--t4)", marginTop: 2 }}>{n.source}{n.pubDate ? ` · ${timeAgo(n.pubDate)}` : ""}</div>
+                        </a>
+                      ))}
+                      {!isActive && items.length > 3 && (
+                        <span style={{ fontSize: 10, color: "var(--t4)" }}>+{items.length - 3} more</span>
+                      )}
+                    </div>
                   )}
-                  <p style={{ fontSize: 13, fontWeight: 500, color: "var(--t1)", lineHeight: 1.5, margin: 0 }}>{n.title}</p>
                 </div>
-                {n.snippet && (
-                  <p style={{ fontSize: 11, color: "var(--t3)", lineHeight: 1.5, margin: "0 0 5px", paddingLeft: n.breaking ? 0 : 0 }}>{n.snippet.slice(0, 120)}{n.snippet.length > 120 ? "…" : ""}</p>
-                )}
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: "var(--t3)" }}>{n.source}</span>
-                  <span style={{ fontSize: 9, color: "var(--t4)" }}>·</span>
-                  <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 2, background: "var(--surface3)", color: "var(--t2)" }}>{n.tag}</span>
-                  {n.pubDate && <span style={{ fontSize: 10, color: "var(--t4)", marginLeft: "auto" }}>{timeAgo(n.pubDate)}</span>}
-                </div>
-              </a>
-            ))}
-            {displayNews.length === 0 && (
-              <p style={{ fontSize: 13, color: "var(--t3)", padding: "20px 10px" }}>No articles in this category.</p>
-            )}
+              );
+            })}
           </div>
         </HudCard>
 

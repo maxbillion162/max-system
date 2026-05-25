@@ -242,7 +242,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         {!collapsed && (
           <div style={{ overflow: "hidden" }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: "var(--t1)", whiteSpace: "nowrap" }}>Max</div>
-            <div style={{ fontSize: 10, color: "var(--t3)", whiteSpace: "nowrap" }}>Account Manager · July 2026</div>
           </div>
         )}
       </div>

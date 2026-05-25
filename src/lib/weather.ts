@@ -30,8 +30,10 @@ const LOCATIONS = {
   tallahassee: { lat: 30.4383, lon: -84.2807, name: "Tallahassee" },
 };
 
-export async function fetchWeather(location: keyof typeof LOCATIONS = "orlando"): Promise<WeatherData> {
-  const { lat, lon, name } = LOCATIONS[location];
+export async function fetchWeather(
+  location: keyof typeof LOCATIONS | { lat: number; lon: number; name: string } = "orlando",
+): Promise<WeatherData> {
+  const { lat, lon, name } = typeof location === "string" ? LOCATIONS[location] : location;
 
   const url = new URL("https://api.open-meteo.com/v1/forecast");
   url.searchParams.set("latitude", lat.toString());
