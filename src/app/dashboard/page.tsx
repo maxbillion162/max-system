@@ -310,7 +310,7 @@ export default function Dashboard() {
   useEffect(() => {
     fetchCrypto();
     fetch("/api/weather?location=orlando").then(r => r.json()).then(j => { if (j.data) setWeather(j.data); }).catch(() => {});
-    fetch("/api/news?count=30").then(r => r.json()).then(j => { if (j.data) setNews(j.data); }).catch(() => {});
+    fetch("/api/news?count=200").then(r => r.json()).then(j => { if (j.data) setNews(j.data); }).catch(() => {});
     const today = new Date().toISOString().slice(0, 10);
     Promise.all([
       supabase.from("habits").select("id,name,completed").order("created_at"),
@@ -461,8 +461,19 @@ export default function Dashboard() {
 
   const allNews = news.length ? news : NEWS_FALLBACK;
   const breakingNews = allNews.filter(n => n.breaking);
+
+  // Articles tagged "Breaking" that are political in nature also cross-post to Politics
+  const POLITICS_CROSS_KW = /\b(congress|senate|trump|biden|harris|white house|washington|federal|supreme court|democrat|republican|gop|president|election|vote|war|ukraine|nato|israel|china|russia|iran|nuclear|sanctions|foreign|minister|parliament|eu\b|europe|government|legislation|policy|border|immigration)\b/i;
   const newsByTag = Object.fromEntries(
-    INTEL_CATEGORIES.map(tag => [tag, allNews.filter(n => n.tag === tag)])
+    INTEL_CATEGORIES.map(tag => {
+      const direct = allNews.filter(n => n.tag === tag);
+      if (tag === "Politics") {
+        const crossPost = allNews.filter(n => n.tag === "Breaking" && POLITICS_CROSS_KW.test(n.title + " " + n.snippet));
+        const seen = new Set(direct.map(n => n.link));
+        return [tag, [...direct, ...crossPost.filter(n => !seen.has(n.link))]];
+      }
+      return [tag, direct];
+    })
   ) as Record<string, NewsItem[]>;
 
   const insights = generateInsights({ btc, xrp, btcAmt: wealth.btc_amount, xrpAmt: wealth.xrp_amount, netWorth, cryptoGain, habits, goals, weather, hour: h });
