@@ -372,20 +372,11 @@ export default function FeedPage() {
                       <span style={{fontSize:9,fontWeight:900,letterSpacing:"0.14em",textTransform:"uppercase",color:"#fff",background:"var(--red)",padding:"3px 7px",borderRadius:3}}>● BREAKING</span>
                       <span style={{fontSize:9,fontWeight:700,color:"rgba(200,90,90,0.8)"}}>{breakingNews.length} {breakingNews.length!==1?"stories":"story"}</span>
                     </div>
-                    <a href={breakingNews[0].link} target="_blank" rel="noopener noreferrer" style={{textDecoration:"none",display:"block",marginBottom:8}}>
-                      <div style={{fontSize:14,fontWeight:700,color:"var(--t1)",lineHeight:1.45,marginBottom:3}}>{breakingNews[0].title}</div>
-                      {breakingNews[0].snippet&&<div style={{fontSize:11,color:"var(--t2)",lineHeight:1.5,marginBottom:4}}>{breakingNews[0].snippet.slice(0,140)}{breakingNews[0].snippet.length>140?"…":""}</div>}
-                      <div style={{fontSize:10,color:"var(--t3)"}}>{breakingNews[0].source}{breakingNews[0].pubDate?` · ${timeAgo(breakingNews[0].pubDate)}`:""}</div>
-                    </a>
-                    {breakingNews.slice(1,4).map((n,i)=>(
-                      <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{textDecoration:"none",display:"flex",alignItems:"baseline",gap:6,paddingTop:7,borderTop:"1px solid rgba(200,90,90,0.15)"}}>
-                        <span style={{fontSize:10,color:"rgba(200,90,90,0.5)",flexShrink:0,fontWeight:700}}>›</span>
-                        <div>
-                          <div style={{fontSize:12,fontWeight:600,color:"var(--t1)",lineHeight:1.4}}>{n.title}</div>
-                          <div style={{fontSize:10,color:"var(--t3)",marginTop:1}}>{n.source}{n.pubDate?` · ${timeAgo(n.pubDate)}`:""}</div>
-                        </div>
-                      </a>
-                    ))}
+                    <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                      {breakingNews.slice(0,4).map((n,i)=>(
+                        <NewsCard key={i} title={n.title} snippet={n.snippet} source={n.source} pubDate={n.pubDate} link={n.link} accentColor="var(--red)" accentRgb="200,90,90" />
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
