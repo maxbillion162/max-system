@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 
 function timeAgo(dateStr: string) {
   if (!dateStr) return "";
@@ -22,12 +22,17 @@ interface NewsCardProps {
 }
 
 export function NewsCard({ title, snippet, source, pubDate, link, accentColor, accentRgb }: NewsCardProps) {
-  const [hovered, setHovered] = useState(false);
-  const [rating, setRating] = useState<1 | -1 | null>(null);
+  const [hovered,   setHovered]   = useState(false);
+  const [rating,    setRating]    = useState<1 | -1 | null>(null);
+  const [note,      setNote]      = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  async function rate(r: 1 | -1) {
-    if (rating !== null) return;
-    setRating(r);
+  useEffect(() => {
+    if (rating !== null && !submitted) inputRef.current?.focus();
+  }, [rating, submitted]);
+
+  async function submit(r: 1 | -1, text?: string) {
     try {
       await fetch("/api/feedback", {
         method: "POST",
@@ -37,11 +42,27 @@ export function NewsCard({ title, snippet, source, pubDate, link, accentColor, a
           artifact_type: "news_article",
           artifact_id:   link,
           surface:       "web",
+          note:          text?.trim() || null,
           metadata:      { title, source },
         }),
       });
     } catch { /* silent */ }
+    setSubmitted(true);
   }
+
+  function onRate(r: 1 | -1) {
+    if (rating !== null) return;
+    setRating(r);
+  }
+
+  function onKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter") { e.preventDefault(); void submit(rating!, note); }
+    if (e.key === "Escape") { void submit(rating!); }
+  }
+
+  const notePrompt = rating === 1 ? "What was good about this?" : "What didn't work for you?";
+  const accentCol  = rating === 1 ? "var(--green)" : "var(--red)";
+  const accentBorder = rating === 1 ? "rgba(95,176,125,0.35)" : "rgba(200,90,90,0.35)";
 
   return (
     <div
@@ -51,15 +72,15 @@ export function NewsCard({ title, snippet, source, pubDate, link, accentColor, a
         background: hovered ? `rgba(${accentRgb},0.05)` : "rgba(255,255,255,0.02)",
         border: `1px solid ${hovered ? `rgba(${accentRgb},0.3)` : "var(--border)"}`,
         borderLeft: `2px solid ${hovered ? accentColor : `rgba(${accentRgb},0.4)`}`,
-        transition: "all .15s",
+        transition: "background .15s, border-color .15s",
         display: "flex",
         flexDirection: "column",
         gap: 4,
-        position: "relative",
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
+      {/* Article content */}
       <a href={link} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
         <div style={{ fontSize: 11, fontWeight: 600, color: "var(--t1)", lineHeight: 1.45 }}>{title}</div>
         {snippet && (
@@ -72,22 +93,26 @@ export function NewsCard({ title, snippet, source, pubDate, link, accentColor, a
         )}
       </a>
 
+      {/* Meta row + rating buttons */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 2 }}>
         <div style={{ fontSize: 10, color: "var(--t3)" }}>
           {source}{pubDate ? ` · ${timeAgo(pubDate)}` : ""}
         </div>
 
-        {/* Feedback — fades in on hover, stays visible once rated */}
         <div style={{
           display: "flex", alignItems: "center", gap: 2,
           opacity: hovered || rating !== null ? 1 : 0,
           transition: "opacity 0.18s",
           pointerEvents: hovered || rating !== null ? "auto" : "none",
         }}>
-          {rating === null ? (
+          {submitted ? (
+            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.06em", color: accentCol }}>
+              {rating === 1 ? "✓ noted" : "✗ noted"}
+            </span>
+          ) : rating === null ? (
             <>
               <button
-                onClick={e => { e.preventDefault(); void rate(1); }}
+                onClick={e => { e.preventDefault(); onRate(1); }}
                 title="Good pick for me"
                 style={{ background: "none", border: "none", cursor: "pointer", padding: "2px 3px", color: "var(--t3)", display: "flex", alignItems: "center", borderRadius: 3, transition: "color .12s" }}
                 onMouseEnter={e => (e.currentTarget.style.color = "var(--green)")}
@@ -98,7 +123,7 @@ export function NewsCard({ title, snippet, source, pubDate, link, accentColor, a
                 </svg>
               </button>
               <button
-                onClick={e => { e.preventDefault(); void rate(-1); }}
+                onClick={e => { e.preventDefault(); onRate(-1); }}
                 title="Not for me"
                 style={{ background: "none", border: "none", cursor: "pointer", padding: "2px 3px", color: "var(--t3)", display: "flex", alignItems: "center", borderRadius: 3, transition: "color .12s" }}
                 onMouseEnter={e => (e.currentTarget.style.color = "var(--red)")}
@@ -110,15 +135,66 @@ export function NewsCard({ title, snippet, source, pubDate, link, accentColor, a
               </button>
             </>
           ) : (
-            <span style={{
-              fontSize: 9, fontWeight: 700, letterSpacing: "0.06em",
-              color: rating === 1 ? "var(--green)" : "var(--red)",
-            }}>
-              {rating === 1 ? "✓ noted" : "✗ noted"}
+            <span style={{ fontSize: 9, color: accentCol, fontWeight: 700 }}>
+              {rating === 1 ? "👍" : "👎"}
             </span>
           )}
         </div>
       </div>
+
+      {/* Note input — appears after rating, before submit */}
+      {rating !== null && !submitted && (
+        <div style={{
+          marginTop: 4,
+          borderTop: `1px solid ${accentBorder}`,
+          paddingTop: 8,
+          display: "flex",
+          flexDirection: "column",
+          gap: 6,
+        }}>
+          <input
+            ref={inputRef}
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            onKeyDown={onKeyDown}
+            placeholder={notePrompt}
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              border: `1px solid ${accentBorder}`,
+              borderRadius: 4,
+              padding: "6px 9px",
+              fontSize: 11,
+              color: "var(--t1)",
+              outline: "none",
+              width: "100%",
+              boxSizing: "border-box",
+              fontFamily: "inherit",
+            }}
+            onFocus={e => (e.currentTarget.style.borderColor = accentCol)}
+            onBlur={e => (e.currentTarget.style.borderColor = accentBorder)}
+          />
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <button
+              onClick={() => void submit(rating, note)}
+              style={{
+                background: "rgba(255,255,255,0.05)", border: `1px solid ${accentBorder}`,
+                borderRadius: 3, padding: "4px 10px", fontSize: 10, fontWeight: 700,
+                color: accentCol, cursor: "pointer", letterSpacing: "0.06em", transition: "all .12s",
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = `rgba(255,255,255,0.09)`; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = `rgba(255,255,255,0.05)`; }}
+            >
+              Send
+            </button>
+            <button
+              onClick={() => void submit(rating)}
+              style={{ background: "none", border: "none", fontSize: 10, color: "var(--t3)", cursor: "pointer", padding: "4px 2px" }}
+            >
+              Skip
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
