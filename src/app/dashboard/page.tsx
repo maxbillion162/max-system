@@ -887,6 +887,91 @@ export default function Dashboard() {
                 }).slice(0, 4)}
             </div>
           </HudCard>
+
+          {/* Pattern Intelligence */}
+          {(patternsLoading || patterns.length > 0 || patternsInsufficient) && (
+            <HudCard delay={0.18} style={{ padding: "18px 20px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="1.8" strokeLinecap="round">
+                    <circle cx="12" cy="12" r="2"/><circle cx="4" cy="6" r="2"/><circle cx="20" cy="6" r="2"/><circle cx="4" cy="18" r="2"/><circle cx="20" cy="18" r="2"/>
+                    <line x1="6" y1="6" x2="10" y2="11"/><line x1="18" y1="6" x2="14" y2="11"/><line x1="6" y1="18" x2="10" y2="13"/><line x1="18" y1="18" x2="14" y2="13"/>
+                  </svg>
+                  <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)" }}>Patterns</p>
+                  {patternsGenAt && !patternsLoading && (
+                    <span style={{ fontSize: 9, color: "var(--t4)" }}>
+                      · {(() => { const m = Math.floor((Date.now() - new Date(patternsGenAt).getTime()) / 60000); return m < 60 ? `${m}m ago` : `${Math.floor(m/60)}h ago`; })()}
+                    </span>
+                  )}
+                </div>
+                <button onClick={refreshPatterns} disabled={patternsLoading} title="Refresh patterns"
+                  style={{ background: "none", border: "none", cursor: patternsLoading ? "default" : "pointer", color: patternsLoading ? "var(--t4)" : "var(--blue)", display: "flex", alignItems: "center", padding: 2 }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+                    style={{ animation: patternsLoading ? "spin-slow 1s linear infinite" : "none" }}>
+                    <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                  </svg>
+                </button>
+              </div>
+
+              {patternsInsufficient ? (
+                <p style={{ fontSize: 11, color: "var(--t4)", lineHeight: 1.5 }}>M.A.X. needs 2+ weeks of habit data to detect patterns. Keep logging.</p>
+              ) : patternsLoading ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {[0,1,2].map(i => (
+                    <div key={i} style={{ padding: "12px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--surface2)", display: "flex", flexDirection: "column", gap: 7 }}>
+                      <div style={{ height: 7, borderRadius: 3, background: "var(--border2)", width: "40%", animation: "pulse-dot 1.5s ease-in-out infinite" }} />
+                      <div style={{ height: 11, borderRadius: 3, background: "var(--border2)", width: "90%", animation: "pulse-dot 1.5s ease-in-out infinite" }} />
+                      <div style={{ height: 4, borderRadius: 3, background: "var(--border2)", width: "100%", animation: "pulse-dot 1.5s ease-in-out infinite" }} />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {patterns.map(card => {
+                    const maxRaw = Math.max(card.statARaw, card.statBRaw) || 1;
+                    const wA = Math.round((card.statARaw / maxRaw) * 100);
+                    const wB = Math.round((card.statBRaw / maxRaw) * 100);
+                    return (
+                      <div key={card.id} style={{
+                        padding: "12px 14px", borderRadius: 6,
+                        background: `rgba(${card.color},0.04)`,
+                        border: `1px solid rgba(${card.color},0.13)`,
+                        borderLeft: `3px solid rgba(${card.color},0.5)`,
+                        display: "flex", flexDirection: "column", gap: 9,
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+                          {card.domains.map((d, i) => (
+                            <span key={d} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                              <span style={{ fontSize: 7.5, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: `rgba(${card.color},0.85)`, background: `rgba(${card.color},0.1)`, padding: "2px 5px", borderRadius: 3 }}>{d}</span>
+                              {i < card.domains.length - 1 && <span style={{ fontSize: 8, color: "var(--t4)" }}>×</span>}
+                            </span>
+                          ))}
+                        </div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--t1)", lineHeight: 1.35 }}>{card.headline}</div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                          {([
+                            { label: card.statA.label, value: card.statA.value, w: wA, primary: true },
+                            { label: card.statB.label, value: card.statB.value, w: wB, primary: false },
+                          ] as { label: string; value: string; w: number; primary: boolean }[]).map(row => (
+                            <div key={row.label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <div style={{ width: 64, fontSize: 7.5, color: "var(--t4)", letterSpacing: "0.07em", textTransform: "uppercase", textAlign: "right", flexShrink: 0, lineHeight: 1.2 }}>{row.label}</div>
+                              <div style={{ flex: 1, height: 4, borderRadius: 2, background: "var(--border2)", position: "relative", overflow: "hidden" }}>
+                                <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, borderRadius: 2, width: `${row.w}%`, background: row.primary ? `rgba(${card.color},0.7)` : "rgba(255,255,255,0.1)" }} />
+                              </div>
+                              <div style={{ width: 54, fontSize: 10, fontFamily: "monospace", fontWeight: row.primary ? 700 : 500, color: row.primary ? "var(--t1)" : "var(--t3)", flexShrink: 0, textAlign: "right" }}>{row.value}</div>
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{ fontSize: 9, color: "var(--t4)", letterSpacing: "0.03em", fontFamily: "ui-monospace, monospace" }}>{card.evidence}</div>
+                        <div style={{ fontSize: 10.5, color: "var(--t2)", lineHeight: 1.5, fontStyle: "italic", borderTop: `1px solid rgba(${card.color},0.1)`, paddingTop: 8 }}>{card.take}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </HudCard>
+          )}
+
         </div>
 
         {/* ── CENTER: SCHEDULE + INTEL FEED ── */}
@@ -1464,140 +1549,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── PATTERN INTELLIGENCE ── */}
-      {(patternsLoading || patterns.length > 0 || patternsInsufficient) && (
-        <HudCard className="afu" delay={0.25} style={{ padding: "22px 28px", marginTop: 12 }}>
-          {/* Header */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="1.8" strokeLinecap="round">
-                <circle cx="12" cy="12" r="2"/><circle cx="4" cy="6" r="2"/><circle cx="20" cy="6" r="2"/><circle cx="4" cy="18" r="2"/><circle cx="20" cy="18" r="2"/>
-                <line x1="6" y1="6" x2="10" y2="11"/><line x1="18" y1="6" x2="14" y2="11"/><line x1="6" y1="18" x2="10" y2="13"/><line x1="18" y1="18" x2="14" y2="13"/>
-              </svg>
-              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)" }}>M.A.X. Pattern Intelligence</p>
-              {patternsGenAt && !patternsLoading && (
-                <span style={{ fontSize: 9, color: "var(--t4)", letterSpacing: "0.04em" }}>
-                  · updated {(() => { const m = Math.floor((Date.now() - new Date(patternsGenAt).getTime()) / 60000); return m < 60 ? `${m}m ago` : `${Math.floor(m/60)}h ago`; })()}
-                </span>
-              )}
-            </div>
-            <button
-              onClick={refreshPatterns}
-              disabled={patternsLoading}
-              style={{
-                display: "flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 4,
-                background: "rgba(125,184,232,0.06)", border: "1px solid rgba(125,184,232,0.18)",
-                color: patternsLoading ? "var(--t4)" : "var(--blue)", fontSize: 10, fontWeight: 700,
-                letterSpacing: "0.05em", cursor: patternsLoading ? "default" : "pointer", transition: "all .15s",
-              }}
-              onMouseEnter={e => { if (!patternsLoading) (e.currentTarget as HTMLElement).style.background = "rgba(125,184,232,0.12)"; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(125,184,232,0.06)"; }}
-            >
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
-                style={{ animation: patternsLoading ? "spin-slow 1s linear infinite" : "none" }}>
-                <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-              </svg>
-              {patternsLoading ? "Analyzing…" : "Refresh"}
-            </button>
-          </div>
-
-          {patternsInsufficient ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "20px 0" }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--t4)" strokeWidth="1.5" strokeLinecap="round">
-                <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-              </svg>
-              <div>
-                <p style={{ fontSize: 13, fontWeight: 600, color: "var(--t2)", marginBottom: 3 }}>Building your pattern profile…</p>
-                <p style={{ fontSize: 11, color: "var(--t4)" }}>M.A.X. needs at least 2 weeks of habit data to detect meaningful patterns. Keep logging.</p>
-              </div>
-            </div>
-          ) : patternsLoading ? (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              {[0,1,2,3].map(i => (
-                <div key={i} style={{ padding: "16px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--surface2)", display: "flex", flexDirection: "column", gap: 10 }}>
-                  <div style={{ height: 8, borderRadius: 4, background: "var(--border2)", width: "40%", animation: "pulse-dot 1.5s ease-in-out infinite" }} />
-                  <div style={{ height: 12, borderRadius: 4, background: "var(--border2)", width: "85%", animation: "pulse-dot 1.5s ease-in-out infinite" }} />
-                  <div style={{ height: 5, borderRadius: 3, background: "var(--border2)", width: "100%", animation: "pulse-dot 1.5s ease-in-out infinite" }} />
-                  <div style={{ height: 5, borderRadius: 3, background: "var(--border2)", width: "70%", animation: "pulse-dot 1.5s ease-in-out infinite" }} />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              {patterns.map(card => {
-                const maxRaw = Math.max(card.statARaw, card.statBRaw) || 1;
-                const wA = Math.round((card.statARaw / maxRaw) * 100);
-                const wB = Math.round((card.statBRaw / maxRaw) * 100);
-                return (
-                  <div key={card.id} style={{
-                    padding: "16px 18px", borderRadius: 7,
-                    background: `rgba(${card.color}, 0.04)`,
-                    border: `1px solid rgba(${card.color}, 0.14)`,
-                    borderLeft: `3px solid rgba(${card.color}, 0.55)`,
-                    display: "flex", flexDirection: "column", gap: 11,
-                  }}>
-                    {/* Domain badges */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
-                      {card.domains.map((d, i) => (
-                        <span key={d} style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                          <span style={{
-                            fontSize: 8, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase",
-                            color: `rgba(${card.color},0.9)`, background: `rgba(${card.color},0.12)`,
-                            padding: "2px 6px", borderRadius: 3,
-                          }}>{d}</span>
-                          {i < card.domains.length - 1 && <span style={{ fontSize: 9, color: "var(--t4)", fontWeight: 700 }}>×</span>}
-                        </span>
-                      ))}
-                    </div>
-
-                    {/* Headline */}
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--t1)", lineHeight: 1.35 }}>
-                      {card.headline}
-                    </div>
-
-                    {/* Bar comparison */}
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {([
-                        { label: card.statA.label, value: card.statA.value, w: wA, primary: true },
-                        { label: card.statB.label, value: card.statB.value, w: wB, primary: false },
-                      ] as { label: string; value: string; w: number; primary: boolean }[]).map(row => (
-                        <div key={row.label} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <div style={{ width: 74, fontSize: 7.5, color: "var(--t4)", letterSpacing: "0.08em", textTransform: "uppercase", textAlign: "right", flexShrink: 0, lineHeight: 1.2 }}>
-                            {row.label}
-                          </div>
-                          <div style={{ flex: 1, height: 5, borderRadius: 3, background: "var(--border2)", position: "relative", overflow: "hidden" }}>
-                            <div style={{
-                              position: "absolute", left: 0, top: 0, bottom: 0, borderRadius: 3,
-                              width: `${row.w}%`,
-                              background: row.primary ? `rgba(${card.color},0.7)` : "rgba(255,255,255,0.1)",
-                            }} />
-                          </div>
-                          <div style={{ width: 62, fontSize: 10, fontFamily: "monospace", fontWeight: row.primary ? 700 : 500, color: row.primary ? "var(--t1)" : "var(--t3)", flexShrink: 0, textAlign: "right" }}>
-                            {row.value}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Evidence */}
-                    <div style={{ fontSize: 9, color: "var(--t4)", letterSpacing: "0.04em", fontFamily: "ui-monospace, monospace" }}>
-                      {card.evidence}
-                    </div>
-
-                    {/* M.A.X. take */}
-                    <div style={{
-                      fontSize: 11, color: "var(--t2)", lineHeight: 1.5, fontStyle: "italic",
-                      borderTop: `1px solid rgba(${card.color},0.12)`, paddingTop: 9,
-                    }}>
-                      {card.take}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </HudCard>
-      )}
 
     </div>
   );
