@@ -853,17 +853,17 @@ export default function Dashboard() {
               <span style={{ fontSize: 12, color: "var(--blue)", fontWeight: 600 }}>Connect Google Calendar</span>
             </a>
           ) : calConnected === null ? (
-            <p style={{ fontSize: 12, color: "var(--t4)", padding: "8px 0" }}>Loading…</p>
+            <p style={{ fontSize: 12, color: "var(--t2)", padding: "8px 0" }}>Loading…</p>
           ) : calEvents.length === 0 ? (
             <div style={{
               display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
               padding: "18px 0 14px", gap: 6,
             }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--border2)" strokeWidth="1.5" strokeLinecap="round">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(125,184,232,0.3)" strokeWidth="1.5" strokeLinecap="round">
                 <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
               </svg>
-              <p style={{ fontSize: 12, color: "var(--t4)", margin: 0 }}>No events today</p>
-              <p style={{ fontSize: 11, color: "var(--t4)", margin: 0, opacity: 0.6 }}>Your schedule is clear</p>
+              <p style={{ fontSize: 13, fontWeight: 600, color: "var(--t1)", margin: 0 }}>No events today</p>
+              <p style={{ fontSize: 11, color: "var(--t3)", margin: 0 }}>Your schedule is clear</p>
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: upcomingEvents.length > 0 ? 16 : 0 }}>
@@ -877,15 +877,15 @@ export default function Dashboard() {
                 const isPast  = !ev.allDay && end < new Date();
                 return (
                   <div key={ev.id ?? i} style={{
-                    display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 4,
-                    background: isPast ? "rgba(255,255,255,0.01)" : "var(--surface2)",
+                    display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 5,
+                    background: isPast ? "rgba(255,255,255,0.015)" : "rgba(125,184,232,0.05)",
                     borderLeft: `2px solid ${isPast ? "var(--border2)" : "var(--blue)"}`,
-                    opacity: isPast ? 0.5 : 1,
+                    opacity: isPast ? 0.55 : 1,
                   }}>
-                    <span style={{ fontFamily: "monospace", fontSize: 11, color: "var(--t3)", width: 46, flexShrink: 0 }}>{timeStr}</span>
+                    <span style={{ fontFamily: "monospace", fontSize: 11, fontWeight: 600, color: isPast ? "var(--t3)" : "var(--blue)", width: 52, flexShrink: 0 }}>{timeStr}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 600, color: "var(--t1)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ev.title}</div>
-                      {!ev.allDay && <div style={{ fontSize: 11, color: "var(--t3)", marginTop: 1 }}>{durStr}{ev.location ? ` · ${ev.location}` : ""}</div>}
+                      {!ev.allDay && <div style={{ fontSize: 11, color: "var(--t2)", marginTop: 2 }}>{durStr}{ev.location ? ` · ${ev.location}` : ""}</div>}
                     </div>
                   </div>
                 );
@@ -898,7 +898,7 @@ export default function Dashboard() {
             <>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, marginTop: calEvents.length > 0 ? 4 : 0 }}>
                 <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
-                <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--t4)", flexShrink: 0 }}>What&apos;s Next</span>
+                <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--t2)", flexShrink: 0 }}>What&apos;s Next</span>
                 <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
@@ -908,16 +908,16 @@ export default function Dashboard() {
                   const timeStr  = ev.allDay ? "All day" : start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
                   return (
                     <div key={ev.id ?? i} style={{
-                      display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 4,
-                      background: "var(--surface2)", borderLeft: "2px solid rgba(125,184,232,0.25)",
+                      display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 5,
+                      background: "var(--surface2)", borderLeft: "2px solid rgba(125,184,232,0.35)",
                     }}>
-                      <div style={{ flexShrink: 0, textAlign: "center", minWidth: 38 }}>
-                        <div style={{ fontSize: 9, fontWeight: 700, color: "var(--t4)", letterSpacing: "0.05em" }}>{dayLabel.split(",")[0].toUpperCase()}</div>
-                        <div style={{ fontSize: 10, color: "var(--t3)" }}>{timeStr}</div>
+                      <div style={{ flexShrink: 0, textAlign: "center", minWidth: 42 }}>
+                        <div style={{ fontSize: 9, fontWeight: 800, color: "var(--blue)", letterSpacing: "0.06em", textTransform: "uppercase" }}>{dayLabel.split(",")[0]}</div>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: "var(--t2)", marginTop: 1 }}>{timeStr}</div>
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--t2)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ev.title}</div>
-                        {ev.location && <div style={{ fontSize: 10, color: "var(--t4)", marginTop: 1 }}>{ev.location}</div>}
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ev.title}</div>
+                        {ev.location && <div style={{ fontSize: 10, color: "var(--t2)", marginTop: 2 }}>{ev.location}</div>}
                       </div>
                     </div>
                   );
@@ -928,120 +928,121 @@ export default function Dashboard() {
         </HudCard>
 
         {/* Intel Feed */}
-        <HudCard delay={.1} style={{ padding: "20px 24px" }}>
-          {/* Header */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            <div>
-              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 2 }}>Intel Feed</p>
-              <p style={{ fontSize: 11, color: "var(--t4)" }}>{allNews.length} articles · live</p>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--green)", animation: "pulse-dot 2s ease-in-out infinite", display: "inline-block" }} />
-              <span style={{ fontSize: 11, color: "var(--t3)" }}>Live</span>
-            </div>
-          </div>
+        {(() => {
+          const CAT_CFG: Record<string, { color: string; rgb: string }> = {
+            Finance:  { color: "#5FB07D", rgb: "95,176,125"  },
+            Crypto:   { color: "#F0A832", rgb: "240,168,50"  },
+            Politics: { color: "#C85A5A", rgb: "200,90,90"   },
+            AI:       { color: "#7DB8E8", rgb: "125,184,232" },
+            Tech:     { color: "#9B8AFB", rgb: "155,138,251" },
+          };
 
-          {/* Breaking strip */}
-          {breakingNews.length > 0 && (
-            <div style={{
-              padding: "12px 14px", borderRadius: 6, marginBottom: 14,
-              background: "rgba(200,90,90,0.06)", border: "1px solid rgba(200,90,90,0.18)",
-              borderLeft: "3px solid var(--red)",
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--red)", animation: "pulse-dot 1.4s ease-in-out infinite", display: "inline-block", flexShrink: 0 }} />
-                <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", color: "var(--red)", textTransform: "uppercase" }}>Breaking</span>
+          function IntelCard({ tag, collapse }: { tag: string; collapse: number }) {
+            const cfg = CAT_CFG[tag];
+            const items = newsByTag[tag] ?? [];
+            const isActive = activeTag === tag;
+            const shown = isActive ? items.slice(0, 6) : items.slice(0, collapse);
+            return (
+              <div
+                onClick={() => setActiveTag(isActive ? null : tag)}
+                style={{
+                  borderRadius: 7, overflow: "hidden", cursor: "pointer",
+                  background: isActive ? `rgba(${cfg.rgb},0.07)` : "var(--surface2)",
+                  border: `1px solid ${isActive ? `rgba(${cfg.rgb},0.35)` : "var(--border)"}`,
+                  transition: "all .18s",
+                  borderTop: `2px solid ${cfg.color}`,
+                }}
+                onMouseEnter={e => { if (!isActive) { (e.currentTarget as HTMLElement).style.borderColor = `rgba(${cfg.rgb},0.3)`; (e.currentTarget as HTMLElement).style.background = `rgba(${cfg.rgb},0.04)`; } }}
+                onMouseLeave={e => { if (!isActive) { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLElement).style.background = "var(--surface2)"; } }}
+              >
+                {/* Card header */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px 8px" }}>
+                  <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: cfg.color }}>{tag}</span>
+                  <span style={{
+                    fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 10,
+                    background: `rgba(${cfg.rgb},0.15)`, color: cfg.color,
+                  }}>{items.length}</span>
+                </div>
+                {/* Articles */}
+                <div style={{ padding: "0 12px 10px", display: "flex", flexDirection: "column", gap: 8 }}>
+                  {items.length === 0 ? (
+                    <p style={{ fontSize: 11, color: "var(--t3)", margin: 0 }}>No articles</p>
+                  ) : (
+                    shown.map((n, i) => (
+                      <a key={i} href={n.link} target="_blank" rel="noopener noreferrer"
+                        style={{ textDecoration: "none", display: "block" }}
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)", lineHeight: 1.45 }}>{n.title}</div>
+                        <div style={{ fontSize: 10, color: "var(--t3)", marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
+                          <span>{n.source}</span>
+                          {n.pubDate && <><span style={{ opacity: 0.4 }}>·</span><span>{timeAgo(n.pubDate)}</span></>}
+                        </div>
+                      </a>
+                    ))
+                  )}
+                  {!isActive && items.length > collapse && (
+                    <span style={{ fontSize: 10, fontWeight: 600, color: cfg.color, opacity: 0.7 }}>+{items.length - collapse} more →</span>
+                  )}
+                </div>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-                {breakingNews.slice(0, 2).map((n, i) => (
-                  <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)", lineHeight: 1.45 }}>{n.title}</div>
-                    <div style={{ fontSize: 10, color: "var(--t4)", marginTop: 2 }}>{n.source}{n.pubDate ? ` · ${timeAgo(n.pubDate)}` : ""}</div>
-                  </a>
+            );
+          }
+
+          return (
+            <HudCard delay={.1} style={{ padding: "20px 24px" }}>
+              {/* Header */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                <div>
+                  <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)", marginBottom: 2 }}>Intel Feed</p>
+                  <p style={{ fontSize: 11, color: "var(--t2)" }}>{allNews.length} articles · live</p>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--green)", animation: "pulse-dot 2s ease-in-out infinite", display: "inline-block" }} />
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "var(--t2)" }}>Live</span>
+                </div>
+              </div>
+
+              {/* Breaking strip */}
+              {breakingNews.length > 0 && (
+                <div style={{
+                  padding: "11px 14px", borderRadius: 7, marginBottom: 12,
+                  background: "rgba(200,90,90,0.08)", border: "1px solid rgba(200,90,90,0.25)",
+                  borderTop: "2px solid var(--red)",
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 9 }}>
+                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--red)", animation: "pulse-dot 1.4s ease-in-out infinite", display: "inline-block" }} />
+                    <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", color: "var(--red)", textTransform: "uppercase" }}>Breaking</span>
+                    <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 10, background: "rgba(200,90,90,0.2)", color: "var(--red)", marginLeft: 2 }}>{breakingNews.length}</span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {breakingNews.slice(0, 2).map((n, i) => (
+                      <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)", lineHeight: 1.45 }}>{n.title}</div>
+                        <div style={{ fontSize: 10, color: "var(--t3)", marginTop: 2 }}>{n.source}{n.pubDate ? ` · ${timeAgo(n.pubDate)}` : ""}</div>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 3-col row */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 8 }}>
+                {(["Finance", "Crypto", "Politics"] as const).map(tag => (
+                  <IntelCard key={tag} tag={tag} collapse={2} />
                 ))}
               </div>
-            </div>
-          )}
 
-          {/* Category sub-modules — 3 col top, 2 col bottom */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
-            {(["Finance", "Crypto", "Politics"] as const).map(tag => {
-              const items = newsByTag[tag] ?? [];
-              const isActive = activeTag === tag;
-              return (
-                <div key={tag} style={{
-                  padding: "12px 13px", borderRadius: 6,
-                  background: isActive ? "rgba(125,184,232,0.06)" : "var(--surface2)",
-                  border: `1px solid ${isActive ? "rgba(125,184,232,0.25)" : "var(--border)"}`,
-                  cursor: "pointer", transition: "all .15s",
-                }}
-                  onClick={() => setActiveTag(isActive ? null : tag)}
-                  onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.borderColor = "rgba(125,184,232,0.2)"; }}
-                  onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; }}
-                >
-                  <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: isActive ? "var(--blue)" : "var(--t4)", marginBottom: 8 }}>{tag}</div>
-                  {items.length === 0 ? (
-                    <p style={{ fontSize: 11, color: "var(--t4)" }}>No articles</p>
-                  ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {(isActive ? items.slice(0, 5) : items.slice(0, 2)).map((n, i) => (
-                        <a key={i} href={n.link} target="_blank" rel="noopener noreferrer"
-                          style={{ textDecoration: "none" }}
-                          onClick={e => e.stopPropagation()}
-                        >
-                          <div style={{ fontSize: 11, fontWeight: 500, color: "var(--t2)", lineHeight: 1.4 }}>{n.title}</div>
-                          <div style={{ fontSize: 10, color: "var(--t4)", marginTop: 2 }}>{n.source}{n.pubDate ? ` · ${timeAgo(n.pubDate)}` : ""}</div>
-                        </a>
-                      ))}
-                      {!isActive && items.length > 2 && (
-                        <span style={{ fontSize: 10, color: "var(--t4)" }}>+{items.length - 2} more</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+              {/* 2-col row */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {(["AI", "Tech"] as const).map(tag => (
+                  <IntelCard key={tag} tag={tag} collapse={3} />
+                ))}
+              </div>
+            </HudCard>
+          );
+        })()}
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            {(["AI", "Tech"] as const).map(tag => {
-              const items = newsByTag[tag] ?? [];
-              const isActive = activeTag === tag;
-              return (
-                <div key={tag} style={{
-                  padding: "12px 13px", borderRadius: 6,
-                  background: isActive ? "rgba(125,184,232,0.06)" : "var(--surface2)",
-                  border: `1px solid ${isActive ? "rgba(125,184,232,0.25)" : "var(--border)"}`,
-                  cursor: "pointer", transition: "all .15s",
-                }}
-                  onClick={() => setActiveTag(isActive ? null : tag)}
-                  onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.borderColor = "rgba(125,184,232,0.2)"; }}
-                  onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; }}
-                >
-                  <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: isActive ? "var(--blue)" : "var(--t4)", marginBottom: 8 }}>{tag}</div>
-                  {items.length === 0 ? (
-                    <p style={{ fontSize: 11, color: "var(--t4)" }}>No articles</p>
-                  ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {(isActive ? items.slice(0, 5) : items.slice(0, 3)).map((n, i) => (
-                        <a key={i} href={n.link} target="_blank" rel="noopener noreferrer"
-                          style={{ textDecoration: "none" }}
-                          onClick={e => e.stopPropagation()}
-                        >
-                          <div style={{ fontSize: 11, fontWeight: 500, color: "var(--t2)", lineHeight: 1.4 }}>{n.title}</div>
-                          <div style={{ fontSize: 10, color: "var(--t4)", marginTop: 2 }}>{n.source}{n.pubDate ? ` · ${timeAgo(n.pubDate)}` : ""}</div>
-                        </a>
-                      ))}
-                      {!isActive && items.length > 3 && (
-                        <span style={{ fontSize: 10, color: "var(--t4)" }}>+{items.length - 3} more</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </HudCard>
 
         </div>{/* end center column */}
 
