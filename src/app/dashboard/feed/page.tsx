@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { HudCard } from "@/components/ui/HudCard";
+import { NewsCard } from "@/components/ui/NewsCard";
 import { FeedbackControl } from "@/components/ui/FeedbackControl";
 import { FeatureHint } from "@/components/ui/FeatureHint";
 import { supabase } from "@/lib/supabase";
@@ -414,15 +415,7 @@ export default function FeedPage() {
                         {isActive?(
                           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7,padding:"2px 12px 12px"}}>
                             {items.map((n,i)=>(
-                              <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{textDecoration:"none"}}>
-                                <div style={{padding:"10px 11px",borderRadius:5,background:"rgba(255,255,255,0.02)",border:"1px solid var(--border)",borderLeft:`2px solid rgba(${cfg.rgb},0.4)`,transition:"all .15s",display:"flex",flexDirection:"column",gap:4}}
-                                  onMouseEnter={e=>{const el=e.currentTarget as HTMLElement;el.style.background=`rgba(${cfg.rgb},0.05)`;el.style.borderColor=`rgba(${cfg.rgb},0.3)`;el.style.borderLeftColor=cfg.color;}}
-                                  onMouseLeave={e=>{const el=e.currentTarget as HTMLElement;el.style.background="rgba(255,255,255,0.02)";el.style.borderColor="var(--border)";el.style.borderLeftColor=`rgba(${cfg.rgb},0.4)`;}}>
-                                  <div style={{fontSize:11,fontWeight:600,color:"var(--t1)",lineHeight:1.45}}>{n.title}</div>
-                                  {n.snippet&&<div style={{fontSize:10,color:"var(--t2)",lineHeight:1.4,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{n.snippet}</div>}
-                                  <div style={{fontSize:10,color:"var(--t3)",marginTop:1}}>{n.source}{n.pubDate?` · ${timeAgo(n.pubDate)}`:""}</div>
-                                </div>
-                              </a>
+                              <NewsCard key={i} title={n.title} snippet={n.snippet} source={n.source} pubDate={n.pubDate} link={n.link} accentColor={cfg.color} accentRgb={cfg.rgb} />
                             ))}
                           </div>
                         ):(
@@ -477,15 +470,7 @@ export default function FeedPage() {
                         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7,padding:"10px 14px 12px"}}>
                           {polItems.length===0?<p style={{fontSize:11,color:"var(--t3)",gridColumn:"1/-1",padding:"8px 0"}}>No {politicsFilter} articles right now.</p>
                           :polItems.map((n,i)=>(
-                            <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{textDecoration:"none"}} onClick={e=>e.stopPropagation()}>
-                              <div style={{padding:"10px 11px",borderRadius:5,background:"rgba(255,255,255,0.02)",border:"1px solid var(--border)",borderLeft:`2px solid rgba(${cfg.rgb},0.4)`,transition:"all .15s",display:"flex",flexDirection:"column",gap:4}}
-                                onMouseEnter={e=>{const el=e.currentTarget as HTMLElement;el.style.background=`rgba(${cfg.rgb},0.05)`;el.style.borderColor=`rgba(${cfg.rgb},0.3)`;el.style.borderLeftColor=cfg.color;}}
-                                onMouseLeave={e=>{const el=e.currentTarget as HTMLElement;el.style.background="rgba(255,255,255,0.02)";el.style.borderColor="var(--border)";el.style.borderLeftColor=`rgba(${cfg.rgb},0.4)`;}}>
-                                <div style={{fontSize:11,fontWeight:600,color:"var(--t1)",lineHeight:1.45}}>{n.title}</div>
-                                {n.snippet&&<div style={{fontSize:10,color:"var(--t2)",lineHeight:1.4,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{n.snippet}</div>}
-                                <div style={{fontSize:10,color:"var(--t3)",marginTop:1}}>{n.source}{n.pubDate?` · ${timeAgo(n.pubDate)}`:""}</div>
-                              </div>
-                            </a>
+                            <NewsCard key={i} title={n.title} snippet={n.snippet} source={n.source} pubDate={n.pubDate} link={n.link} accentColor={cfg.color} accentRgb={cfg.rgb} />
                           ))}
                         </div>
                       ):(
@@ -529,15 +514,7 @@ export default function FeedPage() {
                         {isActive?(
                           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7,padding:"2px 12px 12px"}}>
                             {items.map((n,i)=>(
-                              <a key={i} href={n.link} target="_blank" rel="noopener noreferrer" style={{textDecoration:"none"}}>
-                                <div style={{padding:"10px 11px",borderRadius:5,background:"rgba(255,255,255,0.02)",border:"1px solid var(--border)",borderLeft:`2px solid rgba(${cfg.rgb},0.4)`,transition:"all .15s",display:"flex",flexDirection:"column",gap:4}}
-                                  onMouseEnter={e=>{const el=e.currentTarget as HTMLElement;el.style.background=`rgba(${cfg.rgb},0.05)`;el.style.borderColor=`rgba(${cfg.rgb},0.3)`;el.style.borderLeftColor=cfg.color;}}
-                                  onMouseLeave={e=>{const el=e.currentTarget as HTMLElement;el.style.background="rgba(255,255,255,0.02)";el.style.borderColor="var(--border)";el.style.borderLeftColor=`rgba(${cfg.rgb},0.4)`;}}>
-                                  <div style={{fontSize:11,fontWeight:600,color:"var(--t1)",lineHeight:1.45}}>{n.title}</div>
-                                  {n.snippet&&<div style={{fontSize:10,color:"var(--t2)",lineHeight:1.4,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{n.snippet}</div>}
-                                  <div style={{fontSize:10,color:"var(--t3)",marginTop:1}}>{n.source}{n.pubDate?` · ${timeAgo(n.pubDate)}`:""}</div>
-                                </div>
-                              </a>
+                              <NewsCard key={i} title={n.title} snippet={n.snippet} source={n.source} pubDate={n.pubDate} link={n.link} accentColor={cfg.color} accentRgb={cfg.rgb} />
                             ))}
                           </div>
                         ):(
