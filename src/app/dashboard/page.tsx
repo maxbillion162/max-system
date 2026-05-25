@@ -983,7 +983,7 @@ export default function Dashboard() {
                     fontSize: 9, fontWeight: 900, letterSpacing: "0.14em", textTransform: "uppercase",
                     color: "#fff", background: "var(--red)", padding: "3px 7px", borderRadius: 3,
                   }}>● BREAKING</span>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: "rgba(200,90,90,0.8)" }}>{breakingNews.length} story{breakingNews.length !== 1 ? "s" : ""}</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: "rgba(200,90,90,0.8)" }}>{breakingNews.length} {breakingNews.length !== 1 ? "stories" : "story"}</span>
                 </div>
                 {/* Featured lead story */}
                 <a href={breakingNews[0].link} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", display: "block", marginBottom: 8 }}>
