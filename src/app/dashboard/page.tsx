@@ -299,6 +299,20 @@ export default function Dashboard() {
   const [activeTag, setActiveTag]       = useState<string | null>(null as string | null);
   const [politicsFilter, setPoliticsFilter] = useState<"world" | "us" | "florida">("us");
 
+  // Pattern Intelligence
+  interface InsightCard {
+    id: string; domains: string[];
+    headline: string;
+    statA: { label: string; value: string }; statB: { label: string; value: string };
+    statARaw: number; statBRaw: number;
+    evidence: string; take: string;
+    trend: "positive" | "negative" | "neutral"; color: string;
+  }
+  const [patterns, setPatterns]                 = useState<InsightCard[]>([]);
+  const [patternsLoading, setPatternsLoading]   = useState(false);
+  const [patternsGenAt, setPatternsGenAt]       = useState<string | null>(null);
+  const [patternsInsufficient, setPatternsInsufficient] = useState(false);
+
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(t);
@@ -347,6 +361,13 @@ export default function Dashboard() {
     // Live M.A.X. brief (10-min cache)
     setBriefLoading(true);
     fetch("/api/dashboard-brief").then(r => r.json()).then(j => { if (j.lines) setBrief(j.lines); if (j.generatedAt) setBriefGenAt(j.generatedAt); }).catch(() => {}).finally(() => setBriefLoading(false));
+
+    // Pattern Intelligence (6h cache)
+    setPatternsLoading(true);
+    fetch("/api/patterns").then(r => r.json()).then(j => {
+      if (j.insufficient_data) { setPatternsInsufficient(true); return; }
+      if (j.cards?.length) { setPatterns(j.cards); setPatternsGenAt(j.generated_at ?? null); }
+    }).catch(() => {}).finally(() => setPatternsLoading(false));
 
     // Budget snapshot
     const now2 = new Date();
@@ -423,6 +444,16 @@ export default function Dashboard() {
       },
       () => setWeatherSyncing(false),
     );
+  }
+
+  function refreshPatterns() {
+    setPatternsLoading(true);
+    setPatterns([]);
+    setPatternsInsufficient(false);
+    fetch("/api/patterns?refresh=1").then(r => r.json()).then(j => {
+      if (j.insufficient_data) { setPatternsInsufficient(true); return; }
+      if (j.cards?.length) { setPatterns(j.cards); setPatternsGenAt(j.generated_at ?? null); }
+    }).catch(() => {}).finally(() => setPatternsLoading(false));
   }
 
   async function updateWealth(key: keyof typeof WEALTH_DEFAULTS, val: number) {
@@ -1432,6 +1463,142 @@ export default function Dashboard() {
           </HudCard>
         </div>
       </div>
+
+      {/* ── PATTERN INTELLIGENCE ── */}
+      {(patternsLoading || patterns.length > 0 || patternsInsufficient) && (
+        <HudCard className="afu" delay={0.25} style={{ padding: "22px 28px", marginTop: 12 }}>
+          {/* Header */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="1.8" strokeLinecap="round">
+                <circle cx="12" cy="12" r="2"/><circle cx="4" cy="6" r="2"/><circle cx="20" cy="6" r="2"/><circle cx="4" cy="18" r="2"/><circle cx="20" cy="18" r="2"/>
+                <line x1="6" y1="6" x2="10" y2="11"/><line x1="18" y1="6" x2="14" y2="11"/><line x1="6" y1="18" x2="10" y2="13"/><line x1="18" y1="18" x2="14" y2="13"/>
+              </svg>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--t3)" }}>M.A.X. Pattern Intelligence</p>
+              {patternsGenAt && !patternsLoading && (
+                <span style={{ fontSize: 9, color: "var(--t4)", letterSpacing: "0.04em" }}>
+                  · updated {(() => { const m = Math.floor((Date.now() - new Date(patternsGenAt).getTime()) / 60000); return m < 60 ? `${m}m ago` : `${Math.floor(m/60)}h ago`; })()}
+                </span>
+              )}
+            </div>
+            <button
+              onClick={refreshPatterns}
+              disabled={patternsLoading}
+              style={{
+                display: "flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 4,
+                background: "rgba(125,184,232,0.06)", border: "1px solid rgba(125,184,232,0.18)",
+                color: patternsLoading ? "var(--t4)" : "var(--blue)", fontSize: 10, fontWeight: 700,
+                letterSpacing: "0.05em", cursor: patternsLoading ? "default" : "pointer", transition: "all .15s",
+              }}
+              onMouseEnter={e => { if (!patternsLoading) (e.currentTarget as HTMLElement).style.background = "rgba(125,184,232,0.12)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(125,184,232,0.06)"; }}
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+                style={{ animation: patternsLoading ? "spin-slow 1s linear infinite" : "none" }}>
+                <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+              </svg>
+              {patternsLoading ? "Analyzing…" : "Refresh"}
+            </button>
+          </div>
+
+          {patternsInsufficient ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "20px 0" }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--t4)" strokeWidth="1.5" strokeLinecap="round">
+                <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+              </svg>
+              <div>
+                <p style={{ fontSize: 13, fontWeight: 600, color: "var(--t2)", marginBottom: 3 }}>Building your pattern profile…</p>
+                <p style={{ fontSize: 11, color: "var(--t4)" }}>M.A.X. needs at least 2 weeks of habit data to detect meaningful patterns. Keep logging.</p>
+              </div>
+            </div>
+          ) : patternsLoading ? (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              {[0,1,2,3].map(i => (
+                <div key={i} style={{ padding: "16px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--surface2)", display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div style={{ height: 8, borderRadius: 4, background: "var(--border2)", width: "40%", animation: "pulse-dot 1.5s ease-in-out infinite" }} />
+                  <div style={{ height: 12, borderRadius: 4, background: "var(--border2)", width: "85%", animation: "pulse-dot 1.5s ease-in-out infinite" }} />
+                  <div style={{ height: 5, borderRadius: 3, background: "var(--border2)", width: "100%", animation: "pulse-dot 1.5s ease-in-out infinite" }} />
+                  <div style={{ height: 5, borderRadius: 3, background: "var(--border2)", width: "70%", animation: "pulse-dot 1.5s ease-in-out infinite" }} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              {patterns.map(card => {
+                const maxRaw = Math.max(card.statARaw, card.statBRaw) || 1;
+                const wA = Math.round((card.statARaw / maxRaw) * 100);
+                const wB = Math.round((card.statBRaw / maxRaw) * 100);
+                return (
+                  <div key={card.id} style={{
+                    padding: "16px 18px", borderRadius: 7,
+                    background: `rgba(${card.color}, 0.04)`,
+                    border: `1px solid rgba(${card.color}, 0.14)`,
+                    borderLeft: `3px solid rgba(${card.color}, 0.55)`,
+                    display: "flex", flexDirection: "column", gap: 11,
+                  }}>
+                    {/* Domain badges */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
+                      {card.domains.map((d, i) => (
+                        <span key={d} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                          <span style={{
+                            fontSize: 8, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase",
+                            color: `rgba(${card.color},0.9)`, background: `rgba(${card.color},0.12)`,
+                            padding: "2px 6px", borderRadius: 3,
+                          }}>{d}</span>
+                          {i < card.domains.length - 1 && <span style={{ fontSize: 9, color: "var(--t4)", fontWeight: 700 }}>×</span>}
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Headline */}
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--t1)", lineHeight: 1.35 }}>
+                      {card.headline}
+                    </div>
+
+                    {/* Bar comparison */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {([
+                        { label: card.statA.label, value: card.statA.value, w: wA, primary: true },
+                        { label: card.statB.label, value: card.statB.value, w: wB, primary: false },
+                      ] as { label: string; value: string; w: number; primary: boolean }[]).map(row => (
+                        <div key={row.label} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <div style={{ width: 74, fontSize: 7.5, color: "var(--t4)", letterSpacing: "0.08em", textTransform: "uppercase", textAlign: "right", flexShrink: 0, lineHeight: 1.2 }}>
+                            {row.label}
+                          </div>
+                          <div style={{ flex: 1, height: 5, borderRadius: 3, background: "var(--border2)", position: "relative", overflow: "hidden" }}>
+                            <div style={{
+                              position: "absolute", left: 0, top: 0, bottom: 0, borderRadius: 3,
+                              width: `${row.w}%`,
+                              background: row.primary ? `rgba(${card.color},0.7)` : "rgba(255,255,255,0.1)",
+                            }} />
+                          </div>
+                          <div style={{ width: 62, fontSize: 10, fontFamily: "monospace", fontWeight: row.primary ? 700 : 500, color: row.primary ? "var(--t1)" : "var(--t3)", flexShrink: 0, textAlign: "right" }}>
+                            {row.value}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Evidence */}
+                    <div style={{ fontSize: 9, color: "var(--t4)", letterSpacing: "0.04em", fontFamily: "ui-monospace, monospace" }}>
+                      {card.evidence}
+                    </div>
+
+                    {/* M.A.X. take */}
+                    <div style={{
+                      fontSize: 11, color: "var(--t2)", lineHeight: 1.5, fontStyle: "italic",
+                      borderTop: `1px solid rgba(${card.color},0.12)`, paddingTop: 9,
+                    }}>
+                      {card.take}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </HudCard>
+      )}
+
     </div>
   );
 }
