@@ -9,7 +9,6 @@ const PUBLIC_API_PREFIXES = [
   "/api/telegram",
   "/api/cron/",
   "/api/briefing",
-  "/api/admin/", // TEMP: remove after memory reset
 ];
 
 function isPublicApi(pathname: string) {
